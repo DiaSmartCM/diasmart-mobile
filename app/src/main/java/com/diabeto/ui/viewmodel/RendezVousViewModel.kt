@@ -308,8 +308,23 @@ class RendezVousViewModel @Inject constructor(
 
                 val dateTime = LocalDateTime.of(state.date, state.heure)
 
+                // FIX v2.1.11 : les patients Firestore ont un id synthetique
+                // (>= 10000) qui n'existe pas dans la table Room `patients`.
+                // Inserer un RDV avec cet id ferait planter la contrainte FK
+                // (FOREIGN KEY constraint failed - error 19/787).
+                // Solution : creer (ou retrouver) un stub PatientEntity local
+                // pour ce patient Firestore, puis utiliser son vrai id Room.
+                val selectedOption = _uiState.value.patientOptions
+                    .find { it.id == state.selectedPatientId }
+
+                val realPatientId: Long = if (selectedOption?.isFirestore == true) {
+                    resolveLocalPatientIdForFirestore(selectedOption)
+                } else {
+                    state.selectedPatientId
+                }
+
                 val rdv = RendezVousEntity(
-                    patientId = state.selectedPatientId,
+                    patientId = realPatientId,
                     titre = state.titre.trim(),
                     dateHeure = dateTime,
                     dureeMinutes = state.duree,
@@ -321,7 +336,7 @@ class RendezVousViewModel @Inject constructor(
                 val rdvId = rendezVousRepository.insertRendezVous(rdv)
 
                 // Sync to Firestore rdv_shared for the patient
-                val selectedOption = _uiState.value.patientOptions.find { it.id == state.selectedPatientId }
+                // (selectedOption est deja resolu plus haut pour le FK fix)
                 val patientUid = selectedOption?.uid
                 if (!patientUid.isNullOrBlank()) {
                     val medecinProfile = authRepository.getCurrentUserProfile()
@@ -558,5 +573,47 @@ class RendezVousViewModel @Inject constructor(
                 _uiState.update { it.copy(error = e.message) }
             }
         }
+    }
+
+    /**
+     * Trouve ou cree un PatientEntity local pour un patient Firestore.
+     *
+     * Contexte (v2.1.11) : les PatientOption issues de Firestore ont des ids
+     * synthetiques (>= 10000) qui n'existent pas dans la table Room `patients`.
+     * Pour pouvoir inserer un RDV (FK sur patientId), on a besoin d'une vraie
+     * ligne dans `patients`.
+     *
+     * Le stub utilise `email = "firestore:<uid>"` comme marqueur pour le
+     * retrouver lors des RDV suivants — on ne cree donc qu'UN stub par patient.
+     * Les autres champs sont des placeholders minimaux (date de naissance
+     * inconnue, sexe AUTRE, type TYPE_2 par defaut). Le medecin peut enrichir
+     * ces donnees plus tard via la fiche patient.
+     */
+    private suspend fun resolveLocalPatientIdForFirestore(option: PatientOption): Long {
+        val uid = option.uid.ifBlank {
+            // Pas de uid -> fallback sur le nom pour eviter des doublons
+            "nom:${option.nom}"
+        }
+        val marker = "firestore:$uid"
+
+        // 1. Patient stub deja cree precedemment ?
+        val existing = patientRepository.getAllPatientsList()
+            .find { it.email == marker }
+        if (existing != null) return existing.id
+
+        // 2. Sinon, creer un stub minimal
+        val parts = option.nom.trim().split(" ", limit = 2)
+        val prenom = parts.firstOrNull()?.takeIf { it.isNotBlank() } ?: "Patient"
+        val nom = parts.getOrNull(1)?.takeIf { it.isNotBlank() } ?: "Firestore"
+        val stub = PatientEntity(
+            nom = nom,
+            prenom = prenom,
+            dateNaissance = LocalDate.of(2000, 1, 1),
+            sexe = Sexe.AUTRE,
+            typeDiabete = TypeDiabete.TYPE_2,
+            email = marker,
+            notes = "Patient synchronise via Firestore"
+        )
+        return patientRepository.insertPatient(stub)
     }
 }
