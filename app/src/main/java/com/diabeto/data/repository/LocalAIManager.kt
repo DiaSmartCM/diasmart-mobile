@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
@@ -119,18 +120,21 @@ class LocalAIManager @Inject constructor(
             return@withContext false
         }
 
-        // v2.1.5 : tente d'abord GPU (3-5x plus rapide sur Adreno/Mali recents),
-        // fallback CPU si GPU indisponible (anciens devices Africains en Go).
+        // v2.1.8 : CPU-FIRST pour fiabilite.
+        // Les pilotes GPU (Adreno/Mali) sur les devices africains d'entree de gamme
+        // peuvent creer des hangs silencieux ou des init qui "reussissent" mais
+        // ne generent jamais de tokens. CPU est plus lent mais toujours repondant.
+        // GPU reste en fallback si CPU echoue (rare).
         val backendsToTry = listOf(
-            LlmInference.Backend.GPU to "GPU",
-            LlmInference.Backend.CPU to "CPU"
+            LlmInference.Backend.CPU to "CPU",
+            LlmInference.Backend.GPU to "GPU"
         )
         for ((backend, label) in backendsToTry) {
             try {
                 Log.d(TAG, "Initializing local Gemma model on $label backend...")
                 val options = LlmInference.LlmInferenceOptions.builder()
                     .setModelPath(getModelPath())
-                    .setMaxTokens(256)
+                    .setMaxTokens(512)
                     .setPreferredBackend(backend)
                     .build()
 
@@ -323,19 +327,29 @@ class LocalAIManager @Inject constructor(
      * Genere une reponse locale (non-streaming).
      */
     suspend fun generateResponse(prompt: String): String = withContext(Dispatchers.IO) {
+        if (!isModelDownloaded()) {
+            return@withContext "Le modele IA local n'est pas installe. " +
+                    "Allez dans Parametres > Mode hors-ligne pour le telecharger (~550 Mo)."
+        }
         if (!isInitialized || llmInference == null) {
             if (!initializeModel()) {
-                return@withContext "Mode hors-ligne indisponible. Le modele IA local n'est pas installe. " +
-                        "Connectez-vous a internet pour utiliser ROLLY."
+                return@withContext "Impossible de charger le modele local (${initError ?: "raison inconnue"})."
             }
         }
 
         try {
             // Format ultra-compact : moins de tokens en entree
             val fullPrompt = "$systemPrompt\nQ: $prompt\nROLLY:"
-            val response = llmInference?.generateResponse(fullPrompt)
-            response?.takeIf { it.isNotBlank() }
-                ?: "Je n'ai pas pu generer de reponse en mode hors-ligne."
+            // v2.1.8 : timeout pour eviter les hangs silencieux MediaPipe
+            val response = withTimeoutOrNull(120_000L) {
+                llmInference?.generateResponse(fullPrompt)
+            }
+            when {
+                response == null -> "Le modele local met trop de temps a repondre. " +
+                        "Essayez une question plus courte ou connectez-vous a internet."
+                response.isBlank() -> "Je n'ai pas pu generer de reponse en mode hors-ligne."
+                else -> response
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error generating local response", e)
             "Erreur du modele local : ${e.message}"
@@ -350,9 +364,13 @@ class LocalAIManager @Inject constructor(
         patientContext: String = "",
         historiqueChat: String = ""
     ): String = withContext(Dispatchers.IO) {
+        if (!isModelDownloaded()) {
+            return@withContext "Le modele IA local n'est pas installe. " +
+                    "Allez dans Parametres > Mode hors-ligne pour le telecharger (~550 Mo)."
+        }
         if (!isInitialized || llmInference == null) {
             if (!initializeModel()) {
-                return@withContext "Mode hors-ligne indisponible. Connectez-vous a internet."
+                return@withContext "Impossible de charger le modele local (${initError ?: "raison inconnue"})."
             }
         }
 
@@ -376,9 +394,16 @@ class LocalAIManager @Inject constructor(
             sb.appendLine("Q: $message")
             sb.appendLine("ROLLY:")
 
-            val response = llmInference?.generateResponse(sb.toString())
-            response?.takeIf { it.isNotBlank() }
-                ?: "Je n'ai pas pu generer de reponse en mode hors-ligne."
+            // v2.1.8 : timeout pour eviter les hangs silencieux MediaPipe
+            val response = withTimeoutOrNull(120_000L) {
+                llmInference?.generateResponse(sb.toString())
+            }
+            when {
+                response == null -> "Le modele local met trop de temps a repondre. " +
+                        "Essayez une question plus courte ou connectez-vous a internet."
+                response.isBlank() -> "Je n'ai pas pu generer de reponse en mode hors-ligne."
+                else -> response
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error generating local response with context", e)
             "Erreur du modele local : ${e.message}"
@@ -395,9 +420,22 @@ class LocalAIManager @Inject constructor(
      *         -> l'utilisateur voit les mots apparaitre immediatement (UX x10)
      */
     fun generateResponseStream(prompt: String): Flow<String> = channelFlow {
+        // v2.1.8 : message explicite si modele absent (au lieu du texte generique)
+        if (!isModelDownloaded()) {
+            send(
+                "Le modele IA local n'est pas installe sur cet appareil.\n\n" +
+                "Pour discuter avec ROLLY hors-ligne, allez dans " +
+                "Parametres > Mode hors-ligne et telechargez le modele (~550 Mo, WiFi recommande)."
+            )
+            return@channelFlow
+        }
         if (!isInitialized || llmInference == null) {
             if (!initializeModel()) {
-                send("Mode hors-ligne indisponible. Connectez-vous a internet.")
+                send(
+                    "Impossible de charger le modele local (${initError ?: "raison inconnue"}). " +
+                    "Essayez de redemarrer l'application ou de retelecharger le modele " +
+                    "depuis Parametres > Mode hors-ligne."
+                )
                 return@channelFlow
             }
         }
@@ -421,7 +459,25 @@ class LocalAIManager @Inject constructor(
                 }
             }
 
-            completed.await() // Attend la fin de la generation
+            // v2.1.8 : timeout de 120s pour eviter les hangs silencieux MediaPipe
+            // (callback qui ne se declenche jamais sur certains devices).
+            val result = withTimeoutOrNull(120_000L) {
+                completed.await()
+                true
+            }
+            if (result == null) {
+                Log.w(TAG, "Local generation timed out after 120s")
+                if (accumulated.isEmpty()) {
+                    send(
+                        "Le modele local met trop de temps a repondre sur cet appareil. " +
+                        "Reessayez avec une question plus courte, ou connectez-vous a internet " +
+                        "pour utiliser ROLLY en ligne (plus rapide)."
+                    )
+                } else {
+                    // On a eu quelques tokens puis hang : renvoie ce qu'on a
+                    send(accumulated.toString() + "\n\n[Generation interrompue - delai depasse]")
+                }
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error in local stream", e)
             send("Erreur du modele local : ${e.message}")

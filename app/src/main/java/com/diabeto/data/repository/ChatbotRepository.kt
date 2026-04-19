@@ -153,6 +153,20 @@ class ChatbotRepository @Inject constructor(
             if (!isOnline()) {
                 // ── MODE HORS-LIGNE : Gemma local ──
                 Log.d(TAG, "envoyerMessage (OFFLINE/local): $message")
+
+                // v2.1.8 : bail-out precoce si modele non installe,
+                // avec un message d'action clair (au lieu du header + message generique)
+                if (!localAI.isModelDownloaded()) {
+                    emit(
+                        "${urgencyPrefix}📴 *Mode hors-ligne*\n\n" +
+                        "Le modele IA local n'est pas installe sur cet appareil.\n\n" +
+                        "Pour discuter avec ROLLY sans connexion, ouvrez " +
+                        "**Parametres > Mode hors-ligne** et telechargez ROLLY Local (~550 Mo, " +
+                        "WiFi recommande)."
+                    )
+                    return@flow
+                }
+
                 val header = "$urgencyPrefix📴 *Mode hors-ligne — ROLLY Local*\n\n"
                 emit(header)
                 localAI.generateResponseStream(message).collect { chunk ->
@@ -236,6 +250,19 @@ class ChatbotRepository @Inject constructor(
             if (!isOnline()) {
                 // ── MODE HORS-LIGNE : Gemma local avec contexte réduit ──
                 Log.d(TAG, "envoyerMessageAvecContexte (OFFLINE/local): ${message.take(100)}")
+
+                // v2.1.8 : bail-out precoce si modele non installe
+                if (!localAI.isModelDownloaded()) {
+                    emit(
+                        "${urgencyPrefix}📴 *Mode hors-ligne*\n\n" +
+                        "Le modele IA local n'est pas installe sur cet appareil.\n\n" +
+                        "Pour discuter avec ROLLY sans connexion, ouvrez " +
+                        "**Parametres > Mode hors-ligne** et telechargez ROLLY Local (~550 Mo, " +
+                        "WiFi recommande)."
+                    )
+                    return@flow
+                }
+
                 val localResponse = localAI.generateResponseWithContext(
                     message = message,
                     patientContext = contexte,
