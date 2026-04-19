@@ -200,11 +200,14 @@ class DataSharingRepository @Inject constructor(
     // ═══════════════════════════════════════════════════════════════
 
     /**
-     * Liste les patients de la plateforme — réservé aux médecins.
-     * Retourne uniquement les patients ayant un consentement actif avec ce médecin.
+     * Liste TOUS les patients de la plateforme — réservé aux médecins.
+     *
+     * Utilisé par l'onglet "Ajouter patients" : le médecin doit pouvoir
+     * trouver n'importe quel patient enregistré sur DiaSmart et lui envoyer
+     * une demande d'accès. On récupère donc tous les profils dont
+     * role == PATIENT, en filtrant les profils corrompus / marqués supprimés.
      */
     suspend fun getAllPlatformPatients(): List<UserProfile> {
-        val currentUid = authRepository.currentUserId ?: return emptyList()
         val currentProfile = authRepository.getCurrentUserProfile() ?: return emptyList()
 
         // Seuls les médecins peuvent lister les patients
@@ -214,20 +217,28 @@ class DataSharingRepository @Inject constructor(
         }
 
         return try {
-            // Retourner uniquement les patients qui ont consenti au partage avec ce médecin
-            val consents = firestore.collection(COLLECTION_SHARING)
-                .whereEqualTo("medecinUid", currentUid)
-                .whereEqualTo("isActive", true)
+            val snap = firestore.collection(COLLECTION_USERS)
+                .whereEqualTo("role", UserRole.PATIENT.name)
                 .get().await()
 
-            val patientUids = consents.documents.mapNotNull { it.getString("patientUid") }
-            if (patientUids.isEmpty()) return emptyList()
-
-            // Récupérer les profils des patients consentants
-            patientUids.mapNotNull { uid ->
-                authRepository.getUserProfile(uid)
+            snap.documents.mapNotNull { doc ->
+                val data = doc.data ?: return@mapNotNull null
+                // Ignore les documents marques comme supprimes (soft delete)
+                if (data["isDeleted"] == true) return@mapNotNull null
+                @Suppress("UNCHECKED_CAST")
+                val profile = UserProfile.fromMap(data as Map<String, Any?>)
+                // Filtre les profils incomplets (compte supprime cote auth mais doc
+                // Firestore laisse orpheline, ou profil jamais initialise)
+                if (profile.uid.isBlank()) return@mapNotNull null
+                if (profile.nom.isBlank() && profile.prenom.isBlank() && profile.email.isBlank()) {
+                    return@mapNotNull null
+                }
+                profile
             }
-        } catch (e: Exception) { Log.w("DataSharing", "Query failed: ${e.message}"); emptyList() }
+        } catch (e: Exception) {
+            Log.w("DataSharing", "Query failed: ${e.message}")
+            emptyList()
+        }
     }
 
     // ── Lister les médecins disponibles ──

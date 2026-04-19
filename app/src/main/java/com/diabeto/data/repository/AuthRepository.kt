@@ -310,11 +310,48 @@ class AuthRepository @Inject constructor(
                 .get()
                 .await()
             snap.documents.mapNotNull { doc ->
+                val data = doc.data ?: return@mapNotNull null
+                if (data["isDeleted"] == true) return@mapNotNull null
                 @Suppress("UNCHECKED_CAST")
-                doc.data?.let { UserProfile.fromMap(it as Map<String, Any?>) }
+                val p = UserProfile.fromMap(data as Map<String, Any?>)
+                if (p.uid.isBlank()) return@mapNotNull null
+                if (p.nom.isBlank() && p.prenom.isBlank() && p.email.isBlank()) return@mapNotNull null
+                p
             }
         } catch (e: Exception) {
             emptyList()
+        }
+    }
+
+    /**
+     * Supprime completement le compte de l'utilisateur courant :
+     * - toutes ses entrees dans `data_sharing` (cote patient ET medecin)
+     * - son document dans `users`
+     * - son compte Firebase Auth
+     *
+     * Les donnees medicales (glycemie, repas, RDV) restent Firestore mais
+     * sont orphelines : le doc user disparait donc l'utilisateur n'est plus
+     * listable par les medecins/patients.
+     */
+    suspend fun deleteAccount(): Result<Unit> {
+        val user = auth.currentUser ?: return Result.failure(Exception("Non connecte"))
+        val uid = user.uid
+        return try {
+            // Supprimer les consentements ou on est patient
+            val asPatient = firestore.collection("data_sharing")
+                .whereEqualTo("patientUid", uid).get().await()
+            for (d in asPatient.documents) d.reference.delete().await()
+            // Supprimer les consentements ou on est medecin
+            val asMedecin = firestore.collection("data_sharing")
+                .whereEqualTo("medecinUid", uid).get().await()
+            for (d in asMedecin.documents) d.reference.delete().await()
+            // Supprimer le profil utilisateur
+            firestore.collection(COLLECTION_USERS).document(uid).delete().await()
+            // Supprimer le compte Auth
+            user.delete().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 

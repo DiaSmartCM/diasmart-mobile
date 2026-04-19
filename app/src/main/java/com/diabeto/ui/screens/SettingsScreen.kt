@@ -65,7 +65,9 @@ fun SettingsScreen(
     var showMeasureTypeDialog by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
     var showTargetDialog by remember { mutableStateOf(false) }
+    var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var isBackingUp by remember { mutableStateOf(false) }
+    var isDeletingAccount by remember { mutableStateOf(false) }
 
     // Launcher pour selectionner un document (PDF, image) a partager avec un patient
     val shareDocumentLauncher = rememberLauncherForActivityResult(
@@ -591,6 +593,30 @@ fun SettingsScreen(
             }
             } // fin if (!uiState.isMedecin) - IA hors-ligne gatee pour patient uniquement
 
+            // ── Compte ──────────────────────────────────────
+            item {
+                DayLifeSectionHeader(
+                    title = "Compte",
+                    color = sectionTextColor,
+                    isDark = isDark
+                )
+            }
+            item {
+                DayLifeSettingsCard(cardBg = cardBg) {
+                    DayLifeSettingsItem(
+                        icon = Icons.Default.PersonOff,
+                        iconBg = Color(0xFFEF4444),
+                        title = "Supprimer mon compte",
+                        subtitle = if (isDeletingAccount) "Suppression en cours..." else "Efface profil et partages Firestore",
+                        titleColor = titleColor,
+                        subtitleColor = subtitleColor,
+                        onClick = {
+                            if (!isDeletingAccount) showDeleteAccountDialog = true
+                        }
+                    )
+                }
+            }
+
             // ── À propos ─────────────────────────────────────
             item {
                 DayLifeSectionHeader(
@@ -605,7 +631,7 @@ fun SettingsScreen(
                         icon = Icons.Default.Info,
                         iconBg = Color(0xFF6771E4),
                         title = "Version",
-                        subtitle = "2.1.11",
+                        subtitle = "2.1.12",
                         titleColor = titleColor,
                         subtitleColor = subtitleColor
                     )
@@ -774,6 +800,59 @@ fun SettingsScreen(
                 showTargetDialog = false
             },
             onDismiss = { showTargetDialog = false }
+        )
+    }
+
+    // Delete Account Confirmation Dialog
+    if (showDeleteAccountDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteAccountDialog = false },
+            containerColor = if (isDark) Color(0xFF1A1A2E) else Color.White,
+            shape = RoundedCornerShape(24.dp),
+            icon = { Icon(Icons.Default.Warning, null, tint = Color(0xFFEF4444)) },
+            title = {
+                Text(
+                    "Supprimer mon compte ?",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    color = if (isDark) DarkTextPrimary else TextPrimary
+                )
+            },
+            text = {
+                Text(
+                    "Cette action est definitive. Votre profil, vos consentements de partage et votre compte seront supprimes. Les medecins ne pourront plus vous trouver sur la plateforme.",
+                    fontSize = 14.sp,
+                    color = if (isDark) DarkTextSecondary else TextSecondary
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteAccountDialog = false
+                        isDeletingAccount = true
+                        viewModel.deleteMyAccount { ok, err ->
+                            isDeletingAccount = false
+                            if (ok) {
+                                Toast.makeText(context, "Compte supprime", Toast.LENGTH_LONG).show()
+                                // Redemarrage : relancer l'activite pour retomber sur Login
+                                val pm = context.packageManager
+                                val intent = pm.getLaunchIntentForPackage(context.packageName)
+                                intent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK)
+                                context.startActivity(intent)
+                            } else {
+                                Toast.makeText(context, "Erreur : ${err ?: "inconnue"}", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
+                    shape = RoundedCornerShape(14.dp)
+                ) { Text("Supprimer") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteAccountDialog = false }) {
+                    Text("Annuler", color = Primary, fontWeight = FontWeight.SemiBold)
+                }
+            }
         )
     }
 
