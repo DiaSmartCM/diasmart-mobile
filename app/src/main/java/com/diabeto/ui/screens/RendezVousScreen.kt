@@ -3,7 +3,9 @@ package com.diabeto.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -23,6 +25,7 @@ import com.diabeto.data.model.UserProfile
 import com.diabeto.ui.components.RequiredFieldLabel
 import com.diabeto.ui.components.diaSmartTextFieldColors
 import com.diabeto.ui.theme.*
+import com.diabeto.ui.viewmodel.AddRendezVousState
 import com.diabeto.ui.viewmodel.BookAppointmentState
 import com.diabeto.ui.viewmodel.PatientOption
 import com.diabeto.ui.viewmodel.RendezVousFilter
@@ -47,6 +50,7 @@ fun RendezVousScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val bookState by viewModel.bookState.collectAsStateWithLifecycle()
+    val addState by viewModel.addState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(uiState.error) {
@@ -81,6 +85,18 @@ fun RendezVousScreen(
         )
     }
 
+    // Dialogue de programmation de RDV (medecin)
+    if (uiState.showAddDialog) {
+        ScheduleAppointmentDialog(
+            state = addState,
+            patientOptions = uiState.patientOptions,
+            fixedPatientId = patientId,
+            onDismiss = { viewModel.toggleAddDialog(false) },
+            onUpdateField = { field, value -> viewModel.updateAddField(field, value) },
+            onSubmit = { viewModel.addRendezVous() }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -100,13 +116,13 @@ fun RendezVousScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             if (uiState.isMedecin) {
-                // Médecin: créer un RDV directement
-                FloatingActionButton(
-                    onClick = { onNavigateToAdd(patientId) },
-                    containerColor = Primary
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Nouveau")
-                }
+                // Médecin: programmer un RDV et l'envoyer au patient
+                ExtendedFloatingActionButton(
+                    onClick = { viewModel.toggleAddDialog(true) },
+                    containerColor = Primary,
+                    icon = { Icon(Icons.Default.EventAvailable, contentDescription = null) },
+                    text = { Text("Programmer un RDV") }
+                )
             } else {
                 // Patient: envoyer une demande de RDV
                 ExtendedFloatingActionButton(
@@ -1151,6 +1167,251 @@ private fun BookAppointmentDialog(
                 } else {
                     Text("Envoyer")
                 }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Annuler")
+            }
+        }
+    )
+}
+
+// ── Dialogue de programmation de RDV (MEDECIN) ─────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ScheduleAppointmentDialog(
+    state: AddRendezVousState,
+    patientOptions: List<PatientOption>,
+    fixedPatientId: Long?,
+    onDismiss: () -> Unit,
+    onUpdateField: (String, Any?) -> Unit,
+    onSubmit: () -> Unit
+) {
+    val dateDialogState = rememberMaterialDialogState()
+    val timeDialogState = rememberMaterialDialogState()
+
+    MaterialDialog(
+        dialogState = dateDialogState,
+        buttons = {
+            positiveButton("OK")
+            negativeButton("Annuler")
+        }
+    ) {
+        datepicker(
+            initialDate = state.date,
+            title = "Date du rendez-vous",
+            allowedDateValidator = { it.isAfter(LocalDate.now().minusDays(1)) }
+        ) { date ->
+            onUpdateField("date", date)
+        }
+    }
+
+    MaterialDialog(
+        dialogState = timeDialogState,
+        buttons = {
+            positiveButton("OK")
+            negativeButton("Annuler")
+        }
+    ) {
+        timepicker(
+            initialTime = state.heure,
+            title = "Heure du rendez-vous"
+        ) { time ->
+            onUpdateField("heure", time)
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Programmer un rendez-vous") },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                // Selection du patient (si pas fixe)
+                if (fixedPatientId == null) {
+                    var patientExpanded by remember { mutableStateOf(false) }
+                    val selectedOption = patientOptions.find { it.id == state.selectedPatientId }
+                    ExposedDropdownMenuBox(
+                        expanded = patientExpanded,
+                        onExpandedChange = { patientExpanded = it }
+                    ) {
+                        OutlinedTextField(
+                            value = selectedOption?.nom ?: "",
+                            onValueChange = { },
+                            label = { RequiredFieldLabel("Patient", required = true) },
+                            placeholder = {
+                                Text(
+                                    if (patientOptions.isEmpty())
+                                        "Aucun patient disponible"
+                                    else
+                                        "Choisir un patient"
+                                )
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(),
+                            readOnly = true,
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(patientExpanded) },
+                            colors = diaSmartTextFieldColors()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = patientExpanded,
+                            onDismissRequest = { patientExpanded = false }
+                        ) {
+                            patientOptions.forEach { option ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(option.nom)
+                                            if (option.isFirestore) {
+                                                Spacer(Modifier.width(6.dp))
+                                                Text(
+                                                    "en ligne",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                        }
+                                    },
+                                    onClick = {
+                                        onUpdateField("patientId", option.id)
+                                        patientExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Titre
+                OutlinedTextField(
+                    value = state.titre,
+                    onValueChange = { onUpdateField("titre", it) },
+                    label = { RequiredFieldLabel("Titre", required = true) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    colors = diaSmartTextFieldColors()
+                )
+
+                // Date + heure
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = state.date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
+                        onValueChange = { },
+                        label = { RequiredFieldLabel("Date", required = true) },
+                        modifier = Modifier.weight(1f),
+                        readOnly = true,
+                        trailingIcon = {
+                            IconButton(onClick = { dateDialogState.show() }) {
+                                Icon(Icons.Default.CalendarToday, contentDescription = null)
+                            }
+                        },
+                        colors = diaSmartTextFieldColors()
+                    )
+                    OutlinedTextField(
+                        value = state.heure.format(DateTimeFormatter.ofPattern("HH:mm")),
+                        onValueChange = { },
+                        label = { RequiredFieldLabel("Heure", required = true) },
+                        modifier = Modifier.weight(1f),
+                        readOnly = true,
+                        trailingIcon = {
+                            IconButton(onClick = { timeDialogState.show() }) {
+                                Icon(Icons.Default.Schedule, contentDescription = null)
+                            }
+                        },
+                        colors = diaSmartTextFieldColors()
+                    )
+                }
+
+                // Type
+                var typeExpanded by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(
+                    expanded = typeExpanded,
+                    onExpandedChange = { typeExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = state.type.getDisplayName(),
+                        onValueChange = { },
+                        label = { RequiredFieldLabel("Type") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(),
+                        readOnly = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(typeExpanded) },
+                        colors = diaSmartTextFieldColors()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = typeExpanded,
+                        onDismissRequest = { typeExpanded = false }
+                    ) {
+                        TypeRendezVous.entries.forEach { type ->
+                            DropdownMenuItem(
+                                text = { Text(type.getDisplayName()) },
+                                onClick = {
+                                    onUpdateField("type", type)
+                                    typeExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // Duree
+                OutlinedTextField(
+                    value = state.duree.toString(),
+                    onValueChange = { onUpdateField("duree", it.toIntOrNull() ?: 30) },
+                    label = { RequiredFieldLabel("Durée (minutes)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    colors = diaSmartTextFieldColors()
+                )
+
+                // Lieu
+                OutlinedTextField(
+                    value = state.lieu,
+                    onValueChange = { onUpdateField("lieu", it) },
+                    label = { RequiredFieldLabel("Lieu") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    colors = diaSmartTextFieldColors()
+                )
+
+                // Notes
+                OutlinedTextField(
+                    value = state.notes,
+                    onValueChange = { onUpdateField("notes", it) },
+                    label = { RequiredFieldLabel("Notes") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 2,
+                    maxLines = 4,
+                    colors = diaSmartTextFieldColors()
+                )
+
+                if (state.error != null) {
+                    Text(
+                        text = state.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Error
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onSubmit,
+                enabled = state.titre.isNotBlank() &&
+                          (fixedPatientId != null || state.selectedPatientId > 0L)
+            ) {
+                Text("Valider")
             }
         },
         dismissButton = {

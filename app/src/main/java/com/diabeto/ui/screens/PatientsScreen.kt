@@ -58,13 +58,6 @@ fun PatientsListScreen(
                         Icon(Icons.Default.ArrowBack, "Retour")
                     }
                 },
-                actions = {
-                    if (!uiState.isMedecin) {
-                        IconButton(onClick = onNavigateToAddPatient) {
-                            Icon(Icons.Default.PersonAdd, "Ajouter")
-                        }
-                    }
-                },
                 colors = diaSmartTopAppBarColors()
             )
         },
