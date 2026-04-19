@@ -202,19 +202,23 @@ fun SettingsScreen(
                         subtitleColor = subtitleColor,
                         onClick = { showMeasureTypeDialog = true }
                     )
-                    DayLifeDivider(dividerColor)
-                    DayLifeSettingsItem(
-                        icon = Icons.Default.Analytics,
-                        iconBg = Color(0xFF8B5CF6),
-                        title = "Objectif glycémique",
-                        subtitle = if (uiState.glucoseUnit == GlucoseUnit.MG_DL)
-                            "${uiState.targetMin.toInt()} - ${uiState.targetMax.toInt()} mg/dL"
-                        else
-                            "${"%.1f".format(uiState.targetMin / 18.0182)} - ${"%.1f".format(uiState.targetMax / 18.0182)} mmol/L",
-                        titleColor = titleColor,
-                        subtitleColor = subtitleColor,
-                        onClick = { showTargetDialog = true }
-                    )
+                    // Objectif glycemique : patient uniquement (un medecin n'a pas
+                    // de glycemie personnelle a cibler sur son compte)
+                    if (!uiState.isMedecin) {
+                        DayLifeDivider(dividerColor)
+                        DayLifeSettingsItem(
+                            icon = Icons.Default.Analytics,
+                            iconBg = Color(0xFF8B5CF6),
+                            title = "Objectif glycémique",
+                            subtitle = if (uiState.glucoseUnit == GlucoseUnit.MG_DL)
+                                "${uiState.targetMin.toInt()} - ${uiState.targetMax.toInt()} mg/dL"
+                            else
+                                "${"%.1f".format(uiState.targetMin / 18.0182)} - ${"%.1f".format(uiState.targetMax / 18.0182)} mmol/L",
+                            titleColor = titleColor,
+                            subtitleColor = subtitleColor,
+                            onClick = { showTargetDialog = true }
+                        )
+                    }
                 }
             }
 
@@ -239,32 +243,37 @@ fun SettingsScreen(
                         subtitleColor = subtitleColor,
                         isDark = isDark
                     )
-                    DayLifeDivider(dividerColor)
-                    DayLifeToggleItem(
-                        icon = Icons.Default.Medication,
-                        iconBg = Color(0xFFEF4444),
-                        title = "Rappels médicaments",
-                        subtitle = "Rappel avant chaque prise",
-                        checked = uiState.medicationReminders,
-                        onCheckedChange = viewModel::setMedicationReminders,
-                        enabled = uiState.notificationsEnabled,
-                        titleColor = titleColor,
-                        subtitleColor = subtitleColor,
-                        isDark = isDark
-                    )
-                    DayLifeDivider(dividerColor)
-                    DayLifeToggleItem(
-                        icon = Icons.Default.MonitorHeart,
-                        iconBg = Color(0xFF6771E4),
-                        title = "Rappels glycémie",
-                        subtitle = "Rappel de mesure quotidien",
-                        checked = uiState.measurementReminders,
-                        onCheckedChange = viewModel::setMeasurementReminders,
-                        enabled = uiState.notificationsEnabled,
-                        titleColor = titleColor,
-                        subtitleColor = subtitleColor,
-                        isDark = isDark
-                    )
+                    // Rappels medicaments + glycemie : patient uniquement.
+                    // Le medecin ne suit pas sa propre prise de medicaments
+                    // ni ses propres glycemies sur le compte professionnel.
+                    if (!uiState.isMedecin) {
+                        DayLifeDivider(dividerColor)
+                        DayLifeToggleItem(
+                            icon = Icons.Default.Medication,
+                            iconBg = Color(0xFFEF4444),
+                            title = "Rappels médicaments",
+                            subtitle = "Rappel avant chaque prise",
+                            checked = uiState.medicationReminders,
+                            onCheckedChange = viewModel::setMedicationReminders,
+                            enabled = uiState.notificationsEnabled,
+                            titleColor = titleColor,
+                            subtitleColor = subtitleColor,
+                            isDark = isDark
+                        )
+                        DayLifeDivider(dividerColor)
+                        DayLifeToggleItem(
+                            icon = Icons.Default.MonitorHeart,
+                            iconBg = Color(0xFF6771E4),
+                            title = "Rappels glycémie",
+                            subtitle = "Rappel de mesure quotidien",
+                            checked = uiState.measurementReminders,
+                            onCheckedChange = viewModel::setMeasurementReminders,
+                            enabled = uiState.notificationsEnabled,
+                            titleColor = titleColor,
+                            subtitleColor = subtitleColor,
+                            isDark = isDark
+                        )
+                    }
                     DayLifeDivider(dividerColor)
                     DayLifeToggleItem(
                         icon = Icons.Default.CalendarMonth,
@@ -596,7 +605,7 @@ fun SettingsScreen(
                         icon = Icons.Default.Info,
                         iconBg = Color(0xFF6771E4),
                         title = "Version",
-                        subtitle = "2.1.9",
+                        subtitle = "2.1.10",
                         titleColor = titleColor,
                         subtitleColor = subtitleColor
                     )
