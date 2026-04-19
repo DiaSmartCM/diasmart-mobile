@@ -25,6 +25,8 @@ import com.diabeto.data.model.UserRole
 import com.diabeto.ui.theme.*
 import com.diabeto.ui.viewmodel.PatientsViewModel
 
+enum class MedecinPatientsMode { MY_PATIENTS, PLATFORM_SEARCH }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PatientsListScreen(
@@ -32,6 +34,7 @@ fun PatientsListScreen(
     onNavigateToPatientDetail: (Long) -> Unit,
     onNavigateToAddPatient: () -> Unit,
     onNavigateToSharedPatientData: (String, String) -> Unit = { _, _ -> },
+    medecinMode: MedecinPatientsMode = MedecinPatientsMode.MY_PATIENTS,
     viewModel: PatientsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -49,7 +52,11 @@ fun PatientsListScreen(
             TopAppBar(
                 title = {
                     Text(
-                        if (uiState.isMedecin) "Patients de la plateforme" else "Mes Patients",
+                        when {
+                            !uiState.isMedecin -> "Mes Patients"
+                            medecinMode == MedecinPatientsMode.PLATFORM_SEARCH -> "Ajouter un patient"
+                            else -> "Mes patients"
+                        },
                         fontWeight = FontWeight.Bold
                     )
                 },
@@ -87,40 +94,7 @@ fun PatientsListScreen(
             )
 
             if (uiState.isMedecin) {
-                // ═══ VUE MÉDECIN ═══
-                // Tabs : Tous les patients | Mes patients
-                var selectedTab by remember { mutableIntStateOf(0) }
-                TabRow(
-                    selectedTabIndex = selectedTab,
-                    containerColor = Background,
-                    contentColor = Primary
-                ) {
-                    Tab(
-                        selected = selectedTab == 0,
-                        onClick = { selectedTab = 0 },
-                        selectedContentColor = Primary,
-                        unselectedContentColor = TextPrimary,
-                        text = { Text("Tous les patients") },
-                        icon = { Icon(Icons.Default.People, null, Modifier.size(18.dp)) }
-                    )
-                    Tab(
-                        selected = selectedTab == 1,
-                        onClick = { selectedTab = 1 },
-                        selectedContentColor = Primary,
-                        unselectedContentColor = TextPrimary,
-                        text = {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("Mes patients")
-                                val count = uiState.myPatients.size
-                                if (count > 0) {
-                                    Spacer(Modifier.width(4.dp))
-                                    Badge { Text("$count") }
-                                }
-                            }
-                        },
-                        icon = { Icon(Icons.Default.Favorite, null, Modifier.size(18.dp)) }
-                    )
-                }
+                // ═══ VUE MEDECIN ═══
 
                 Spacer(Modifier.height(8.dp))
 
@@ -128,52 +102,60 @@ fun PatientsListScreen(
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = Primary)
                     }
-                } else {
-                    when (selectedTab) {
-                        0 -> {
-                            // Tous les patients de la plateforme
-                            val filtered = uiState.allPlatformPatients.filter {
-                                uiState.searchQuery.isBlank() ||
-                                it.nomComplet.contains(uiState.searchQuery, ignoreCase = true) ||
-                                it.email.contains(uiState.searchQuery, ignoreCase = true)
-                            }
+                } else when (medecinMode) {
+                    MedecinPatientsMode.PLATFORM_SEARCH -> {
+                        // Recherche de patients sur la plateforme
+                        val filtered = uiState.allPlatformPatients.filter {
+                            uiState.searchQuery.isBlank() ||
+                            it.nomComplet.contains(uiState.searchQuery, ignoreCase = true) ||
+                            it.email.contains(uiState.searchQuery, ignoreCase = true)
+                        }
 
-                            if (filtered.isEmpty()) {
-                                EmptyState("Aucun patient sur la plateforme", Icons.Default.PeopleOutline)
-                            } else {
-                                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    items(filtered, key = { it.uid }) { patient ->
-                                        val consent = uiState.myRequests.find { it.patientUid == patient.uid }
-                                        PlatformPatientCard(
-                                            patient = patient,
-                                            consent = consent,
-                                            onRequestAccess = { viewModel.requestAccess(patient.uid) },
-                                            isRequesting = uiState.requestingUid == patient.uid
-                                        )
-                                    }
-                                    item { Spacer(Modifier.height(16.dp)) }
+                        if (filtered.isEmpty()) {
+                            EmptyState("Aucun patient sur la plateforme", Icons.Default.PeopleOutline)
+                        } else {
+                            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                items(filtered, key = { it.uid }) { patient ->
+                                    val consent = uiState.myRequests.find { it.patientUid == patient.uid }
+                                    PlatformPatientCard(
+                                        patient = patient,
+                                        consent = consent,
+                                        onRequestAccess = { viewModel.requestAccess(patient.uid) },
+                                        isRequesting = uiState.requestingUid == patient.uid
+                                    )
                                 }
+                                item { Spacer(Modifier.height(16.dp)) }
                             }
                         }
-                        1 -> {
-                            // Mes patients (acceptés)
-                            if (uiState.myPatients.isEmpty()) {
-                                EmptyState("Aucun patient n'a encore accepte votre demande", Icons.Default.HourglassEmpty)
-                            } else {
-                                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    items(uiState.myPatients, key = { it.patientUid }) { consent ->
-                                        MyPatientCard(
-                                            consent = consent,
-                                            onViewData = {
-                                                onNavigateToSharedPatientData(
-                                                    consent.patientUid,
-                                                    consent.patientNom
-                                                )
-                                            }
-                                        )
-                                    }
-                                    item { Spacer(Modifier.height(16.dp)) }
+                    }
+                    MedecinPatientsMode.MY_PATIENTS -> {
+                        // Patients abonnes (consent accepte)
+                        val filtered = uiState.myPatients.filter {
+                            uiState.searchQuery.isBlank() ||
+                            it.patientNom.contains(uiState.searchQuery, ignoreCase = true)
+                        }
+                        if (filtered.isEmpty()) {
+                            EmptyState(
+                                if (uiState.searchQuery.isBlank())
+                                    "Aucun patient abonne. Ajoutez un patient depuis l'accueil."
+                                else
+                                    "Aucun patient ne correspond",
+                                Icons.Default.HourglassEmpty
+                            )
+                        } else {
+                            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                items(filtered, key = { it.patientUid }) { consent ->
+                                    MyPatientCard(
+                                        consent = consent,
+                                        onViewData = {
+                                            onNavigateToSharedPatientData(
+                                                consent.patientUid,
+                                                consent.patientNom
+                                            )
+                                        }
+                                    )
                                 }
+                                item { Spacer(Modifier.height(16.dp)) }
                             }
                         }
                     }

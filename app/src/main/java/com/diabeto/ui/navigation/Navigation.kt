@@ -18,6 +18,7 @@ object Routes {
     const val LOGIN            = "login"
     const val DASHBOARD        = "dashboard"
     const val PATIENTS         = "patients"
+    const val PATIENTS_SEARCH  = "patients/search"
     const val PATIENT_DETAIL   = "patient/{patientId}"
     const val PATIENT_EDIT     = "patient/edit?patientId={patientId}"
     const val GLUCOSE_TRACKING = "glucose/{patientId}"
@@ -133,7 +134,7 @@ fun DiabetoNavigation(
                 onNavigateToPatients       = { navController.navigate(Routes.PATIENTS) },
                 onNavigateToPatientDetail  = { id -> navController.navigate(Routes.patientDetail(id)) },
                 onNavigateToRendezVous     = { navController.navigate(Routes.rendezVous()) },
-                onNavigateToAddPatient     = { navController.navigate(Routes.patientEdit()) },
+                onNavigateToAddPatient     = { navController.navigate(Routes.PATIENTS_SEARCH) },
                 onNavigateToChatbot        = { navController.navigate(Routes.chatbot()) },
                 onNavigateToMessagerie     = { navController.navigate(Routes.MESSAGERIE) },
                 onNavigateToRepasAnalyse   = { navController.navigate(Routes.REPAS_ANALYSE) },
@@ -148,15 +149,29 @@ fun DiabetoNavigation(
             )
         }
 
-        // ── Liste des patients ────────────────────────────────────────────────
+        // ── Liste des patients (Mes patients cote medecin / Liste Room cote patient) ─
         composable(Routes.PATIENTS) {
             PatientsListScreen(
                 onNavigateBack            = { navController.popBackStack() },
                 onNavigateToPatientDetail = { id -> navController.navigate(Routes.patientDetail(id)) },
-                onNavigateToAddPatient    = { navController.navigate(Routes.patientEdit()) },
+                onNavigateToAddPatient    = { navController.navigate(Routes.PATIENTS_SEARCH) },
                 onNavigateToSharedPatientData = { uid, nom ->
                     navController.navigate(Routes.sharedPatient(uid, nom))
-                }
+                },
+                medecinMode = MedecinPatientsMode.MY_PATIENTS
+            )
+        }
+
+        // ── Recherche de patients sur la plateforme (cote medecin) ───────────────
+        composable(Routes.PATIENTS_SEARCH) {
+            PatientsListScreen(
+                onNavigateBack            = { navController.popBackStack() },
+                onNavigateToPatientDetail = { id -> navController.navigate(Routes.patientDetail(id)) },
+                onNavigateToAddPatient    = { navController.navigate(Routes.PATIENTS_SEARCH) },
+                onNavigateToSharedPatientData = { uid, nom ->
+                    navController.navigate(Routes.sharedPatient(uid, nom))
+                },
+                medecinMode = MedecinPatientsMode.PLATFORM_SEARCH
             )
         }
 

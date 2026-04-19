@@ -1103,7 +1103,6 @@ private fun DiaSmartBottomBar(
                     NavItem("Accueil", Icons.Outlined.Dashboard, Icons.Filled.Dashboard),
                     NavItem("Patients", Icons.Outlined.People, Icons.Filled.People),
                     NavItem("RDV", Icons.Outlined.CalendarMonth, Icons.Filled.CalendarMonth),
-                    NavItem("Données", Icons.Outlined.Assessment, Icons.Filled.Assessment),
                     NavItem("Messages", Icons.Outlined.Forum, Icons.Filled.Forum)
                 )
             } else {
@@ -1116,7 +1115,7 @@ private fun DiaSmartBottomBar(
                 )
             }
             val actions = if (isMedecin) {
-                listOf(onDashboard, onNavigateToPatients, onNavigateToRendezVous, onNavigateToPatients, onNavigateToMessagerie)
+                listOf(onDashboard, onNavigateToPatients, onNavigateToRendezVous, onNavigateToMessagerie)
             } else {
                 listOf(onDashboard, onNavigateToPatients, onNavigateToRendezVous, onNavigateToChatbot, onNavigateToMessagerie)
             }
