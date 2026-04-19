@@ -1,9 +1,13 @@
 package com.diabeto.ui.components
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.speech.RecognizerIntent
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -265,6 +269,19 @@ fun VoiceInputButton(
     tint: Color = Color(0xFF6771E4),
     prompt: String = "Parle a ROLLY..."
 ) {
+    val context = LocalContext.current
+
+    // v2.1.9 : detecte si l'appareil est hors-ligne pour activer le mode offline
+    // de Google Speech Recognition (necessite un pack vocal fr-FR telecharge
+    // dans Parametres Android > Systeme > Langues > Voix > Reconnaissance hors-ligne).
+    fun isOfflineNow(): Boolean {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        val network = cm?.activeNetwork ?: return true
+        val caps = cm.getNetworkCapabilities(network) ?: return true
+        return !(caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED))
+    }
+
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -274,12 +291,23 @@ fun VoiceInputButton(
             val spoken = results?.firstOrNull()
             if (!spoken.isNullOrBlank()) {
                 onTextRecognized(spoken)
+            } else if (isOfflineNow()) {
+                // v2.1.9 : aucun texte reconnu en mode offline -> probablement
+                // pack vocal non installe. Guide l'utilisateur.
+                Toast.makeText(
+                    context,
+                    "Reconnaissance vocale hors-ligne indisponible. " +
+                    "Telechargez le pack vocal francais dans Parametres Android " +
+                    "> Systeme > Langues > Voix.",
+                    Toast.LENGTH_LONG
+                ).show()
             }
         }
     }
 
     IconButton(
         onClick = {
+            val offlineNow = isOfflineNow()
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(
                     RecognizerIntent.EXTRA_LANGUAGE_MODEL,
@@ -292,11 +320,22 @@ fun VoiceInputButton(
                 putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 1500L)
                 putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 2000L)
                 putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L)
+
+                // v2.1.9 : en mode hors-ligne, demande explicitement la reconnaissance
+                // offline. Necessite pack vocal telecharge sur l'appareil.
+                if (offlineNow) {
+                    putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
+                }
             }
             try {
                 launcher.launch(intent)
             } catch (e: Exception) {
-                // Device sans Google Speech Services : ignore silencieusement
+                // Device sans Google Speech Services
+                Toast.makeText(
+                    context,
+                    "Reconnaissance vocale indisponible sur cet appareil.",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         },
         modifier = modifier

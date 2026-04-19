@@ -325,87 +325,122 @@ class LocalAIManager @Inject constructor(
 
     /**
      * Genere une reponse locale (non-streaming).
+     *
+     * v2.1.9 : utilise EN INTERNE le path async (generateResponseAsync) car
+     * generateResponse() est un appel JNI bloquant. withTimeoutOrNull autour
+     * d'un appel JNI bloquant ne peut PAS l'interrompre (coroutines cooperative
+     * cancellation only). En routant via CompletableDeferred.await(), on obtient
+     * un vrai timeout cooperatif.
      */
-    suspend fun generateResponse(prompt: String): String = withContext(Dispatchers.IO) {
+    suspend fun generateResponse(prompt: String): String {
         if (!isModelDownloaded()) {
-            return@withContext "Le modele IA local n'est pas installe. " +
+            return "Le modele IA local n'est pas installe. " +
                     "Allez dans Parametres > Mode hors-ligne pour le telecharger (~550 Mo)."
         }
         if (!isInitialized || llmInference == null) {
             if (!initializeModel()) {
-                return@withContext "Impossible de charger le modele local (${initError ?: "raison inconnue"})."
+                return "Impossible de charger le modele local (${initError ?: "raison inconnue"})."
             }
         }
-
-        try {
-            // Format ultra-compact : moins de tokens en entree
-            val fullPrompt = "$systemPrompt\nQ: $prompt\nROLLY:"
-            // v2.1.8 : timeout pour eviter les hangs silencieux MediaPipe
-            val response = withTimeoutOrNull(120_000L) {
-                llmInference?.generateResponse(fullPrompt)
-            }
-            when {
-                response == null -> "Le modele local met trop de temps a repondre. " +
-                        "Essayez une question plus courte ou connectez-vous a internet."
-                response.isBlank() -> "Je n'ai pas pu generer de reponse en mode hors-ligne."
-                else -> response
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error generating local response", e)
-            "Erreur du modele local : ${e.message}"
-        }
+        val fullPrompt = "$systemPrompt\nQ: $prompt\nROLLY:"
+        return generateAsyncWithTimeout(fullPrompt)
     }
 
     /**
      * Genere une reponse locale avec contexte patient.
+     *
+     * v2.1.9 : meme path async que generateResponse(). De plus, sur device
+     * tres faible (detecte via timeout first-token), on drop le contexte
+     * patient et l'historique, car le prefill explose le temps de reponse
+     * sur CPU d'entree de gamme (Kirin 710, MT6761, etc).
      */
     suspend fun generateResponseWithContext(
         message: String,
         patientContext: String = "",
         historiqueChat: String = ""
-    ): String = withContext(Dispatchers.IO) {
+    ): String {
         if (!isModelDownloaded()) {
-            return@withContext "Le modele IA local n'est pas installe. " +
+            return "Le modele IA local n'est pas installe. " +
                     "Allez dans Parametres > Mode hors-ligne pour le telecharger (~550 Mo)."
         }
         if (!isInitialized || llmInference == null) {
             if (!initializeModel()) {
-                return@withContext "Impossible de charger le modele local (${initError ?: "raison inconnue"})."
+                return "Impossible de charger le modele local (${initError ?: "raison inconnue"})."
             }
         }
 
-        try {
-            // OPTIMISATIONS VITESSE : moins de tokens en entree = prefill plus rapide
-            val sb = StringBuilder()
-            sb.appendLine(systemPrompt)
-            sb.appendLine()
-            if (patientContext.isNotBlank()) {
-                sb.appendLine("Patient:")
-                sb.appendLine(patientContext.take(150)) // Reduit de 300 -> 150 chars
-                sb.appendLine()
-            }
-            if (historiqueChat.isNotBlank()) {
-                // Reduit de 6 -> 4 lignes pour accelerer le prefill
-                val recentHistory = historiqueChat.lines().takeLast(4).joinToString("\n")
-                sb.appendLine("Hist:")
-                sb.appendLine(recentHistory)
-                sb.appendLine()
-            }
-            sb.appendLine("Q: $message")
-            sb.appendLine("ROLLY:")
+        // v2.1.9 : PREFILL MINIMAL pour devices faibles (Huawei Y9 Prime 2019, Tecno Spark, etc.)
+        // Chaque token de contexte = ~100-500 ms de prefill sur Kirin 710F.
+        // On limite agressivement a 80 chars de contexte patient + 2 lignes d'historique.
+        val sb = StringBuilder()
+        sb.appendLine(systemPrompt)
+        sb.appendLine()
+        if (patientContext.isNotBlank()) {
+            sb.appendLine("Patient: ${patientContext.take(80)}")
+        }
+        if (historiqueChat.isNotBlank()) {
+            val recentHistory = historiqueChat.lines().takeLast(2).joinToString(" ")
+            sb.appendLine("Hist: ${recentHistory.take(120)}")
+        }
+        sb.appendLine("Q: $message")
+        sb.appendLine("ROLLY:")
 
-            // v2.1.8 : timeout pour eviter les hangs silencieux MediaPipe
-            val response = withTimeoutOrNull(120_000L) {
-                llmInference?.generateResponse(sb.toString())
+        return generateAsyncWithTimeout(sb.toString())
+    }
+
+    /**
+     * Helper interne : route TOUTES les generations via generateResponseAsync
+     * pour beneficier du timeout cooperatif (CompletableDeferred.await()).
+     *
+     * - first-token timeout 45s : si aucun token n'arrive, l'appareil est
+     *   trop lent ou MediaPipe est hung -> on bail avec un message clair.
+     * - total timeout 120s : garde-fou global.
+     */
+    private suspend fun generateAsyncWithTimeout(fullPrompt: String): String = withContext(Dispatchers.IO) {
+        try {
+            val accumulated = StringBuilder()
+            val firstToken = CompletableDeferred<Unit>()
+            val completed = CompletableDeferred<Unit>()
+
+            llmInference?.generateResponseAsync(fullPrompt) { partialResult, done ->
+                if (!partialResult.isNullOrEmpty()) {
+                    if (!firstToken.isCompleted) firstToken.complete(Unit)
+                    accumulated.append(partialResult)
+                }
+                if (done) {
+                    if (!firstToken.isCompleted) firstToken.complete(Unit)
+                    completed.complete(Unit)
+                }
+            }
+
+            // Phase 1 : attendre le premier token (max 45s)
+            val firstOk = withTimeoutOrNull(45_000L) {
+                firstToken.await()
+                true
+            }
+            if (firstOk == null) {
+                Log.w(TAG, "Local AI: first-token timeout after 45s (device too slow)")
+                return@withContext "L'IA locale prend trop de temps sur cet appareil " +
+                        "(aucun token en 45s). Essayez une question plus courte, ou " +
+                        "connectez-vous a internet pour utiliser ROLLY en ligne."
+            }
+
+            // Phase 2 : attendre la fin complete (max 120s apres le premier token)
+            val allOk = withTimeoutOrNull(120_000L) {
+                completed.await()
+                true
             }
             when {
-                response == null -> "Le modele local met trop de temps a repondre. " +
-                        "Essayez une question plus courte ou connectez-vous a internet."
-                response.isBlank() -> "Je n'ai pas pu generer de reponse en mode hors-ligne."
-                else -> response
+                allOk == null && accumulated.isNotEmpty() ->
+                    accumulated.toString() + "\n\n[Generation interrompue - delai depasse]"
+                allOk == null ->
+                    "Le modele local met trop de temps a repondre. Essayez en ligne."
+                accumulated.isBlank() ->
+                    "Je n'ai pas pu generer de reponse en mode hors-ligne."
+                else -> accumulated.toString()
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error generating local response with context", e)
+            Log.e(TAG, "Error in generateAsyncWithTimeout", e)
             "Erreur du modele local : ${e.message}"
         }
     }
@@ -443,15 +478,18 @@ class LocalAIManager @Inject constructor(
         try {
             val fullPrompt = "$systemPrompt\nQ: $prompt\nROLLY:"
             val accumulated = StringBuilder()
+            val firstToken = CompletableDeferred<Unit>()
             val completed = CompletableDeferred<Unit>()
 
             // MediaPipe streaming natif : callback appele avec chaque token
             llmInference?.generateResponseAsync(fullPrompt) { partialResult, done ->
-                if (partialResult != null) {
+                if (!partialResult.isNullOrEmpty()) {
+                    if (!firstToken.isCompleted) firstToken.complete(Unit)
                     accumulated.append(partialResult)
                     trySend(accumulated.toString())
                 }
                 if (done) {
+                    if (!firstToken.isCompleted) firstToken.complete(Unit)
                     if (accumulated.isEmpty()) {
                         trySend("Je n'ai pas pu generer de reponse en mode hors-ligne.")
                     }
@@ -459,22 +497,30 @@ class LocalAIManager @Inject constructor(
                 }
             }
 
-            // v2.1.8 : timeout de 120s pour eviter les hangs silencieux MediaPipe
-            // (callback qui ne se declenche jamais sur certains devices).
-            val result = withTimeoutOrNull(120_000L) {
+            // v2.1.9 : first-token timeout (45s) puis total timeout (120s)
+            val firstOk = withTimeoutOrNull(45_000L) {
+                firstToken.await()
+                true
+            }
+            if (firstOk == null) {
+                Log.w(TAG, "Local stream: first-token timeout after 45s")
+                send(
+                    "L'IA locale prend trop de temps sur cet appareil (aucun token en 45s).\n\n" +
+                    "Essayez une question plus courte, ou connectez-vous a internet " +
+                    "pour utiliser ROLLY en ligne (plus rapide)."
+                )
+                return@channelFlow
+            }
+
+            val allOk = withTimeoutOrNull(120_000L) {
                 completed.await()
                 true
             }
-            if (result == null) {
-                Log.w(TAG, "Local generation timed out after 120s")
+            if (allOk == null) {
+                Log.w(TAG, "Local stream: total timeout after 120s")
                 if (accumulated.isEmpty()) {
-                    send(
-                        "Le modele local met trop de temps a repondre sur cet appareil. " +
-                        "Reessayez avec une question plus courte, ou connectez-vous a internet " +
-                        "pour utiliser ROLLY en ligne (plus rapide)."
-                    )
+                    send("Le modele local met trop de temps a repondre. Essayez en ligne.")
                 } else {
-                    // On a eu quelques tokens puis hang : renvoie ce qu'on a
                     send(accumulated.toString() + "\n\n[Generation interrompue - delai depasse]")
                 }
             }
