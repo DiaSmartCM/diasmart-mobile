@@ -65,9 +65,7 @@ fun ValidationsScreen(
                         Icon(Icons.Default.ArrowBack, "Retour")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = OnBackground
-                )
+                colors = diaSmartTopAppBarColors()
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },

@@ -80,7 +80,7 @@ fun MessagerieScreen(
                         Icon(Icons.Default.ArrowBack, contentDescription = "Retour")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Surface)
+                colors = diaSmartTopAppBarColors()
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -386,7 +386,7 @@ fun ConversationDetailScreen(
                         Icon(Icons.Default.Call, "Appel audio", tint = StatusGreen)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Surface)
+                colors = diaSmartTopAppBarColors()
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }

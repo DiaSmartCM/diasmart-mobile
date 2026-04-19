@@ -65,7 +65,7 @@ fun PatientsListScreen(
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Surface)
+                colors = diaSmartTopAppBarColors()
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }

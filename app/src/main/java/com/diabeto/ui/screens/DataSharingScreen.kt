@@ -53,7 +53,7 @@ fun DataSharingScreen(
                         Icon(Icons.Default.ArrowBack, "Retour")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Surface)
+                colors = diaSmartTopAppBarColors()
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }

@@ -51,12 +51,10 @@ class LocalAIManager @Inject constructor(
     private var isInitialized = false
     private var initError: String? = null
 
-    // Prompt systeme ULTRA-COMPACT pour vitesse maximale (Gemma 3 1B)
-    // Chaque token dans le prompt = latence en plus. On reste minimal.
-    // Multilingue Cameroun : FR par defaut, mais reponds dans la langue du patient
-    // (FR, EN, Pidgin, Ewondo, Duala, Bassa, Bamileke, Fulfulde). Si langue peu maitrisee,
-    // repond en francais + quelques mots cles dans la langue du patient.
-    private val systemPrompt = """Tu es ROLLY, assistant diabete Cameroun. Detecte la langue du patient (FR, EN, Pidgin, Ewondo, Duala, Bassa, Bamileke, Fulfulde) et reponds dans la meme langue. Si langue peu maitrisee, reponds en francais simple. Termes medicaux (insuline, HbA1c, glycemie) restent en francais. Court. Pas de diagnostic. Urgence si glycemie<0.70 ou >3.0 g/L."""
+    // Prompt systeme MINIMAL pour vitesse maximale (Gemma 3 1B).
+    // v2.1.5 : reduit de ~90 -> ~25 tokens pour accelerer le prefill.
+    // La detection de langue multilingue etait un leurre sur 1B, on reste FR.
+    private val systemPrompt = """ROLLY, assistant diabete. Reponds court en francais. Pas de diagnostic. Urgence si glycemie<0.70 ou >3.0 g/L."""
 
     // ─────────────────────────────────────────────────────────────────
     // CONNECTIVITE
@@ -121,27 +119,50 @@ class LocalAIManager @Inject constructor(
             return@withContext false
         }
 
-        try {
-            Log.d(TAG, "Initializing local Gemma model...")
-            // OPTIMISATIONS VITESSE :
-            // - setMaxTokens(256) : divise par 2 le temps de generation max
-            //   (Gemma genere sequentiellement, moins de tokens = reponse plus rapide)
-            // - Reponses plus courtes mais amplement suffisantes pour ROLLY
-            val options = LlmInference.LlmInferenceOptions.builder()
-                .setModelPath(getModelPath())
-                .setMaxTokens(256)
-                .build()
+        // v2.1.5 : tente d'abord GPU (3-5x plus rapide sur Adreno/Mali recents),
+        // fallback CPU si GPU indisponible (anciens devices Africains en Go).
+        val backendsToTry = listOf(
+            LlmInference.Backend.GPU to "GPU",
+            LlmInference.Backend.CPU to "CPU"
+        )
+        for ((backend, label) in backendsToTry) {
+            try {
+                Log.d(TAG, "Initializing local Gemma model on $label backend...")
+                val options = LlmInference.LlmInferenceOptions.builder()
+                    .setModelPath(getModelPath())
+                    .setMaxTokens(256)
+                    .setPreferredBackend(backend)
+                    .build()
 
-            llmInference = LlmInference.createFromOptions(context, options)
-            isInitialized = true
-            initError = null
-            Log.d(TAG, "Local Gemma model initialized successfully")
-            true
+                llmInference = LlmInference.createFromOptions(context, options)
+                isInitialized = true
+                initError = null
+                Log.d(TAG, "Local Gemma model initialized successfully on $label")
+                return@withContext true
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to init Gemma on $label backend: ${e.message}")
+                initError = e.message
+                isInitialized = false
+                // On continue sur le backend suivant (CPU si GPU a echoue)
+            }
+        }
+        Log.e(TAG, "All backends failed to initialize Gemma. Last error: $initError")
+        false
+    }
+
+    /**
+     * Pre-chauffe le modele en arriere-plan. A appeler au demarrage de l'app
+     * (ou au login) pour que la 1ere question de l'utilisateur soit instantanee
+     * au lieu d'attendre 5-15s d'initialisation MediaPipe.
+     */
+    suspend fun preloadIfAvailable() {
+        if (isInitialized) return
+        if (!isModelDownloaded()) return
+        try {
+            Log.d(TAG, "Preloading Gemma model in background...")
+            initializeModel()
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize local model", e)
-            initError = e.message
-            isInitialized = false
-            false
+            Log.w(TAG, "Preload failed (non-fatal)", e)
         }
     }
 

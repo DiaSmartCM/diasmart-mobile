@@ -94,9 +94,7 @@ fun RendezVousScreen(
                         Icon(Icons.Default.ArrowBack, contentDescription = "Retour")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Surface
-                )
+                colors = diaSmartTopAppBarColors()
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -1233,9 +1231,7 @@ fun RendezVousEditScreen(
                         Icon(Icons.Default.ArrowBack, contentDescription = "Retour")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Surface
-                )
+                colors = diaSmartTopAppBarColors()
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }

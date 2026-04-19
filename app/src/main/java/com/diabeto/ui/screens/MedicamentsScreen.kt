@@ -81,9 +81,7 @@ fun MedicamentsScreen(
                         Icon(Icons.Default.ArrowBack, contentDescription = "Retour")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Surface
-                )
+                colors = diaSmartTopAppBarColors()
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },

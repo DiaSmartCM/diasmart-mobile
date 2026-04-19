@@ -98,12 +98,7 @@ fun GlucoseTrackingScreen(
                         RollyIconInline(size = 24.dp, tint = Primary)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Background,
-                    titleContentColor = TextPrimary,
-                    navigationIconContentColor = TextPrimary,
-                    actionIconContentColor = TextSecondary
-                )
+                colors = diaSmartTopAppBarColors()
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
