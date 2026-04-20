@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.diabeto.BuildConfig
 import com.diabeto.R
 import com.diabeto.ui.theme.*
 import com.diabeto.data.repository.PreferencesRepository
@@ -524,7 +525,7 @@ fun SplashScreen(
 
             // ── Footer ──
             Text(
-                text = "v1.9.3",
+                text = "v${BuildConfig.VERSION_NAME}",
                 fontSize = 11.sp,
                 color = Color.White.copy(alpha = 0.3f * sloganAlpha),
                 modifier = Modifier.padding(bottom = 24.dp)
