@@ -158,14 +158,15 @@ class AuthViewModel @Inject constructor(
                 role = state.selectedRole
             )
             result.fold(
-                onSuccess = { user ->
-                    val profile = authRepository.getCurrentUserProfile()
+                onSuccess = { _ ->
+                    // Le repository a deja deconnecte l'utilisateur et envoye l'email de verification.
+                    // On repasse en mode "connexion" et on affiche un message clair.
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            isLoggedIn = true,
-                            currentUser = user,
-                            userProfile = profile
+                            showRegister = false,
+                            password = "",
+                            error = "Compte cree. Un email de verification vient d'etre envoye a ${state.email.trim()}. Cliquez sur le lien avant de vous connecter."
                         )
                     }
                 },
@@ -367,6 +368,9 @@ class AuthViewModel @Inject constructor(
 
     private fun traduitErreurFirebase(message: String?): String = when {
         message == null -> "Erreur inconnue"
+        // Message explicite de verification email (laisse passer tel quel)
+        message.contains("non verifie", ignoreCase = true) ||
+            message.contains("verification", ignoreCase = true) -> message
         // Sécurité : messages génériques pour login/signup (pas de fuite d'existence de compte)
         message.contains("password", ignoreCase = true) -> "Email ou mot de passe incorrect"
         message.contains("email") && message.contains("already") -> "Impossible de créer le compte. Vérifiez vos informations."

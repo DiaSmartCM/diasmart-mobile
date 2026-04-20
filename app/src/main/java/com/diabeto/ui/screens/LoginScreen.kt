@@ -481,34 +481,61 @@ private fun DiaSmartTextField(
     isPassword: Boolean = false,
     showPassword: Boolean = false,
     onTogglePassword: (() -> Unit)? = null,
-    placeholder: String? = null
+    placeholder: String? = null,
+    required: Boolean = true
 ) {
+    // Label avec asterisque rouge pour les champs obligatoires
+    val labelWithAsterisk: @Composable () -> Unit = {
+        if (required) {
+            androidx.compose.foundation.layout.Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(label, fontSize = 14.sp, color = TextPrimary, fontWeight = FontWeight.Medium)
+                Text(" *", fontSize = 14.sp, color = Color(0xFFEF4444), fontWeight = FontWeight.Bold)
+            }
+        } else {
+            Text(label, fontSize = 14.sp, color = TextPrimary, fontWeight = FontWeight.Medium)
+        }
+    }
+
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        label = { Text(label, fontSize = 13.sp) },
-        placeholder = if (placeholder != null) { { Text(placeholder, fontSize = 13.sp, color = TextTertiary) } } else null,
+        label = labelWithAsterisk,
+        placeholder = if (placeholder != null) { { Text(placeholder, fontSize = 14.sp, color = TextSecondary) } } else null,
         modifier = modifier.fillMaxWidth(),
         singleLine = true,
         shape = RoundedCornerShape(14.dp),
+        textStyle = androidx.compose.ui.text.TextStyle(
+            color = TextPrimary,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Medium
+        ),
         colors = OutlinedTextFieldDefaults.colors(
+            focusedTextColor = TextPrimary,
+            unfocusedTextColor = TextPrimary,
+            disabledTextColor = TextSecondary,
             focusedBorderColor = Primary,
-            unfocusedBorderColor = Outline,
-            focusedContainerColor = PrimaryContainer.copy(alpha = 0.15f),
-            unfocusedContainerColor = SurfaceVariant,
+            unfocusedBorderColor = TextSecondary,
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White,
             focusedLabelColor = Primary,
-            unfocusedLabelColor = TextTertiary,
-            cursorColor = Primary
+            unfocusedLabelColor = TextPrimary,
+            focusedPlaceholderColor = TextSecondary,
+            unfocusedPlaceholderColor = TextSecondary,
+            cursorColor = Primary,
+            focusedLeadingIconColor = Primary,
+            unfocusedLeadingIconColor = TextPrimary
         ),
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
         visualTransformation = if (isPassword && !showPassword) PasswordVisualTransformation() else VisualTransformation.None,
-        leadingIcon = { Icon(icon, null, tint = TextTertiary, modifier = Modifier.size(20.dp)) },
+        leadingIcon = { Icon(icon, null, modifier = Modifier.size(20.dp)) },
         trailingIcon = if (isPassword) {
             {
                 IconButton(onClick = { onTogglePassword?.invoke() }) {
                     Icon(
                         if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                        null, tint = TextTertiary, modifier = Modifier.size(20.dp)
+                        null, tint = TextPrimary, modifier = Modifier.size(20.dp)
                     )
                 }
             }

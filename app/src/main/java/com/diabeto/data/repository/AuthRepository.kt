@@ -64,7 +64,18 @@ class AuthRepository @Inject constructor(
             val result = withTimeoutOrNull(15_000L) {
                 auth.signInWithEmailAndPassword(email, password).await()
             } ?: return Result.failure(Exception("Délai de connexion dépassé. Vérifiez votre connexion internet."))
-            Result.success(result.user!!)
+            val user = result.user!!
+            // Securite : bloquer la connexion tant que l'email n'est pas verifie
+            // (sauf pour les comptes cree par telephone, qui n'ont pas d'email)
+            if (!user.isEmailVerified && !user.email.isNullOrBlank()) {
+                // Renvoyer automatiquement un email de verification
+                try { user.sendEmailVerification().await() } catch (_: Exception) {}
+                auth.signOut()
+                return Result.failure(Exception(
+                    "Email non verifie. Un nouveau lien de verification vient de vous etre envoye a $email. Cliquez dessus avant de vous reconnecter."
+                ))
+            }
+            Result.success(user)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -81,6 +92,10 @@ class AuthRepository @Inject constructor(
             val result = auth.createUserWithEmailAndPassword(email, password).await()
             val user = result.user!!
             createUserProfile(user, nom, prenom, role, email)
+            // Envoyer un lien de verification pour eviter les comptes pirates
+            try { user.sendEmailVerification().await() } catch (_: Exception) {}
+            // Deconnecter : l'utilisateur devra verifier puis se reconnecter
+            auth.signOut()
             Result.success(user)
         } catch (e: Exception) {
             Result.failure(e)
