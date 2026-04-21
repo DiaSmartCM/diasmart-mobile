@@ -89,7 +89,11 @@ fun DiabetoNavigation(
 
         // ── Splash Screen anime ─────────────────────────────────────────────
         composable(Routes.SPLASH) {
-            val isLoggedIn = FirebaseAuth.getInstance().currentUser != null
+            // isLoggedIn = Auth user present ET email verifie (sinon on force le passage par
+            // la page de connexion pour saisir le code OTP)
+            val fbUser = FirebaseAuth.getInstance().currentUser
+            val hasEmail = !fbUser?.email.isNullOrBlank()
+            val isLoggedIn = fbUser != null && (!hasEmail || fbUser.isEmailVerified)
             SplashScreen(
                 isUserLoggedIn = isLoggedIn,
                 onSplashFinished = { loggedIn ->

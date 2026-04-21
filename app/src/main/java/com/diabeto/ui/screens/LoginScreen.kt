@@ -91,6 +91,19 @@ fun LoginScreen(
         if (uiState.resetEmailSent) snackbarHostState.showSnackbar(context.getString(R.string.auth_reset_email_sent))
     }
 
+    if (uiState.needsEmailOtp) {
+        EmailOtpDialog(
+            email = uiState.pendingOtpEmail,
+            code = uiState.emailOtpCode,
+            infoMessage = uiState.otpInfoMessage,
+            isLoading = uiState.isLoading,
+            onCodeChange = viewModel::onEmailOtpChange,
+            onVerify = viewModel::verifyEmailOtp,
+            onResend = viewModel::resendEmailOtp,
+            onCancel = viewModel::cancelEmailOtp
+        )
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = Color.Transparent

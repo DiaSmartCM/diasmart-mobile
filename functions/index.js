@@ -29,7 +29,7 @@ exports.onCallCreated = functions.firestore
       return null;
     }
 
-    console.log(`New call ${callId}: ${callerNom} → ${calleeUid} (${callType})`);
+    console.log(`New call ${callId}: ${callerNom} -> ${calleeUid} (${callType})`);
 
     // Find callee's FCM tokens
     const tokensSnapshot = await db

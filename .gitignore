@@ -55,6 +55,8 @@ vcs.xml
 firebase-service-account.json
 scripts/serviceAccountKey.json
 *-service-account*.json
+*-firebase-adminsdk-*.json
+project-d-r1997t-*.json
 
 # Gemma model (too large for git, hosted on Firebase Storage)
 *.task

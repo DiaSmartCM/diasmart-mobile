@@ -26,8 +26,8 @@ android {
         applicationId = "com.diabeto"
         minSdk = 26
         targetSdk = 34
-        versionCode = 30
-        versionName = "2.1.14"
+        versionCode = 31
+        versionName = "2.1.15"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -176,6 +176,9 @@ dependencies {
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-storage")
     implementation("com.google.firebase:firebase-messaging")
+
+    // OkHttp (appels REST vers notre API Vercel pour la verification email OTP)
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     // Google Sign-In (Credential Manager)
     implementation("com.google.android.gms:play-services-auth:21.3.0")

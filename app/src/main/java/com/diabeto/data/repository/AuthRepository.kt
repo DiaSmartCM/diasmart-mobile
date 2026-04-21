@@ -11,7 +11,14 @@ import com.google.firebase.auth.PhoneAuthCredential
 import com.google.firebase.auth.PhoneAuthOptions
 import com.google.firebase.auth.PhoneAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
@@ -33,6 +40,20 @@ class AuthRepository @Inject constructor(
 ) {
     companion object {
         private const val COLLECTION_USERS = "users"
+        // Base URL Vercel pour l'API de verification email OTP
+        // (alias Vercel stable → on reste sur le domaine personnalise du projet)
+        private const val API_BASE = "https://website-omega-umber-20.vercel.app"
+        private const val API_SEND_OTP = "$API_BASE/api/send-email-otp"
+        private const val API_VERIFY_OTP = "$API_BASE/api/verify-email-otp"
+        private val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
+    }
+
+    private val httpClient: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(20, TimeUnit.SECONDS)
+            .writeTimeout(15, TimeUnit.SECONDS)
+            .build()
     }
 
     val currentUser: FirebaseUser? get() = auth.currentUser
@@ -59,23 +80,29 @@ class AuthRepository @Inject constructor(
     //  EMAIL / MOT DE PASSE
     // ================================================================
 
-    suspend fun signIn(email: String, password: String): Result<FirebaseUser> {
+    /**
+     * Resultat d'une tentative de connexion.
+     * - Authenticated : email verifie, acces complet
+     * - NeedsOtp : compte cree ou non verifie, un code a 6 chiffres a ete envoye par email
+     */
+    sealed class SignInOutcome {
+        data class Authenticated(val user: FirebaseUser) : SignInOutcome()
+        data class NeedsOtp(val email: String) : SignInOutcome()
+    }
+
+    suspend fun signIn(email: String, password: String): Result<SignInOutcome> {
         return try {
             val result = withTimeoutOrNull(15_000L) {
                 auth.signInWithEmailAndPassword(email, password).await()
             } ?: return Result.failure(Exception("Délai de connexion dépassé. Vérifiez votre connexion internet."))
             val user = result.user!!
-            // Securite : bloquer la connexion tant que l'email n'est pas verifie
-            // (sauf pour les comptes cree par telephone, qui n'ont pas d'email)
+            // Si l'email n'est pas verifie, on envoie un code OTP et on laisse l'utilisateur signed-in
+            // (l'UI navigue alors vers l'ecran OTP). Les comptes telephone (sans email) passent direct.
             if (!user.isEmailVerified && !user.email.isNullOrBlank()) {
-                // Renvoyer automatiquement un email de verification
-                try { user.sendEmailVerification().await() } catch (_: Exception) {}
-                auth.signOut()
-                return Result.failure(Exception(
-                    "Email non verifie. Un nouveau lien de verification vient de vous etre envoye a $email. Cliquez dessus avant de vous reconnecter."
-                ))
+                try { sendEmailOtp() } catch (_: Exception) { /* l'ecran OTP permettra de relancer */ }
+                return Result.success(SignInOutcome.NeedsOtp(user.email!!))
             }
-            Result.success(user)
+            Result.success(SignInOutcome.Authenticated(user))
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -87,18 +114,92 @@ class AuthRepository @Inject constructor(
         nom: String,
         prenom: String,
         role: UserRole
-    ): Result<FirebaseUser> {
+    ): Result<SignInOutcome> {
         return try {
             val result = auth.createUserWithEmailAndPassword(email, password).await()
             val user = result.user!!
             createUserProfile(user, nom, prenom, role, email)
-            // Envoyer un lien de verification pour eviter les comptes pirates
-            try { user.sendEmailVerification().await() } catch (_: Exception) {}
-            // Deconnecter : l'utilisateur devra verifier puis se reconnecter
-            auth.signOut()
-            Result.success(user)
+            // Envoyer un code a 6 chiffres par email (via Cloud Function)
+            try { sendEmailOtp() } catch (_: Exception) { /* l'ecran OTP permet de relancer */ }
+            Result.success(SignInOutcome.NeedsOtp(email))
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    // ================================================================
+    //  EMAIL OTP (Cloud Functions)
+    // ================================================================
+
+    /**
+     * Recupere un Firebase ID token frais pour authentifier les appels Vercel.
+     */
+    private suspend fun getIdToken(): String? {
+        val user = auth.currentUser ?: return null
+        return try {
+            user.getIdToken(false).await()?.token
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Demande l'envoi d'un code OTP a 6 chiffres par email (POST /api/send-email-otp).
+     * L'utilisateur doit etre connecte (Firebase Auth) avant l'appel.
+     */
+    suspend fun sendEmailOtp(): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val token = getIdToken() ?: return@withContext Result.failure(Exception("Connexion requise."))
+            val req = Request.Builder()
+                .url(API_SEND_OTP)
+                .header("Authorization", "Bearer $token")
+                .post("{}".toRequestBody(JSON_MEDIA))
+                .build()
+            httpClient.newCall(req).execute().use { resp ->
+                if (resp.isSuccessful) Result.success(Unit)
+                else Result.failure(Exception(extractApiError(resp.body?.string(), resp.code)))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception("Erreur reseau : ${e.message ?: "inconnue"}"))
+        }
+    }
+
+    /**
+     * Valide un code OTP a 6 chiffres (POST /api/verify-email-otp).
+     * En cas de succes, rafraichit le token Firebase pour recuperer emailVerified=true.
+     */
+    suspend fun verifyEmailOtp(code: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val token = getIdToken() ?: return@withContext Result.failure(Exception("Connexion requise."))
+            val payload = JSONObject().put("code", code).toString()
+            val req = Request.Builder()
+                .url(API_VERIFY_OTP)
+                .header("Authorization", "Bearer $token")
+                .post(payload.toRequestBody(JSON_MEDIA))
+                .build()
+            httpClient.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) {
+                    return@withContext Result.failure(Exception(extractApiError(resp.body?.string(), resp.code)))
+                }
+            }
+            // Rafraichir l'etat utilisateur pour que user.isEmailVerified devienne true cote client
+            try { auth.currentUser?.reload()?.await() } catch (_: Exception) {}
+            try { auth.currentUser?.getIdToken(true)?.await() } catch (_: Exception) {}
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(Exception("Erreur reseau : ${e.message ?: "inconnue"}"))
+        }
+    }
+
+    private fun extractApiError(body: String?, status: Int): String {
+        if (body.isNullOrBlank()) return "Erreur serveur (HTTP $status)"
+        return try {
+            val j = JSONObject(body)
+            j.optString("message").takeIf { it.isNotBlank() }
+                ?: j.optString("error").takeIf { it.isNotBlank() }
+                ?: "Erreur serveur (HTTP $status)"
+        } catch (_: Exception) {
+            "Erreur serveur (HTTP $status)"
         }
     }
 

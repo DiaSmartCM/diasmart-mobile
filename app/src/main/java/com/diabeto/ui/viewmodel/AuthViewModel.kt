@@ -47,7 +47,12 @@ data class AuthUiState(
     val smsCode: String = "",
     val verificationId: String? = null,
     val isCodeSent: Boolean = false,
-    val phoneAutoVerified: Boolean = false
+    val phoneAutoVerified: Boolean = false,
+    // OTP email verification
+    val needsEmailOtp: Boolean = false,
+    val pendingOtpEmail: String = "",
+    val emailOtpCode: String = "",
+    val otpInfoMessage: String? = null
 )
 
 @HiltViewModel
@@ -67,13 +72,27 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             val user = authRepository.currentUser
             if (user != null) {
-                val profile = authRepository.getCurrentUserProfile()
-                _uiState.update {
-                    it.copy(
-                        isLoggedIn = true,
-                        currentUser = user,
-                        userProfile = profile
-                    )
+                val hasEmail = !user.email.isNullOrBlank()
+                if (hasEmail && !user.isEmailVerified) {
+                    // Auth present mais email non verifie → forcer le flux OTP
+                    try { authRepository.sendEmailOtp() } catch (_: Exception) {}
+                    _uiState.update {
+                        it.copy(
+                            needsEmailOtp = true,
+                            pendingOtpEmail = user.email ?: "",
+                            emailOtpCode = "",
+                            otpInfoMessage = "Un code a 6 chiffres vient d'etre envoye a ${user.email}."
+                        )
+                    }
+                } else {
+                    val profile = authRepository.getCurrentUserProfile()
+                    _uiState.update {
+                        it.copy(
+                            isLoggedIn = true,
+                            currentUser = user,
+                            userProfile = profile
+                        )
+                    }
                 }
             }
         }
@@ -110,17 +129,31 @@ class AuthViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             val result = authRepository.signIn(state.email.trim(), state.password)
             result.fold(
-                onSuccess = { user ->
-                    val profile = authRepository.getCurrentUserProfile()
-                    // Auto-restore cloud data if local DB is empty (reinstall)
-                    tryAutoRestore()
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            isLoggedIn = true,
-                            currentUser = user,
-                            userProfile = profile
-                        )
+                onSuccess = { outcome ->
+                    when (outcome) {
+                        is AuthRepository.SignInOutcome.Authenticated -> {
+                            val profile = authRepository.getCurrentUserProfile()
+                            tryAutoRestore()
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    isLoggedIn = true,
+                                    currentUser = outcome.user,
+                                    userProfile = profile
+                                )
+                            }
+                        }
+                        is AuthRepository.SignInOutcome.NeedsOtp -> {
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    needsEmailOtp = true,
+                                    pendingOtpEmail = outcome.email,
+                                    emailOtpCode = "",
+                                    otpInfoMessage = "Un code a 6 chiffres vient d'etre envoye a ${outcome.email}."
+                                )
+                            }
+                        }
                     }
                 },
                 onFailure = { e ->
@@ -158,16 +191,32 @@ class AuthViewModel @Inject constructor(
                 role = state.selectedRole
             )
             result.fold(
-                onSuccess = { _ ->
-                    // Le repository a deja deconnecte l'utilisateur et envoye l'email de verification.
-                    // On repasse en mode "connexion" et on affiche un message clair.
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            showRegister = false,
-                            password = "",
-                            error = "Compte cree. Un email de verification vient d'etre envoye a ${state.email.trim()}. Cliquez sur le lien avant de vous connecter."
-                        )
+                onSuccess = { outcome ->
+                    when (outcome) {
+                        is AuthRepository.SignInOutcome.NeedsOtp -> {
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    needsEmailOtp = true,
+                                    pendingOtpEmail = outcome.email,
+                                    emailOtpCode = "",
+                                    password = "",
+                                    otpInfoMessage = "Compte cree. Un code a 6 chiffres vient d'etre envoye a ${outcome.email}."
+                                )
+                            }
+                        }
+                        is AuthRepository.SignInOutcome.Authenticated -> {
+                            val profile = authRepository.getCurrentUserProfile()
+                            tryAutoRestore()
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    isLoggedIn = true,
+                                    currentUser = outcome.user,
+                                    userProfile = profile
+                                )
+                            }
+                        }
                     }
                 },
                 onFailure = { e ->
@@ -175,6 +224,89 @@ class AuthViewModel @Inject constructor(
                         it.copy(isLoading = false, error = traduitErreurFirebase(e.message))
                     }
                 }
+            )
+        }
+    }
+
+    // ================================================================
+    //  EMAIL OTP
+    // ================================================================
+
+    fun onEmailOtpChange(code: String) {
+        val digits = code.filter { it.isDigit() }.take(6)
+        _uiState.update { it.copy(emailOtpCode = digits) }
+    }
+
+    fun verifyEmailOtp() {
+        val code = _uiState.value.emailOtpCode
+        if (code.length != 6) {
+            _uiState.update { it.copy(error = "Entrez les 6 chiffres du code.") }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            val result = authRepository.verifyEmailOtp(code)
+            result.fold(
+                onSuccess = {
+                    val user = authRepository.currentUser
+                    val profile = authRepository.getCurrentUserProfile()
+                    tryAutoRestore()
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            isLoggedIn = true,
+                            needsEmailOtp = false,
+                            pendingOtpEmail = "",
+                            emailOtpCode = "",
+                            otpInfoMessage = null,
+                            currentUser = user,
+                            userProfile = profile
+                        )
+                    }
+                },
+                onFailure = { e ->
+                    _uiState.update {
+                        it.copy(isLoading = false, error = e.message ?: "Code invalide")
+                    }
+                }
+            )
+        }
+    }
+
+    fun resendEmailOtp() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            val result = authRepository.sendEmailOtp()
+            result.fold(
+                onSuccess = {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            otpInfoMessage = "Nouveau code envoye a ${it.pendingOtpEmail}."
+                        )
+                    }
+                },
+                onFailure = { e ->
+                    _uiState.update {
+                        it.copy(isLoading = false, error = e.message ?: "Impossible d'envoyer le code")
+                    }
+                }
+            )
+        }
+    }
+
+    fun cancelEmailOtp() {
+        authRepository.signOut()
+        _uiState.update {
+            it.copy(
+                needsEmailOtp = false,
+                pendingOtpEmail = "",
+                emailOtpCode = "",
+                otpInfoMessage = null,
+                isLoggedIn = false,
+                currentUser = null,
+                userProfile = null,
+                password = ""
             )
         }
     }
