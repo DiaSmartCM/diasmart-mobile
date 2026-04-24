@@ -75,6 +75,12 @@ fun ProfileScreen(
     var disponibilite by remember { mutableStateOf("") }
     var joursGarde by remember { mutableStateOf("") }
     var languesParlees by remember { mutableStateOf("") }
+    // Localisation (medecin)
+    var ville by remember { mutableStateOf("") }
+    var adresse by remember { mutableStateOf("") }
+    var latitude by remember { mutableStateOf<Double?>(null) }
+    var longitude by remember { mutableStateOf<Double?>(null) }
+    var isCapturingLocation by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(true) }
     var showEditDialog by remember { mutableStateOf(false) }
     var editField by remember { mutableStateOf("") }
@@ -103,6 +109,10 @@ fun ProfileScreen(
                 disponibilite = doc.getString("disponibilite") ?: ""
                 joursGarde = doc.getString("joursGarde") ?: ""
                 languesParlees = doc.getString("languesParlees") ?: ""
+                ville = doc.getString("ville") ?: ""
+                adresse = doc.getString("adresse") ?: ""
+                latitude = doc.getDouble("latitude")
+                longitude = doc.getDouble("longitude")
                 // Priorité : Firestore base64, sinon Firebase Auth URL (Google/etc.)
                 val firestorePhoto = doc.getString("photoURL")
                 if (!firestorePhoto.isNullOrBlank()) {
@@ -178,6 +188,56 @@ fun ProfileScreen(
         }
     }
 
+    // ── GPS capture (medecin) ─────────────────────────────────────────
+    fun launchLocationCapture() {
+        isCapturingLocation = true
+        profileViewModel.captureMyDoctorLocation { success, message ->
+            isCapturingLocation = false
+            scope.launch {
+                if (success) {
+                    // Recharger les valeurs depuis Firestore pour refleter la capture
+                    user?.uid?.let { uid ->
+                        try {
+                            val doc = db.collection("users").document(uid).get().await()
+                            ville = doc.getString("ville") ?: ville
+                            adresse = doc.getString("adresse") ?: adresse
+                            latitude = doc.getDouble("latitude") ?: latitude
+                            longitude = doc.getDouble("longitude") ?: longitude
+                        } catch (_: Exception) {}
+                    }
+                }
+                snackbarHostState.showSnackbar(message)
+            }
+        }
+    }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { perms ->
+        val granted = perms[android.Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                perms[android.Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (granted) {
+            launchLocationCapture()
+        } else {
+            scope.launch {
+                snackbarHostState.showSnackbar("Permission de localisation refusee")
+            }
+        }
+    }
+
+    fun requestLocationCapture() {
+        if (profileViewModel.hasLocationPermission()) {
+            launchLocationCapture()
+        } else {
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    android.Manifest.permission.ACCESS_FINE_LOCATION,
+                    android.Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+    }
+
     // Save field
     fun saveField(field: String, value: String) {
         scope.launch {
@@ -245,6 +305,14 @@ fun ProfileScreen(
                     "languesParlees" -> {
                         db.collection("users").document(uid).set(mapOf("languesParlees" to value), SetOptions.merge()).await()
                         languesParlees = value
+                    }
+                    "ville" -> {
+                        db.collection("users").document(uid).set(mapOf("ville" to value), SetOptions.merge()).await()
+                        ville = value
+                    }
+                    "adresse" -> {
+                        db.collection("users").document(uid).set(mapOf("adresse" to value), SetOptions.merge()).await()
+                        adresse = value
                     }
                 }
                 // Synchroniser les données morphométriques vers Room DB (Patient)
@@ -426,6 +494,51 @@ fun ProfileScreen(
                     ProfileField("Années d'expérience", anneesExperience.ifBlank { "--" }.let { if (it != "--") "$it ans" else it }) {
                         editField = "anneesExperience"; editTitle = "Années d'expérience"; editValue = anneesExperience; showEditDialog = true
                     }
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                // ── Localisation du cabinet ──
+                ProfileSection("Localisation", Icons.Default.LocationOn) {
+                    ProfileField("Ville", ville.ifBlank { "Non renseignée" }) {
+                        editField = "ville"; editTitle = "Ville"; editValue = ville; showEditDialog = true
+                    }
+                    ProfileField("Adresse", adresse.ifBlank { "Non renseignée" }) {
+                        editField = "adresse"; editTitle = "Adresse du cabinet"; editValue = adresse; showEditDialog = true
+                    }
+                    val coordsLabel = if (latitude != null && longitude != null) {
+                        "%.4f, %.4f".format(latitude, longitude)
+                    } else "Non capturées"
+                    ProfileField("Coordonnées GPS", coordsLabel)
+
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = { requestLocationCapture() },
+                        enabled = !isCapturingLocation,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Primary)
+                    ) {
+                        if (isCapturingLocation) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Text("Capture en cours…")
+                        } else {
+                            Icon(Icons.Default.MyLocation, null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Utiliser ma position GPS")
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Votre position aide vos patients à vous trouver à proximité.",
+                        fontSize = 11.sp,
+                        color = OnSurfaceVariant
+                    )
                 }
 
                 Spacer(Modifier.height(12.dp))

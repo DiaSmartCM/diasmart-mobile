@@ -4,10 +4,20 @@ service cloud.firestore {
 
     // ============================================
     // PROFILS UTILISATEURS
+    // Proprietaire : full access sur son doc.
+    // Autre utilisateur authentifie : peut UNIQUEMENT incrementer
+    //   les compteurs ratingSum / reviewCount / consultationCount
+    //   (pour l'aggregation des avis medecins).
     // ============================================
     match /users/{userId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow delete: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && (
+        request.auth.uid == userId
+        || request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['ratingSum', 'reviewCount', 'consultationCount'])
+      );
 
       // Sous-collection repas de l'utilisateur
       match /repas/{repasId} {
@@ -15,6 +25,24 @@ service cloud.firestore {
         allow create: if request.auth != null && request.auth.uid == userId;
         allow update, delete: if request.auth != null && request.auth.uid == userId;
       }
+    }
+
+    // ============================================
+    // AVIS MEDECINS (DOCTOR REVIEWS)
+    // Un avis par couple (doctor, patient). reviewId = "${doctorUid}_${patientUid}".
+    // Lecture : tout utilisateur authentifie (transparence).
+    // Ecriture : uniquement par le patient auteur, avec ID deterministe.
+    // ============================================
+    match /doctor_reviews/{reviewId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null
+                             && request.auth.uid == request.resource.data.patientUid
+                             && reviewId == request.resource.data.doctorUid + '_' + request.auth.uid
+                             && request.resource.data.rating is int
+                             && request.resource.data.rating >= 1
+                             && request.resource.data.rating <= 5;
+      allow delete: if request.auth != null
+                     && resource.data.patientUid == request.auth.uid;
     }
 
     // ============================================

@@ -4,11 +4,15 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.diabeto.data.model.DataSharingConsent
+import com.diabeto.data.model.DoctorReview
+import com.diabeto.data.model.GeoUtils
 import com.diabeto.data.model.UserProfile
 import com.diabeto.data.model.UserRole
 import com.diabeto.data.repository.AuthRepository
 import com.diabeto.data.repository.DataSharingRepository
+import com.diabeto.data.repository.DoctorReviewRepository
 import com.diabeto.data.repository.GlucoseRepository
+import com.diabeto.data.repository.LocationRepository
 import com.diabeto.data.repository.PatientRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,13 +23,33 @@ import kotlinx.coroutines.launch
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
+/**
+ * Mode de tri des medecins dans la recherche.
+ *  - SCORE : meilleure note ponderee par le nombre d'avis (defaut)
+ *  - DISTANCE : proximite geographique (necessite la position du patient)
+ */
+enum class DoctorSortMode { SCORE, DISTANCE }
+
+/** Medecin enrichi pour l'affichage : note + distance pre-calculee. */
+data class DoctorListItem(
+    val profile: UserProfile,
+    val distanceKm: Double? = null
+)
+
 data class DataSharingUiState(
     val isPatient: Boolean = true,
     val consents: List<DataSharingConsent> = emptyList(),
-    val availableMedecins: List<UserProfile> = emptyList(),
+    val availableMedecins: List<DoctorListItem> = emptyList(),
     val isLoading: Boolean = false,
     val message: String? = null,
-    val exportData: String? = null
+    val exportData: String? = null,
+    val sortMode: DoctorSortMode = DoctorSortMode.SCORE,
+    val patientLat: Double? = null,
+    val patientLon: Double? = null,
+    // Rating dialog
+    val ratingTarget: UserProfile? = null,
+    val myExistingReview: DoctorReview? = null,
+    val isSubmittingReview: Boolean = false
 )
 
 @HiltViewModel
@@ -33,7 +57,9 @@ class DataSharingViewModel @Inject constructor(
     private val dataSharingRepository: DataSharingRepository,
     private val authRepository: AuthRepository,
     private val patientRepository: PatientRepository,
-    private val glucoseRepository: GlucoseRepository
+    private val glucoseRepository: GlucoseRepository,
+    private val doctorReviewRepository: DoctorReviewRepository,
+    private val locationRepository: LocationRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DataSharingUiState())
@@ -69,13 +95,82 @@ class DataSharingViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Charge la liste des medecins et calcule la liste enrichie (distance si GPS dispo).
+     * Tri selon `sortMode` courant.
+     */
     fun loadMedecins() {
         viewModelScope.launch {
             try {
                 val medecins = dataSharingRepository.getAvailableMedecins()
-                _uiState.update { it.copy(availableMedecins = medecins) }
+                val lat = _uiState.value.patientLat
+                val lon = _uiState.value.patientLon
+                val items = medecins.map { m ->
+                    val dist = if (lat != null && lon != null && m.latitude != null && m.longitude != null) {
+                        GeoUtils.distanceKm(lat, lon, m.latitude, m.longitude)
+                    } else null
+                    DoctorListItem(profile = m, distanceKm = dist)
+                }
+                _uiState.update { it.copy(availableMedecins = sortMedecins(items, it.sortMode)) }
             } catch (e: Exception) {
                 Log.w("DataSharingVM", "Failed to load medecins", e)
+            }
+        }
+    }
+
+    private fun sortMedecins(
+        items: List<DoctorListItem>,
+        mode: DoctorSortMode
+    ): List<DoctorListItem> = when (mode) {
+        DoctorSortMode.SCORE -> items.sortedByDescending { it.profile.doctorScore }
+        DoctorSortMode.DISTANCE -> items.sortedWith(
+            compareBy(
+                { it.distanceKm ?: Double.MAX_VALUE },
+                { -it.profile.doctorScore } // egalite : meilleure note en premier
+            )
+        )
+    }
+
+    /** Change le tri et re-trie sans refaire l'appel reseau. */
+    fun setSortMode(mode: DoctorSortMode) {
+        _uiState.update { state ->
+            state.copy(
+                sortMode = mode,
+                availableMedecins = sortMedecins(state.availableMedecins, mode)
+            )
+        }
+    }
+
+    /**
+     * Tente de capturer la position GPS du patient (permission doit etre accordee cote UI).
+     * Recalcule les distances + trie par DISTANCE si succes.
+     */
+    fun captureMyLocation() {
+        viewModelScope.launch {
+            if (!locationRepository.hasLocationPermission()) {
+                _uiState.update { it.copy(message = "Autorisation de localisation requise") }
+                return@launch
+            }
+            val point = locationRepository.getCurrentLocation()
+            if (point == null) {
+                _uiState.update { it.copy(message = "Impossible d'obtenir la position") }
+                return@launch
+            }
+            _uiState.update { state ->
+                val updated = state.availableMedecins.map { item ->
+                    val doc = item.profile
+                    val dist = if (doc.latitude != null && doc.longitude != null) {
+                        GeoUtils.distanceKm(point.latitude, point.longitude, doc.latitude, doc.longitude)
+                    } else null
+                    item.copy(distanceKm = dist)
+                }
+                state.copy(
+                    patientLat = point.latitude,
+                    patientLon = point.longitude,
+                    sortMode = DoctorSortMode.DISTANCE,
+                    availableMedecins = sortMedecins(updated, DoctorSortMode.DISTANCE),
+                    message = "Position capturee — medecins tries par distance"
+                )
             }
         }
     }
@@ -105,6 +200,59 @@ class DataSharingViewModel @Inject constructor(
                 },
                 onFailure = { e ->
                     _uiState.update { it.copy(message = "Erreur: ${e.message}") }
+                }
+            )
+        }
+    }
+
+    // ── Ratings ─────────────────────────────────────────────────────
+
+    /** Ouvre le dialog de notation pour un medecin. Precharge l'avis existant du patient. */
+    fun openRateDoctor(doctor: UserProfile) {
+        viewModelScope.launch {
+            val existing = runCatching { doctorReviewRepository.getMyReviewFor(doctor.uid) }
+                .getOrNull()
+            _uiState.update {
+                it.copy(ratingTarget = doctor, myExistingReview = existing)
+            }
+        }
+    }
+
+    fun closeRateDoctor() {
+        _uiState.update { it.copy(ratingTarget = null, myExistingReview = null) }
+    }
+
+    fun submitReview(rating: Int, comment: String) {
+        val target = _uiState.value.ratingTarget ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSubmittingReview = true) }
+            val me = authRepository.getCurrentUserProfile()
+            val result = doctorReviewRepository.submitReview(
+                doctorUid = target.uid,
+                rating = rating,
+                comment = comment,
+                patientNom = me?.nomComplet ?: ""
+            )
+            result.fold(
+                onSuccess = {
+                    _uiState.update {
+                        it.copy(
+                            isSubmittingReview = false,
+                            ratingTarget = null,
+                            myExistingReview = null,
+                            message = "Merci pour votre avis !"
+                        )
+                    }
+                    // Rafraichir la liste pour que le score soit a jour
+                    loadMedecins()
+                },
+                onFailure = { e ->
+                    _uiState.update {
+                        it.copy(
+                            isSubmittingReview = false,
+                            message = "Erreur: ${e.message}"
+                        )
+                    }
                 }
             )
         }

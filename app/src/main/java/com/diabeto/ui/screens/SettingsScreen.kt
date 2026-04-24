@@ -338,25 +338,6 @@ fun SettingsScreen(
                             }
                         }
                     )
-                    if (!uiState.isMedecin) {
-                        DayLifeDivider(dividerColor)
-                        DayLifeSettingsItem(
-                            icon = Icons.Default.Share,
-                            iconBg = Color(0xFF8B5CF6),
-                            title = "Partager avec mon médecin",
-                            subtitle = "Envoyer un rapport par email",
-                            titleColor = titleColor,
-                            subtitleColor = subtitleColor,
-                            onClick = {
-                                val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
-                                    data = Uri.parse("mailto:")
-                                    putExtra(Intent.EXTRA_SUBJECT, "Rapport DiaSmart - Données patient")
-                                    putExtra(Intent.EXTRA_TEXT, "Bonjour,\n\nVeuillez trouver ci-joint mon rapport DiaSmart.\n\nCordialement")
-                                }
-                                context.startActivity(Intent.createChooser(emailIntent, "Envoyer par email"))
-                            }
-                        )
-                    }
                 }
             }
 
@@ -641,15 +622,6 @@ fun SettingsScreen(
                         iconBg = Color(0xFFEF4444),
                         title = "DiaSmart",
                         subtitle = "Diabétologie Intelligente",
-                        titleColor = titleColor,
-                        subtitleColor = subtitleColor
-                    )
-                    DayLifeDivider(dividerColor)
-                    DayLifeInfoItem(
-                        icon = Icons.Default.Person,
-                        iconBg = Color(0xFF14B8A6),
-                        title = "Développeur",
-                        subtitle = "NGOS THEODORE",
                         titleColor = titleColor,
                         subtitleColor = subtitleColor
                     )

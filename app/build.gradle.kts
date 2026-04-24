@@ -26,8 +26,8 @@ android {
         applicationId = "com.diabeto"
         minSdk = 26
         targetSdk = 34
-        versionCode = 31
-        versionName = "2.1.15"
+        versionCode = 32
+        versionName = "2.1.16"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -165,6 +165,9 @@ dependencies {
 
     // Permissions
     implementation("com.google.accompanist:accompanist-permissions:0.37.0")
+
+    // Geolocation (Fused Location Provider for doctor/patient positions)
+    implementation("com.google.android.gms:play-services-location:21.3.0")
 
     // ============================================================
     // Firebase BOM (gestion centralisée des versions)

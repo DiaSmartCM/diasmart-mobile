@@ -517,9 +517,9 @@ fun DashboardScreen(
                             modifier = Modifier.weight(1f)
                         )
                         FeatureCard(
-                            title = "Partager",
-                            subtitle = "Données médecin",
-                            icon = Icons.Outlined.Share,
+                            title = "Mon médecin",
+                            subtitle = "Trouver et partager",
+                            icon = Icons.Outlined.MedicalServices,
                             cardColor = CardInsulin,
                             iconTint = Warning,
                             onClick = onNavigateToDataSharing,

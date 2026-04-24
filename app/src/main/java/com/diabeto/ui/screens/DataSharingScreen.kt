@@ -1,11 +1,17 @@
 package com.diabeto.ui.screens
 
+import android.Manifest
 import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
@@ -13,6 +19,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -23,8 +30,12 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.diabeto.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.diabeto.data.model.GeoUtils
+import com.diabeto.data.model.UserProfile
 import com.diabeto.ui.theme.*
 import com.diabeto.ui.viewmodel.DataSharingViewModel
+import com.diabeto.ui.viewmodel.DoctorListItem
+import com.diabeto.ui.viewmodel.DoctorSortMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -158,10 +169,29 @@ fun DataSharingScreen(
                                 }
                             }
                             if (uiState.isPatient && consent.isActive) {
-                                IconButton(
-                                    onClick = { viewModel.revokeConsent(consent.medecinUid) }
-                                ) {
-                                    Icon(Icons.Default.Close, "Révoquer", tint = Error)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    // Bouton "Noter ce medecin" — ouvre le dialog de notation
+                                    IconButton(
+                                        onClick = {
+                                            viewModel.openRateDoctor(
+                                                UserProfile(
+                                                    uid = consent.medecinUid,
+                                                    nom = consent.medecinNom
+                                                )
+                                            )
+                                        }
+                                    ) {
+                                        Icon(
+                                            Icons.Default.StarRate,
+                                            contentDescription = "Noter ce médecin",
+                                            tint = Color(0xFFF59E0B)
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = { viewModel.revokeConsent(consent.medecinUid) }
+                                    ) {
+                                        Icon(Icons.Default.Close, "Révoquer", tint = Error)
+                                    }
                                 }
                             }
                         }
@@ -255,49 +285,31 @@ fun DataSharingScreen(
         }
     }
 
-    // Dialog sélection médecin
+    // Dialog sélection médecin — version enrichie (notes + distance + tri)
     if (showMedecinDialog) {
-        AlertDialog(
-            onDismissRequest = { showMedecinDialog = false },
-            title = { Text(stringResource(R.string.data_sharing_choose_doctor)) },
-            text = {
-                if (uiState.availableMedecins.isEmpty()) {
-                    Text(stringResource(R.string.data_sharing_no_doctor), color = OnSurfaceVariant)
-                } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        uiState.availableMedecins.forEach { medecin ->
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = SurfaceVariant,
-                                onClick = {
-                                    viewModel.grantConsent(medecin.uid)
-                                    showMedecinDialog = false
-                                }
-                            ) {
-                                Row(
-                                    Modifier.fillMaxWidth().padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        Icons.Default.LocalHospital,
-                                        null,
-                                        tint = Primary,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                    Spacer(Modifier.width(12.dp))
-                                    Column {
-                                        Text(medecin.nomComplet, fontWeight = FontWeight.SemiBold)
-                                        Text(medecin.email, style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+        DoctorPickerDialog(
+            items = uiState.availableMedecins,
+            sortMode = uiState.sortMode,
+            hasPatientLocation = uiState.patientLat != null,
+            onSelectSort = viewModel::setSortMode,
+            onCaptureLocation = viewModel::captureMyLocation,
+            onSelect = { medecin ->
+                viewModel.grantConsent(medecin.uid)
+                showMedecinDialog = false
             },
-            confirmButton = {
-                TextButton(onClick = { showMedecinDialog = false }) { Text("Fermer") }
-            }
+            onDismiss = { showMedecinDialog = false }
+        )
+    }
+
+    // Dialog de notation d'un medecin
+    uiState.ratingTarget?.let { doctor ->
+        RateDoctorDialog(
+            doctor = doctor,
+            existingRating = uiState.myExistingReview?.rating,
+            existingComment = uiState.myExistingReview?.comment.orEmpty(),
+            isSubmitting = uiState.isSubmittingReview,
+            onSubmit = { rating, comment -> viewModel.submitReview(rating, comment) },
+            onDismiss = viewModel::closeRateDoctor
         )
     }
 
@@ -330,4 +342,346 @@ private fun DataBadge(label: String) {
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
         )
     }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  Doctor picker dialog — ratings + distance + sort
+// ══════════════════════════════════════════════════════════════════
+
+@Composable
+private fun DoctorPickerDialog(
+    items: List<DoctorListItem>,
+    sortMode: DoctorSortMode,
+    hasPatientLocation: Boolean,
+    onSelectSort: (DoctorSortMode) -> Unit,
+    onCaptureLocation: () -> Unit,
+    onSelect: (UserProfile) -> Unit,
+    onDismiss: () -> Unit
+) {
+    // Demande la permission GPS si besoin, puis declenche la capture
+    val locPermLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { granted ->
+        val ok = granted[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                granted[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (ok) onCaptureLocation()
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Column {
+                Text(stringResource(R.string.data_sharing_choose_doctor))
+                Text(
+                    "Les mieux notés et les plus proches en premier",
+                    fontSize = 12.sp,
+                    color = OnSurfaceVariant,
+                    fontWeight = FontWeight.Normal
+                )
+            }
+        },
+        text = {
+            if (items.isEmpty()) {
+                Text(stringResource(R.string.data_sharing_no_doctor), color = OnSurfaceVariant)
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Barre de tri
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        SortChip(
+                            label = "Meilleure note",
+                            selected = sortMode == DoctorSortMode.SCORE,
+                            onClick = { onSelectSort(DoctorSortMode.SCORE) },
+                            modifier = Modifier.weight(1f)
+                        )
+                        SortChip(
+                            label = if (hasPatientLocation) "Proximité" else "📍 Activer GPS",
+                            selected = sortMode == DoctorSortMode.DISTANCE,
+                            onClick = {
+                                if (hasPatientLocation) {
+                                    onSelectSort(DoctorSortMode.DISTANCE)
+                                } else {
+                                    locPermLauncher.launch(
+                                        arrayOf(
+                                            Manifest.permission.ACCESS_FINE_LOCATION,
+                                            Manifest.permission.ACCESS_COARSE_LOCATION
+                                        )
+                                    )
+                                }
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    Spacer(Modifier.height(4.dp))
+
+                    // Liste des medecins (scrollable en cas de debordement)
+                    Column(
+                        Modifier.heightIn(max = 400.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(items) { item ->
+                                DoctorCard(
+                                    item = item,
+                                    onClick = { onSelect(item.profile) }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Fermer") }
+        }
+    )
+}
+
+@Composable
+private fun SortChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        onClick = onClick,
+        shape = RoundedCornerShape(10.dp),
+        color = if (selected) Primary else SurfaceVariant,
+        border = if (selected) null
+        else androidx.compose.foundation.BorderStroke(1.dp, OnSurfaceVariant.copy(alpha = 0.15f))
+    ) {
+        Text(
+            label,
+            color = if (selected) Color.White else OnSurfaceVariant,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 12.sp,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(vertical = 8.dp, horizontal = 10.dp).fillMaxWidth()
+        )
+    }
+}
+
+@Composable
+private fun DoctorCard(
+    item: DoctorListItem,
+    onClick: () -> Unit
+) {
+    val d = item.profile
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = SurfaceVariant,
+        onClick = onClick
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.LocalHospital,
+                null,
+                tint = Primary,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(d.nomComplet.ifBlank { d.email }, fontWeight = FontWeight.SemiBold)
+                if (d.specialite.isNotBlank()) {
+                    Text(
+                        d.specialite,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = OnSurfaceVariant
+                    )
+                }
+                // Ligne note + avis + distance
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (d.reviewCount > 0) {
+                        StarRatingDisplay(d.averageRating, size = 14)
+                        Text(
+                            "%.1f (%d)".format(d.averageRating, d.reviewCount),
+                            fontSize = 12.sp,
+                            color = OnSurfaceVariant,
+                            fontWeight = FontWeight.Medium
+                        )
+                    } else {
+                        Text(
+                            "Aucun avis",
+                            fontSize = 12.sp,
+                            color = OnSurfaceVariant
+                        )
+                    }
+                    item.distanceKm?.let {
+                        Text("•", fontSize = 12.sp, color = OnSurfaceVariant)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Place,
+                                null,
+                                modifier = Modifier.size(12.dp),
+                                tint = OnSurfaceVariant
+                            )
+                            Spacer(Modifier.width(2.dp))
+                            Text(
+                                GeoUtils.formatDistance(it),
+                                fontSize = 12.sp,
+                                color = OnSurfaceVariant,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+                if (d.ville.isNotBlank()) {
+                    Text(
+                        d.ville,
+                        fontSize = 11.sp,
+                        color = OnSurfaceVariant.copy(alpha = 0.8f),
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Affiche 5 etoiles remplies/vides selon le rating (0.0 a 5.0). */
+@Composable
+private fun StarRatingDisplay(rating: Double, size: Int = 16) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        for (i in 1..5) {
+            val filled = rating >= i - 0.25
+            val half = !filled && rating >= i - 0.75
+            Icon(
+                when {
+                    filled -> Icons.Default.Star
+                    half -> Icons.Default.StarHalf
+                    else -> Icons.Default.StarBorder
+                },
+                contentDescription = null,
+                tint = Color(0xFFF59E0B),
+                modifier = Modifier.size(size.dp)
+            )
+        }
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  Rate doctor dialog
+// ══════════════════════════════════════════════════════════════════
+
+@Composable
+private fun RateDoctorDialog(
+    doctor: UserProfile,
+    existingRating: Int?,
+    existingComment: String,
+    isSubmitting: Boolean,
+    onSubmit: (Int, String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var selectedRating by remember(existingRating) { mutableIntStateOf(existingRating ?: 5) }
+    var comment by remember(existingComment) { mutableStateOf(existingComment) }
+
+    AlertDialog(
+        onDismissRequest = { if (!isSubmitting) onDismiss() },
+        title = {
+            Column {
+                Text(
+                    if (existingRating != null) "Modifier mon avis" else "Noter ce médecin",
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    "Dr. ${doctor.nomComplet}".ifBlank { doctor.email },
+                    fontSize = 13.sp,
+                    color = OnSurfaceVariant,
+                    fontWeight = FontWeight.Normal
+                )
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                // Selecteur d'etoiles interactif
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    for (i in 1..5) {
+                        IconButton(
+                            onClick = { selectedRating = i },
+                            modifier = Modifier.size(44.dp)
+                        ) {
+                            Icon(
+                                if (i <= selectedRating) Icons.Default.Star else Icons.Default.StarBorder,
+                                contentDescription = "$i étoile${if (i > 1) "s" else ""}",
+                                tint = Color(0xFFF59E0B),
+                                modifier = Modifier.size(36.dp)
+                            )
+                        }
+                    }
+                }
+                Text(
+                    when (selectedRating) {
+                        1 -> "Très insatisfait"
+                        2 -> "Insatisfait"
+                        3 -> "Correct"
+                        4 -> "Satisfait"
+                        5 -> "Excellent"
+                        else -> ""
+                    },
+                    fontSize = 14.sp,
+                    color = Primary,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
+                )
+                OutlinedTextField(
+                    value = comment,
+                    onValueChange = { if (it.length <= 500) comment = it },
+                    label = { Text("Commentaire (optionnel)") },
+                    placeholder = { Text("Votre expérience, accueil, suivi...") },
+                    minLines = 3,
+                    maxLines = 5,
+                    shape = RoundedCornerShape(12.dp),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Text
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Text(
+                    "${comment.length} / 500",
+                    fontSize = 11.sp,
+                    color = OnSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.End
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onSubmit(selectedRating, comment.trim()) },
+                enabled = !isSubmitting,
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                if (isSubmitting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = Color.White
+                    )
+                } else {
+                    Text(if (existingRating != null) "Mettre à jour" else "Publier")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isSubmitting) {
+                Text("Annuler")
+            }
+        }
+    )
 }
