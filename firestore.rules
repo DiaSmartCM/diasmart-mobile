@@ -65,24 +65,29 @@ service cloud.firestore {
 
     // ============================================
     // CONVERSATIONS (MESSAGERIE PATIENT-MEDECIN)
-    // Seuls les participants peuvent lire/écrire
+    // Le modele Conversation utilise les cles patientId / medecinId
+    // (PAS patientUid / medecinUid) — les regles doivent matcher.
+    // Seuls les participants peuvent lire/écrire.
     // ============================================
     match /conversations/{conversationId} {
       allow read: if request.auth != null
-                  && (resource.data.patientUid == request.auth.uid
-                      || resource.data.medecinUid == request.auth.uid);
-      allow create: if request.auth != null;
+                  && (resource.data.patientId == request.auth.uid
+                      || resource.data.medecinId == request.auth.uid);
+      // Le createur doit etre un des deux participants
+      allow create: if request.auth != null
+                    && (request.resource.data.patientId == request.auth.uid
+                        || request.resource.data.medecinId == request.auth.uid);
       allow update: if request.auth != null
-                    && (resource.data.patientUid == request.auth.uid
-                        || resource.data.medecinUid == request.auth.uid);
+                    && (resource.data.patientId == request.auth.uid
+                        || resource.data.medecinId == request.auth.uid);
 
       match /messages/{messageId} {
         allow read: if request.auth != null
-                    && (get(/databases/$(database)/documents/conversations/$(conversationId)).data.patientUid == request.auth.uid
-                        || get(/databases/$(database)/documents/conversations/$(conversationId)).data.medecinUid == request.auth.uid);
+                    && (get(/databases/$(database)/documents/conversations/$(conversationId)).data.patientId == request.auth.uid
+                        || get(/databases/$(database)/documents/conversations/$(conversationId)).data.medecinId == request.auth.uid);
         allow create: if request.auth != null
-                      && (get(/databases/$(database)/documents/conversations/$(conversationId)).data.patientUid == request.auth.uid
-                          || get(/databases/$(database)/documents/conversations/$(conversationId)).data.medecinUid == request.auth.uid);
+                      && (get(/databases/$(database)/documents/conversations/$(conversationId)).data.patientId == request.auth.uid
+                          || get(/databases/$(database)/documents/conversations/$(conversationId)).data.medecinId == request.auth.uid);
       }
     }
 
