@@ -1108,7 +1108,7 @@ private fun DiaSmartBottomBar(
             } else {
                 listOf(
                     NavItem("Accueil", Icons.Outlined.Dashboard, Icons.Filled.Dashboard),
-                    NavItem("Patients", Icons.Outlined.People, Icons.Filled.People),
+                    NavItem("Médecin", Icons.Outlined.MedicalServices, Icons.Filled.MedicalServices),
                     NavItem("RDV", Icons.Outlined.CalendarMonth, Icons.Filled.CalendarMonth),
                     NavItem("ROLLY", Icons.Outlined.Dashboard, Icons.Filled.Dashboard, isRolly = true),
                     NavItem("Messages", Icons.Outlined.Forum, Icons.Filled.Forum)
