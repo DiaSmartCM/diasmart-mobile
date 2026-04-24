@@ -50,7 +50,8 @@ import javax.inject.Singleton
 @Singleton
 class CallManager @Inject constructor(
     private val context: Context,
-    private val webRTCManager: WebRTCManager
+    private val webRTCManager: WebRTCManager,
+    private val doctorReviewRepository: com.diabeto.data.repository.DoctorReviewRepository
 ) {
     companion object {
         private const val TAG = "CallManager"
@@ -97,6 +98,7 @@ class CallManager @Inject constructor(
 
     private var pendingIceCandidates = mutableListOf<IceCandidate>()
     @Volatile private var remoteDescriptionSet = false
+    @Volatile private var everConnected = false
     private var timeoutJob: Job? = null
     private var durationJob: Job? = null
     private var disconnectedJob: Job? = null
@@ -336,6 +338,7 @@ class CallManager @Inject constructor(
         Log.d(TAG, "CALL CONNECTED!")
         disconnectedJob?.cancel()
         iceRestartCount = 0
+        everConnected = true
         _callState.value = _callState.value.copy(state = CallState.CONNECTED)
         stopRingtone()
         requestAudioFocus()
@@ -508,8 +511,17 @@ class CallManager @Inject constructor(
     fun endCall() {
         val call = _callState.value
         Log.d(TAG, "Ending call ${call.callId}")
+        val wasConnected = everConnected
+        everConnected = false
         if (call.callId.isNotEmpty()) {
             scope.launch { signaling.endCall(call.callId) }
+            // Si la teleconsultation a effectivement abouti, increment du compteur
+            // cote medecin. Best-effort, fire-and-forget.
+            if (wasConnected) {
+                CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+                    runCatching { doctorReviewRepository.incrementConsultationForCall(call.callId) }
+                }
+            }
         }
         cleanupCallResources()
     }
@@ -575,6 +587,7 @@ class CallManager @Inject constructor(
         _remoteVideoTrack.value = null
         _callState.value = CallInfo()
         remoteDescriptionSet = false
+        everConnected = false
         pendingIceCandidates.clear()
         // Reset scope to isolate next call from any leaked coroutines
         scopeJob.cancel()

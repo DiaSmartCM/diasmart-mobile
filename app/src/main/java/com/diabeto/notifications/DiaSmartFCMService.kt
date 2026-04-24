@@ -96,10 +96,56 @@ class DiaSmartFCMService : FirebaseMessagingService() {
                 val version = remoteMessage.data["version"] ?: ""
                 afficherNotificationMiseAJour(title, body, updateUrl, version)
             }
+            "new_review" -> {
+                afficherNotificationAvis(title, body)
+            }
             else -> {
                 afficherNotification(title, body)
             }
         }
+    }
+
+    /**
+     * Notification pour un nouvel avis patient.
+     * Ouvre l'app sur le dashboard du medecin (il verra son score mis a jour
+     * et la liste des avis via son profil).
+     */
+    private fun afficherNotificationAvis(title: String, body: String) {
+        val channelId = "diasmart_reviews"
+        val notificationManager =
+            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                channelId,
+                "Avis patients",
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                description = "Notifications lorsqu'un patient vous laisse un avis"
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            putExtra("navigate_to", "dashboard")
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this, 2, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(android.R.drawable.btn_star_big_on)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .build()
+
+        notificationManager.notify(System.currentTimeMillis().toInt(), notification)
     }
 
     override fun onNewToken(token: String) {

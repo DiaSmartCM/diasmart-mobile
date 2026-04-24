@@ -297,6 +297,7 @@ fun DataSharingScreen(
                 viewModel.grantConsent(medecin.uid)
                 showMedecinDialog = false
             },
+            onShowReviews = { viewModel.openDoctorReviews(it) },
             onDismiss = { showMedecinDialog = false }
         )
     }
@@ -310,6 +311,16 @@ fun DataSharingScreen(
             isSubmitting = uiState.isSubmittingReview,
             onSubmit = { rating, comment -> viewModel.submitReview(rating, comment) },
             onDismiss = viewModel::closeRateDoctor
+        )
+    }
+
+    // Dialog de consultation des avis
+    uiState.reviewsTarget?.let { doctor ->
+        DoctorReviewsDialog(
+            doctor = doctor,
+            reviews = uiState.reviewsList,
+            isLoading = uiState.isLoadingReviews,
+            onDismiss = viewModel::closeDoctorReviews
         )
     }
 
@@ -356,6 +367,7 @@ private fun DoctorPickerDialog(
     onSelectSort: (DoctorSortMode) -> Unit,
     onCaptureLocation: () -> Unit,
     onSelect: (UserProfile) -> Unit,
+    onShowReviews: (UserProfile) -> Unit,
     onDismiss: () -> Unit
 ) {
     // Demande la permission GPS si besoin, puis declenche la capture
@@ -426,7 +438,8 @@ private fun DoctorPickerDialog(
                             items(items) { item ->
                                 DoctorCard(
                                     item = item,
-                                    onClick = { onSelect(item.profile) }
+                                    onClick = { onSelect(item.profile) },
+                                    onShowReviews = { onShowReviews(item.profile) }
                                 )
                             }
                         }
@@ -469,7 +482,8 @@ private fun SortChip(
 @Composable
 private fun DoctorCard(
     item: DoctorListItem,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onShowReviews: () -> Unit
 ) {
     val d = item.profile
     Surface(
@@ -544,6 +558,26 @@ private fun DoctorCard(
                         color = OnSurfaceVariant.copy(alpha = 0.8f),
                         modifier = Modifier.padding(top = 2.dp)
                     )
+                }
+                if (d.reviewCount > 0) {
+                    TextButton(
+                        onClick = onShowReviews,
+                        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 2.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.RateReview,
+                            null,
+                            tint = Primary,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            "Voir les avis",
+                            fontSize = 12.sp,
+                            color = Primary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
         }
@@ -684,4 +718,120 @@ private fun RateDoctorDialog(
             }
         }
     )
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  Doctor reviews dialog — lecture seule, liste des avis patients
+// ══════════════════════════════════════════════════════════════════
+
+@Composable
+private fun DoctorReviewsDialog(
+    doctor: UserProfile,
+    reviews: List<com.diabeto.data.model.DoctorReview>,
+    isLoading: Boolean,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Column {
+                Text(
+                    "Avis sur Dr. ${doctor.nomComplet}".ifBlank { "Avis patients" },
+                    fontWeight = FontWeight.Bold
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(top = 4.dp)
+                ) {
+                    StarRatingDisplay(doctor.averageRating, size = 16)
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        "%.1f / 5 · %d avis".format(doctor.averageRating, doctor.reviewCount),
+                        fontSize = 13.sp,
+                        color = OnSurfaceVariant,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        },
+        text = {
+            Column(Modifier.heightIn(min = 120.dp, max = 480.dp)) {
+                when {
+                    isLoading -> {
+                        Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                    reviews.isEmpty() -> {
+                        Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                            Text(
+                                "Aucun avis publié pour le moment.",
+                                color = OnSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                    else -> {
+                        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            items(reviews) { r -> ReviewItemCard(r) }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Fermer") }
+        }
+    )
+}
+
+@Composable
+private fun ReviewItemCard(review: com.diabeto.data.model.DoctorReview) {
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = SurfaceVariant.copy(alpha = 0.6f)
+    ) {
+        Column(Modifier.padding(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.Person,
+                    null,
+                    tint = OnSurfaceVariant,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    review.patientNom.ifBlank { "Patient" },
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f)
+                )
+                StarRatingDisplay(review.rating.toDouble(), size = 13)
+            }
+            if (review.comment.isNotBlank()) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    review.comment,
+                    fontSize = 13.sp,
+                    color = OnSurfaceVariant
+                )
+            }
+            // Date "il y a X jours" simplifiee
+            val daysAgo = ((System.currentTimeMillis() - review.createdAt.toDate().time) /
+                    (1000L * 60 * 60 * 24)).toInt()
+            val dateLabel = when {
+                daysAgo <= 0 -> "Aujourd'hui"
+                daysAgo == 1 -> "Hier"
+                daysAgo < 30 -> "Il y a $daysAgo j"
+                daysAgo < 365 -> "Il y a ${daysAgo / 30} mois"
+                else -> "Il y a ${daysAgo / 365} an(s)"
+            }
+            Spacer(Modifier.height(4.dp))
+            Text(
+                dateLabel,
+                fontSize = 11.sp,
+                color = OnSurfaceVariant.copy(alpha = 0.7f)
+            )
+        }
+    }
 }

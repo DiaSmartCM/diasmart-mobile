@@ -19,7 +19,8 @@ import javax.inject.Singleton
 @Singleton
 class AppointmentRequestRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val doctorReviewRepository: DoctorReviewRepository
 ) {
     companion object {
         private const val COL_REQUESTS = "rdv_requests"
@@ -131,6 +132,9 @@ class AppointmentRequestRepository @Inject constructor(
             .collection("rendezvous")
             .document(requestId)
             .set(rdvData).await()
+
+        // Compteur de consultations cote medecin (best-effort, ne bloque pas l'acceptation).
+        runCatching { doctorReviewRepository.incrementConsultationCount(request.medecinUid) }
     }
 
     /**

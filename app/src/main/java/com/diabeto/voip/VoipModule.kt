@@ -1,6 +1,7 @@
 package com.diabeto.voip
 
 import android.content.Context
+import com.diabeto.data.repository.DoctorReviewRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -22,8 +23,9 @@ object VoipModule {
     @Singleton
     fun provideCallManager(
         @ApplicationContext context: Context,
-        webRTCManager: WebRTCManager
-    ): CallManager = CallManager(context, webRTCManager).also {
+        webRTCManager: WebRTCManager,
+        doctorReviewRepository: DoctorReviewRepository
+    ): CallManager = CallManager(context, webRTCManager, doctorReviewRepository).also {
         CallManagerProvider.callManager = it
     }
 }

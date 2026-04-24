@@ -49,7 +49,11 @@ data class DataSharingUiState(
     // Rating dialog
     val ratingTarget: UserProfile? = null,
     val myExistingReview: DoctorReview? = null,
-    val isSubmittingReview: Boolean = false
+    val isSubmittingReview: Boolean = false,
+    // Reviews viewing sheet
+    val reviewsTarget: UserProfile? = null,
+    val reviewsList: List<DoctorReview> = emptyList(),
+    val isLoadingReviews: Boolean = false
 )
 
 @HiltViewModel
@@ -220,6 +224,20 @@ class DataSharingViewModel @Inject constructor(
 
     fun closeRateDoctor() {
         _uiState.update { it.copy(ratingTarget = null, myExistingReview = null) }
+    }
+
+    /** Ouvre la liste des avis d'un medecin et charge les 50 plus recents. */
+    fun openDoctorReviews(doctor: UserProfile) {
+        _uiState.update { it.copy(reviewsTarget = doctor, reviewsList = emptyList(), isLoadingReviews = true) }
+        viewModelScope.launch {
+            val list = runCatching { doctorReviewRepository.getReviewsForDoctor(doctor.uid) }
+                .getOrElse { emptyList() }
+            _uiState.update { it.copy(reviewsList = list, isLoadingReviews = false) }
+        }
+    }
+
+    fun closeDoctorReviews() {
+        _uiState.update { it.copy(reviewsTarget = null, reviewsList = emptyList()) }
     }
 
     fun submitReview(rating: Int, comment: String) {

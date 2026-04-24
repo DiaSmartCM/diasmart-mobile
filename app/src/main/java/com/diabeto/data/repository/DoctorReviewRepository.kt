@@ -1,12 +1,23 @@
 package com.diabeto.data.repository
 
+import android.util.Log
 import com.diabeto.data.model.DoctorReview
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -29,6 +40,24 @@ class DoctorReviewRepository @Inject constructor(
 ) {
     private val reviews = firestore.collection("doctor_reviews")
     private val users = firestore.collection("users")
+
+    companion object {
+        private const val TAG = "DoctorReviewRepo"
+        private const val NOTIFY_REVIEW_URL =
+            "https://website-omega-umber-20.vercel.app/api/notify-review"
+        private val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
+    }
+
+    private val httpClient: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .writeTimeout(10, TimeUnit.SECONDS)
+            .build()
+    }
+
+    // Scope detache pour le fire-and-forget de la notification (ne bloque pas le submit)
+    private val notifyScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     /**
      * Ecrit ou remplace l'avis du patient courant sur un medecin.
@@ -78,6 +107,56 @@ class DoctorReviewRepository @Inject constructor(
             ))
             null
         }.await()
+
+        // Notification FCM au medecin (fire-and-forget, non bloquant)
+        val wasUpdate = runCatching {
+            val snap = reviewRef.get().await()
+            (snap.getTimestamp("createdAt")?.toDate()?.time ?: 0L) <
+                (snap.getTimestamp("updatedAt")?.toDate()?.time ?: 0L)
+        }.getOrDefault(false)
+        notifyReviewAsync(
+            doctorUid = doctorUid,
+            rating = rating,
+            comment = comment.take(200),
+            patientNom = patientNom,
+            isUpdate = wasUpdate
+        )
+    }
+
+    /**
+     * Poste un PUSH FCM via l'endpoint Vercel /api/notify-review.
+     * Non bloquant et silencieux : si ca echoue, l'avis est deja ecrit, pas grave.
+     */
+    private fun notifyReviewAsync(
+        doctorUid: String,
+        rating: Int,
+        comment: String,
+        patientNom: String,
+        isUpdate: Boolean
+    ) {
+        notifyScope.launch {
+            try {
+                val idToken = auth.currentUser?.getIdToken(false)?.await()?.token
+                    ?: return@launch
+                val body = JSONObject().apply {
+                    put("doctorUid", doctorUid)
+                    put("rating", rating)
+                    put("comment", comment)
+                    put("patientNom", patientNom)
+                    put("isUpdate", isUpdate)
+                }.toString()
+                val req = Request.Builder()
+                    .url(NOTIFY_REVIEW_URL)
+                    .addHeader("Authorization", "Bearer $idToken")
+                    .post(body.toRequestBody(JSON_MEDIA))
+                    .build()
+                httpClient.newCall(req).execute().use { resp ->
+                    Log.d(TAG, "notify-review HTTP ${resp.code}")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "notify-review failed (non-blocking): ${e.message}")
+            }
+        }
     }
 
     /** Retourne l'avis du patient courant sur ce medecin, ou null. */
@@ -113,5 +192,29 @@ class DoctorReviewRepository @Inject constructor(
         users.document(doctorUid)
             .update("consultationCount", FieldValue.increment(1L))
             .await()
+    }
+
+    /**
+     * Increment du compteur de consultations pour le medecin implique dans un appel donne.
+     * Lit calls/{callId}, identifie celui des deux UIDs (caller/callee) qui est MEDECIN
+     * et incremente son `consultationCount`. Silencieux en cas d'erreur.
+     */
+    suspend fun incrementConsultationForCall(callId: String): Result<Unit> = runCatching {
+        if (callId.isBlank()) return@runCatching
+        val callDoc = firestore.collection("calls").document(callId).get().await()
+        val callerUid = callDoc.getString("callerUid").orEmpty()
+        val calleeUid = callDoc.getString("calleeUid").orEmpty()
+        val candidates = listOf(callerUid, calleeUid).filter { it.isNotBlank() }
+        for (uid in candidates) {
+            val userSnap = users.document(uid).get().await()
+            val role = userSnap.getString("role")
+            if (role == "MEDECIN") {
+                users.document(uid)
+                    .update("consultationCount", FieldValue.increment(1L))
+                    .await()
+                Log.d(TAG, "consultationCount++ for doctor $uid (call $callId)")
+                break
+            }
+        }
     }
 }
