@@ -30,6 +30,7 @@ object Routes {
     const val MESSAGERIE       = "messagerie"
     const val CONVERSATION     = "messagerie/{conversationId}?interlocuteur={interlocuteur}"
     const val DATA_SHARING     = "data_sharing"
+    const val REPORTS          = "reports"
     const val SETTINGS         = "settings"
     const val PROFILE          = "profile"
     const val JOURNAL          = "journal?patientId={patientId}"
@@ -149,7 +150,8 @@ fun DiabetoNavigation(
                 onNavigateToPedometer      = { navController.navigate(Routes.pedometer()) },
                 onNavigateToPredictive     = { navController.navigate(Routes.predictive()) },
                 onNavigateToValidations    = { navController.navigate(Routes.VALIDATIONS) },
-                onNavigateToCommunity      = { navController.navigate(Routes.COMMUNITY) }
+                onNavigateToCommunity      = { navController.navigate(Routes.COMMUNITY) },
+                onNavigateToReports        = { navController.navigate(Routes.REPORTS) }
             )
         }
 
@@ -392,6 +394,11 @@ fun DiabetoNavigation(
             SettingsScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
+        }
+
+        // ── Rapports PDF (export patient ↔ medecin) ──────────────────────────
+        composable(Routes.REPORTS) {
+            ReportsScreen(onBack = { navController.popBackStack() })
         }
 
         // ── Profil utilisateur ──────────────────────────────────────────────

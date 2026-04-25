@@ -13,7 +13,11 @@ data class Message(
     val contenu: String = "",
     val timestamp: Timestamp = Timestamp.now(),
     val lu: Boolean = false,
-    val estIA: Boolean = false
+    val estIA: Boolean = false,
+    // ── Pieces jointes (rapports PDF) ──
+    val attachmentUrl: String = "",
+    val attachmentName: String = "",
+    val attachmentType: String = "" // ex: "application/pdf"
 ) {
     fun toMap(): Map<String, Any> = mapOf(
         "envoyeurId" to envoyeurId,
@@ -21,8 +25,14 @@ data class Message(
         "contenu" to contenu,
         "timestamp" to timestamp,
         "lu" to lu,
-        "estIA" to estIA
+        "estIA" to estIA,
+        "attachmentUrl" to attachmentUrl,
+        "attachmentName" to attachmentName,
+        "attachmentType" to attachmentType
     )
+
+    val hasAttachment: Boolean
+        get() = attachmentUrl.isNotBlank()
 
     companion object {
         fun fromMap(id: String, map: Map<String, Any?>): Message = Message(
@@ -32,7 +42,10 @@ data class Message(
             contenu = map["contenu"] as? String ?: "",
             timestamp = map["timestamp"] as? Timestamp ?: Timestamp.now(),
             lu = map["lu"] as? Boolean ?: false,
-            estIA = map["estIA"] as? Boolean ?: false
+            estIA = map["estIA"] as? Boolean ?: false,
+            attachmentUrl = map["attachmentUrl"] as? String ?: "",
+            attachmentName = map["attachmentName"] as? String ?: "",
+            attachmentType = map["attachmentType"] as? String ?: ""
         )
     }
 }

@@ -119,6 +119,55 @@ class MessagerieRepository @Inject constructor(
     }
 
     /**
+     * Envoyer un message avec piece jointe (rapport PDF stocke dans Firebase Storage).
+     */
+    suspend fun envoyerMessageAvecPieceJointe(
+        conversationId: String,
+        contenu: String,
+        attachmentUrl: String,
+        attachmentName: String,
+        attachmentType: String = "application/pdf"
+    ): Result<Unit> {
+        return try {
+            val profile = authRepository.getCurrentUserProfile()
+                ?: return Result.failure(Exception("Utilisateur non connecté"))
+
+            val message = Message(
+                envoyeurId = profile.uid,
+                envoyeurNom = profile.nomComplet,
+                contenu = contenu,
+                timestamp = Timestamp.now(),
+                attachmentUrl = attachmentUrl,
+                attachmentName = attachmentName,
+                attachmentType = attachmentType
+            )
+
+            firestore.collection(COL_CONVERSATIONS)
+                .document(conversationId)
+                .collection(COL_MESSAGES)
+                .add(message.toMap())
+                .await()
+
+            val updateField = if (profile.role == UserRole.MEDECIN) "nonLusPatient" else "nonLusMedecin"
+            val resume = if (contenu.isBlank()) "📎 $attachmentName" else contenu
+            firestore.collection(COL_CONVERSATIONS)
+                .document(conversationId)
+                .update(
+                    mapOf(
+                        "dernierMessage" to resume,
+                        "dernierMessageAt" to Timestamp.now(),
+                        updateField to com.google.firebase.firestore.FieldValue.increment(1)
+                    )
+                )
+                .await()
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Créer une nouvelle conversation entre un patient et un médecin
      */
     suspend fun creerConversation(medecinProfile: UserProfile): Result<String> {

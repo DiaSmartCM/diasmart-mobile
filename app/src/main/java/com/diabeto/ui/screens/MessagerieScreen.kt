@@ -1,6 +1,7 @@
 package com.diabeto.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -456,6 +457,7 @@ fun ConversationDetailScreen(
 
 @Composable
 private fun ChatMessageBubble(message: Message, isCurrentUser: Boolean) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = if (isCurrentUser) Alignment.End else Alignment.Start
@@ -477,12 +479,53 @@ private fun ChatMessageBubble(message: Message, isCurrentUser: Boolean) {
             shadowElevation = 1.dp,
             modifier = Modifier.widthIn(max = 280.dp)
         ) {
-            Text(
-                text = message.contenu,
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                color = if (isCurrentUser) Color.White else OnSurface,
-                style = MaterialTheme.typography.bodyMedium
-            )
+            Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                if (message.contenu.isNotBlank()) {
+                    Text(
+                        text = message.contenu,
+                        color = if (isCurrentUser) Color.White else OnSurface,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                if (message.hasAttachment) {
+                    if (message.contenu.isNotBlank()) Spacer(Modifier.height(8.dp))
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (isCurrentUser) Color.White.copy(alpha = 0.18f) else Color(0xFFF3F0FF),
+                        modifier = Modifier
+                            .clickable {
+                                runCatching {
+                                    val intent = android.content.Intent(
+                                        android.content.Intent.ACTION_VIEW,
+                                        android.net.Uri.parse(message.attachmentUrl)
+                                    ).apply {
+                                        addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
+                                    context.startActivity(intent)
+                                }
+                            }
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)
+                        ) {
+                            Icon(
+                                imageVector = androidx.compose.material.icons.Icons.Default.PictureAsPdf,
+                                contentDescription = null,
+                                tint = if (isCurrentUser) Color.White else Primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = message.attachmentName.ifBlank { "Document PDF" },
+                                color = if (isCurrentUser) Color.White else OnSurface,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+            }
         }
         Text(
             text = formatTimestamp(message.timestamp),

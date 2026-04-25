@@ -64,6 +64,7 @@ fun DashboardScreen(
     onNavigateToPredictive: () -> Unit = {},
     onNavigateToValidations: () -> Unit = {},
     onNavigateToCommunity: () -> Unit = {},
+    onNavigateToReports: () -> Unit = {},
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -639,6 +640,46 @@ fun DashboardScreen(
                             onClick = onNavigateToValidations,
                             modifier = Modifier.weight(1f)
                         )
+                    }
+                }
+                item { Spacer(modifier = Modifier.height(12.dp)) }
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        FeatureCard(
+                            title = "Compte-rendu / Ordonnance",
+                            subtitle = "Envoyer au patient",
+                            icon = Icons.Outlined.Description,
+                            cardColor = CardGlucose,
+                            iconTint = Primary,
+                            onClick = onNavigateToReports,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+
+            // ── Bouton "Envoyer rapport" cote patient ──
+            if (uiState.userRole == UserRole.PATIENT) {
+                item { Spacer(modifier = Modifier.height(12.dp)) }
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        FeatureCard(
+                            title = "Envoyer un rapport",
+                            subtitle = "PDF a mon medecin",
+                            icon = Icons.Outlined.Description,
+                            cardColor = CardAppointment,
+                            iconTint = Tertiary,
+                            onClick = onNavigateToReports,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
                     }
                 }
             }
