@@ -233,6 +233,7 @@ fun DashboardScreen(
             DiaSmartBottomBar(
                 selectedIndex = selectedNavIndex,
                 onNavigateToPatients = { selectedNavIndex = 1; onNavigateToPatients() },
+                onNavigateToDataSharing = { selectedNavIndex = 1; onNavigateToDataSharing() },
                 onNavigateToRendezVous = { selectedNavIndex = 2; onNavigateToRendezVous() },
                 onNavigateToChatbot = { selectedNavIndex = 3; onNavigateToChatbot() },
                 onNavigateToMessagerie = { selectedNavIndex = 4; onNavigateToMessagerie() },
@@ -405,10 +406,11 @@ fun DashboardScreen(
                         .padding(horizontal = 20.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    val isPatient = uiState.userRole == UserRole.PATIENT
                     MiniStatCard(
-                        value = uiState.totalPatients.toString(),
-                        label = "Patients",
-                        icon = Icons.Outlined.People,
+                        value = if (isPatient) uiState.linkedDoctors.toString() else uiState.totalPatients.toString(),
+                        label = if (isPatient) "Médecins" else "Patients",
+                        icon = if (isPatient) Icons.Outlined.MedicalServices else Icons.Outlined.People,
                         iconBg = if (isDark) CardGlucoseDark else CardGlucose,
                         iconTint = if (isDark) Color(0xFF9D91FF) else Primary,
                         modifier = Modifier.weight(1f),
@@ -1076,6 +1078,7 @@ private fun DiaSmartBottomBar(
     selectedIndex: Int,
     onDashboard: () -> Unit,
     onNavigateToPatients: () -> Unit,
+    onNavigateToDataSharing: () -> Unit,
     onNavigateToRendezVous: () -> Unit,
     onNavigateToChatbot: () -> Unit,
     onNavigateToMessagerie: () -> Unit,
@@ -1117,7 +1120,8 @@ private fun DiaSmartBottomBar(
             val actions = if (isMedecin) {
                 listOf(onDashboard, onNavigateToPatients, onNavigateToRendezVous, onNavigateToMessagerie)
             } else {
-                listOf(onDashboard, onNavigateToPatients, onNavigateToRendezVous, onNavigateToChatbot, onNavigateToMessagerie)
+                // Cote patient : l'onglet 2 ouvre l'ecran "Mon medecin" (DataSharing).
+                listOf(onDashboard, onNavigateToDataSharing, onNavigateToRendezVous, onNavigateToChatbot, onNavigateToMessagerie)
             }
 
             items.forEachIndexed { index, item ->

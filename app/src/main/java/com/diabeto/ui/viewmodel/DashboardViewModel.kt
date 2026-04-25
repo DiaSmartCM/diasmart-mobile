@@ -18,6 +18,7 @@ import javax.inject.Inject
  */
 data class DashboardUiState(
     val totalPatients: Int = 0,
+    val linkedDoctors: Int = 0,
     val avgGlucose: Double = 0.0, // always stored in mg/dL
     val todayRendezVous: Int = 0,
     val todayConfirmed: Int = 0,
@@ -43,7 +44,8 @@ class DashboardViewModel @Inject constructor(
     private val connectivityObserver: ConnectivityObserver,
     private val cloudBackupRepository: CloudBackupRepository,
     private val preferencesRepository: PreferencesRepository,
-    private val pendingOperationDao: com.diabeto.data.dao.PendingOperationDao
+    private val pendingOperationDao: com.diabeto.data.dao.PendingOperationDao,
+    private val dataSharingRepository: DataSharingRepository
 ) : ViewModel() {
 
     companion object {
@@ -132,8 +134,24 @@ class DashboardViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             
             try {
-                // Nombre total de patients
-                val patientCount = patientRepository.getPatientCount()
+                // Determination du role courant pour calculer les bons compteurs
+                val role = authRepository.getCurrentUserProfile()?.role ?: UserRole.PATIENT
+
+                // Nombre de patients lies (cote medecin) ou de medecins suivis (cote patient).
+                // - MEDECIN : data_sharing where medecinUid==me & isActive=true
+                // - PATIENT : data_sharing where patientUid==me & isActive=true
+                val patientCount = if (role == UserRole.MEDECIN) {
+                    runCatching { dataSharingRepository.getSharedPatients().size }
+                        .getOrElse { patientRepository.getPatientCount() }
+                } else {
+                    patientRepository.getPatientCount()
+                }
+                val doctorCount = if (role == UserRole.PATIENT) {
+                    runCatching {
+                        dataSharingRepository.getMyConsents()
+                            .count { it.isActive }
+                    }.getOrDefault(0)
+                } else 0
                 
                 // Rendez-vous du jour
                 val todayCount = rendezVousRepository.getCountForDate(LocalDate.now())
@@ -162,6 +180,7 @@ class DashboardViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         totalPatients = patientCount,
+                        linkedDoctors = doctorCount,
                         avgGlucose = avgGlucose,
                         todayRendezVous = todayCount,
                         todayConfirmed = confirmedCount,
