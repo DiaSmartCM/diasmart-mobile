@@ -1,14 +1,13 @@
 package com.diabeto.data.repository
 
 import android.content.Context
+import android.util.Base64
 import android.util.Log
 import com.diabeto.data.model.ReportRecord
 import com.diabeto.report.PdfReportGenerator
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
-import com.google.firebase.storage.FirebaseStorage
-import com.google.firebase.storage.StorageMetadata
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.tasks.await
 import okhttp3.MediaType.Companion.toMediaType
@@ -36,7 +35,6 @@ import javax.inject.Singleton
 class ReportRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val firestore: FirebaseFirestore,
-    private val storage: FirebaseStorage,
     private val auth: FirebaseAuth,
     private val authRepository: AuthRepository,
     private val patientRepository: PatientRepository,
@@ -49,8 +47,9 @@ class ReportRepository @Inject constructor(
 ) {
     companion object {
         private const val TAG = "ReportRepo"
-        private const val SEND_EMAIL_URL =
-            "https://website-omega-umber-20.vercel.app/api/send-report-email"
+        private const val BASE_URL = "https://website-omega-umber-20.vercel.app"
+        private const val SEND_EMAIL_URL = "$BASE_URL/api/send-report-email"
+        private const val UPLOAD_URL = "$BASE_URL/api/upload-supabase"
         private val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
         const val PERIOD_7D = "7d"
         const val PERIOD_30D = "30d"
@@ -164,15 +163,37 @@ class ReportRepository @Inject constructor(
     // ════════════════════════════════════════════════════════════════
 
     /**
-     * Upload le PDF sur Firebase Storage et retourne l'URL de telechargement.
+     * Upload le PDF vers Supabase Storage via l'endpoint Vercel /api/upload-supabase.
+     * On reste sur Spark Firebase ; le binaire vit dans le bucket public Supabase
+     * `diasmart-files` (1 GB free, sans carte). Retourne (path, publicUrl).
      */
     suspend fun uploadReport(file: File): Result<Pair<String, String>> = runCatching {
-        val uid = auth.currentUser?.uid ?: throw IllegalStateException("Non connecte")
-        val ref = storage.reference.child("reports/$uid/${file.name}")
-        val metadata = StorageMetadata.Builder().setContentType("application/pdf").build()
-        ref.putFile(android.net.Uri.fromFile(file), metadata).await()
-        val url = ref.downloadUrl.await().toString()
-        ref.path to url
+        val idToken = auth.currentUser?.getIdToken(false)?.await()?.token
+            ?: throw IllegalStateException("ID token indisponible")
+        val bytes = file.readBytes()
+        val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
+        val payload = JSONObject().apply {
+            put("folder", "reports")
+            put("fileName", file.name)
+            put("contentType", "application/pdf")
+            put("base64", base64)
+        }.toString()
+        val req = Request.Builder()
+            .url(UPLOAD_URL)
+            .addHeader("Authorization", "Bearer $idToken")
+            .post(payload.toRequestBody(JSON_MEDIA))
+            .build()
+        val (path, url) = httpClient.newCall(req).execute().use { resp ->
+            val body = resp.body?.string().orEmpty()
+            if (!resp.isSuccessful) {
+                throw IllegalStateException("Upload HTTP ${resp.code}: ${body.take(200)}")
+            }
+            val json = JSONObject(body)
+            json.optString("path") to json.optString("url")
+        }
+        if (url.isBlank()) throw IllegalStateException("URL Supabase manquante")
+        Log.d(TAG, "Uploaded to Supabase: $path → $url")
+        path to url
     }
 
     /**

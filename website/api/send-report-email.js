@@ -55,8 +55,12 @@ module.exports = async (req, res) => {
   if (!downloadUrl || typeof downloadUrl !== "string") {
     return res.status(400).json({ error: "missing_downloadUrl" });
   }
-  // Anti-spam basique : refus si l'URL ne pointe pas vers Firebase Storage.
-  if (!/firebasestorage\.googleapis\.com/.test(downloadUrl)) {
+  // Anti-spam basique : on n'accepte que les URLs vers nos buckets connus
+  // (Firebase Storage legacy + Supabase Storage).
+  const allowed =
+    /firebasestorage\.googleapis\.com/.test(downloadUrl) ||
+    /\.supabase\.co\/storage\//.test(downloadUrl);
+  if (!allowed) {
     return res.status(400).json({ error: "invalid_downloadUrl_host" });
   }
 
