@@ -169,34 +169,51 @@ class MessagerieRepository @Inject constructor(
 
     /**
      * Créer une nouvelle conversation entre un patient et un médecin
+     * (appel historique cote patient).
      */
     suspend fun creerConversation(medecinProfile: UserProfile): Result<String> {
+        val current = authRepository.getCurrentUserProfile()
+            ?: return Result.failure(Exception("Utilisateur non connecté"))
+        return findOrCreateConversationWith(current, medecinProfile)
+    }
+
+    /**
+     * Cree ou retrouve une conversation entre `currentUser` et `otherUser`,
+     * en placant CHACUN dans le bon champ (patientId / medecinId) selon son
+     * role. Utilise par les flows ou l'appelant peut etre patient OU medecin
+     * (envoi de rapport, ordonnance, compte-rendu...).
+     */
+    suspend fun findOrCreateConversationWith(
+        currentUser: UserProfile,
+        otherUser: UserProfile
+    ): Result<String> {
         return try {
-            val patientProfile = authRepository.getCurrentUserProfile()
-                ?: return Result.failure(Exception("Utilisateur non connecté"))
-
-            // Vérifier si une conversation existe déjà
-            val existing = firestore.collection(COL_CONVERSATIONS)
-                .whereEqualTo("patientId", patientProfile.uid)
-                .whereEqualTo("medecinId", medecinProfile.uid)
-                .get()
-                .await()
-
-            if (!existing.isEmpty) {
-                return Result.success(existing.documents.first().id)
+            val (patient, medecin) = when {
+                currentUser.role == UserRole.PATIENT && otherUser.role == UserRole.MEDECIN ->
+                    currentUser to otherUser
+                currentUser.role == UserRole.MEDECIN && otherUser.role == UserRole.PATIENT ->
+                    otherUser to currentUser
+                else -> return Result.failure(
+                    Exception("Conversation impossible : roles invalides (${currentUser.role} ↔ ${otherUser.role})")
+                )
             }
 
+            val existing = firestore.collection(COL_CONVERSATIONS)
+                .whereEqualTo("patientId", patient.uid)
+                .whereEqualTo("medecinId", medecin.uid)
+                .get()
+                .await()
+            if (!existing.isEmpty) return Result.success(existing.documents.first().id)
+
             val conversation = Conversation(
-                patientId = patientProfile.uid,
-                medecinId = medecinProfile.uid,
-                patientNom = patientProfile.nomComplet,
-                medecinNom = medecinProfile.nomComplet
+                patientId = patient.uid,
+                medecinId = medecin.uid,
+                patientNom = patient.nomComplet,
+                medecinNom = medecin.nomComplet
             )
 
             val doc = firestore.collection(COL_CONVERSATIONS)
-                .add(conversation.toMap())
-                .await()
-
+                .add(conversation.toMap()).await()
             Result.success(doc.id)
         } catch (e: Exception) {
             Result.failure(e)

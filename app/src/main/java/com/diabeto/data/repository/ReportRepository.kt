@@ -168,9 +168,23 @@ class ReportRepository @Inject constructor(
      * `diasmart-files` (1 GB free, sans carte). Retourne (path, publicUrl).
      */
     suspend fun uploadReport(file: File): Result<Pair<String, String>> = runCatching {
-        val idToken = auth.currentUser?.getIdToken(false)?.await()?.token
-            ?: throw IllegalStateException("ID token indisponible")
+        if (!file.exists() || file.length() == 0L) {
+            throw IllegalStateException("Fichier PDF invalide (existe=${file.exists()}, taille=${file.length()})")
+        }
+        Log.d(TAG, "uploadReport: file=${file.name} size=${file.length()} bytes")
+
+        // Force refresh du token au cas ou la session serait stale (problemes
+        // observes cote patient).
+        val idToken = auth.currentUser?.getIdToken(true)?.await()?.token
+            ?: throw IllegalStateException("ID token indisponible (pas connecte ?)")
+
         val bytes = file.readBytes()
+        // Vercel Hobby = ~4.5 MB body limit. Base64 = +33%, donc raw < 3.3 MB.
+        // En pratique nos PDFs sont < 200 KB donc OK, mais on garde la check.
+        if (bytes.size > 3 * 1024 * 1024) {
+            throw IllegalStateException("Fichier trop volumineux pour l'upload (${bytes.size} octets, max 3 MB)")
+        }
+
         val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
         val payload = JSONObject().apply {
             put("folder", "reports")
@@ -186,13 +200,14 @@ class ReportRepository @Inject constructor(
         val (path, url) = httpClient.newCall(req).execute().use { resp ->
             val body = resp.body?.string().orEmpty()
             if (!resp.isSuccessful) {
-                throw IllegalStateException("Upload HTTP ${resp.code}: ${body.take(200)}")
+                Log.e(TAG, "Upload HTTP ${resp.code}: $body")
+                throw IllegalStateException("HTTP ${resp.code} — ${body.take(300)}")
             }
             val json = JSONObject(body)
             json.optString("path") to json.optString("url")
         }
-        if (url.isBlank()) throw IllegalStateException("URL Supabase manquante")
-        Log.d(TAG, "Uploaded to Supabase: $path → $url")
+        if (url.isBlank()) throw IllegalStateException("Reponse Supabase vide ou URL manquante")
+        Log.d(TAG, "Uploaded: $path -> $url")
         path to url
     }
 
@@ -238,10 +253,13 @@ class ReportRepository @Inject constructor(
         fileName: String,
         contenu: String
     ): Result<Unit> = runCatching {
+        val current = authRepository.getCurrentUserProfile()
+            ?: throw IllegalStateException("Utilisateur non connecte")
         val recipientProfile = authRepository.getUserProfile(recipientUid)
             ?: throw IllegalStateException("Destinataire introuvable")
-        val convResult = messagerieRepository.creerConversation(recipientProfile)
-        val convId = convResult.getOrThrow()
+        val convId = messagerieRepository
+            .findOrCreateConversationWith(current, recipientProfile)
+            .getOrThrow()
         messagerieRepository.envoyerMessageAvecPieceJointe(
             conversationId = convId,
             contenu = contenu,

@@ -55,6 +55,7 @@ class ReportViewModel @Inject constructor(
         it.copy(selectedRecipient = p, emailOverride = p?.email ?: it.emailOverride)
     }
     fun clearMessages() = _uiState.update { it.copy(error = null, info = null) }
+    fun clearInfo() = _uiState.update { it.copy(info = null) }
 
     fun loadAsPatient() {
         viewModelScope.launch {

@@ -47,9 +47,11 @@ fun ReportsScreen(
     LaunchedEffect(role) {
         if (isPatient) viewModel.loadAsPatient() else viewModel.loadAsDoctor()
     }
-    LaunchedEffect(state.info, state.error) {
-        state.info?.let { snackbar.showSnackbar(it); viewModel.clearMessages() }
-        state.error?.let { snackbar.showSnackbar("⚠ $it"); viewModel.clearMessages() }
+    LaunchedEffect(state.info) {
+        state.info?.let {
+            snackbar.showSnackbar(it)
+            viewModel.clearInfo()
+        }
     }
 
     Scaffold(
@@ -73,6 +75,27 @@ fun ReportsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // Bandeau d'erreur persistant (pas un simple snackbar) pour qu'on
+            // puisse lire/recopier le message complet en cas de bug.
+            state.error?.let { msg ->
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text("⚠ Erreur", fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(4.dp))
+                        Text(msg, fontSize = 12.sp)
+                        Spacer(Modifier.height(6.dp))
+                        TextButton(onClick = viewModel::clearMessages) {
+                            Text("Masquer")
+                        }
+                    }
+                }
+            }
+
             if (isPatient) PatientReportSection(state, viewModel)
             else DoctorReportSection(state, viewModel)
 
