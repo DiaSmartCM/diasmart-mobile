@@ -10,6 +10,8 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -167,19 +169,32 @@ class ReportRepository @Inject constructor(
      * On reste sur Spark Firebase ; le binaire vit dans le bucket public Supabase
      * `diasmart-files` (1 GB free, sans carte). Retourne (path, publicUrl).
      */
-    suspend fun uploadReport(file: File): Result<Pair<String, String>> = runCatching {
+    /**
+     * IMPORTANT : tout le bloc IO (lecture fichier + token + reseau) est
+     * deplace sur Dispatchers.IO. Avant on heritait du dispatcher de l'appelant
+     * (viewModelScope = Main) ce qui declenchait NetworkOnMainThreadException
+     * sur l'execute() bloquant de OkHttp.
+     */
+    suspend fun uploadReport(file: File): Result<Pair<String, String>> =
+        withContext(Dispatchers.IO) {
+            runCatching { doUploadReport(file) }
+        }
+
+    private suspend fun doUploadReport(file: File): Pair<String, String> {
         if (!file.exists() || file.length() == 0L) {
             throw IllegalStateException("Fichier PDF invalide (existe=${file.exists()}, taille=${file.length()})")
         }
         Log.d(TAG, "uploadReport: file=${file.name} size=${file.length()} bytes")
 
-        // Etape 1 : token Firebase (force refresh)
+        // Etape 1 : token Firebase. On NE force PAS le refresh (forceRefresh=true
+        // declenche un round-trip serveur qui peut timeout sur reseau MTN).
+        // Le token cache est suffisant ; Firebase auto-refresh si expire bientot.
         val idToken = try {
-            auth.currentUser?.getIdToken(true)?.await()?.token
+            auth.currentUser?.getIdToken(false)?.await()?.token
                 ?: throw IllegalStateException("Aucun utilisateur connecte")
         } catch (e: Exception) {
             throw IllegalStateException(
-                "Echec recuperation token Firebase: ${e::class.java.simpleName}: ${e.message ?: "(network ?)"}",
+                "Echec recuperation token Firebase: ${e::class.java.simpleName}: ${e.message ?: "(reseau)"}",
                 e
             )
         }
@@ -202,7 +217,7 @@ class ReportRepository @Inject constructor(
             .post(payload.toRequestBody(JSON_MEDIA))
             .build()
 
-        // Etape 3 : appel reseau (wrap explicite pour ne jamais retourner null)
+        // Etape 3 : appel reseau (deja sur Dispatchers.IO grace a withContext)
         val (path, url) = try {
             httpClient.newCall(req).execute().use { resp ->
                 val body = resp.body?.string().orEmpty()
@@ -227,7 +242,7 @@ class ReportRepository @Inject constructor(
 
         if (url.isBlank()) throw IllegalStateException("URL Supabase manquante dans la reponse")
         Log.d(TAG, "Uploaded: $path -> $url")
-        path to url
+        return path to url
     }
 
     /**
@@ -239,24 +254,26 @@ class ReportRepository @Inject constructor(
         bodyHtml: String,
         downloadUrl: String,
         fileName: String
-    ): Result<Unit> = runCatching {
-        val idToken = auth.currentUser?.getIdToken(false)?.await()?.token
-            ?: throw IllegalStateException("ID token indisponible")
-        val payload = JSONObject().apply {
-            put("toEmail", toEmail)
-            put("subject", subject)
-            put("bodyHtml", bodyHtml)
-            put("downloadUrl", downloadUrl)
-            put("fileName", fileName)
-        }.toString()
-        val req = Request.Builder()
-            .url(SEND_EMAIL_URL)
-            .addHeader("Authorization", "Bearer $idToken")
-            .post(payload.toRequestBody(JSON_MEDIA))
-            .build()
-        httpClient.newCall(req).execute().use { resp ->
-            if (!resp.isSuccessful) {
-                throw IllegalStateException("Email HTTP ${resp.code}: ${resp.body?.string()?.take(200)}")
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            val idToken = auth.currentUser?.getIdToken(false)?.await()?.token
+                ?: throw IllegalStateException("ID token indisponible")
+            val payload = JSONObject().apply {
+                put("toEmail", toEmail)
+                put("subject", subject)
+                put("bodyHtml", bodyHtml)
+                put("downloadUrl", downloadUrl)
+                put("fileName", fileName)
+            }.toString()
+            val req = Request.Builder()
+                .url(SEND_EMAIL_URL)
+                .addHeader("Authorization", "Bearer $idToken")
+                .post(payload.toRequestBody(JSON_MEDIA))
+                .build()
+            httpClient.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) {
+                    throw IllegalStateException("Email HTTP ${resp.code}: ${resp.body?.string()?.take(200)}")
+                }
             }
         }
     }
