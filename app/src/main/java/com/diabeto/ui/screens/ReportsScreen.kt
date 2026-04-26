@@ -1,7 +1,9 @@
 package com.diabeto.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -277,6 +279,8 @@ private fun RecipientSection(
 @Composable
 private fun HistorySection(state: com.diabeto.ui.viewmodel.ReportUiState) {
     if (state.history.isEmpty()) return
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -289,7 +293,14 @@ private fun HistorySection(state: com.diabeto.ui.viewmodel.ReportUiState) {
             state.history.take(20).forEach { r ->
                 Card(
                     shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                        .clickable(enabled = r.fileUrl.isNotBlank()) {
+                            scope.launch {
+                                com.diabeto.util.PdfOpener.open(context, r.fileUrl, r.fileName)
+                            }
+                        }
                 ) {
                     Column(Modifier.padding(10.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {

@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import com.diabeto.data.model.Conversation
 import com.diabeto.data.model.Message
 import com.diabeto.data.model.UserProfile
@@ -458,6 +459,7 @@ fun ConversationDetailScreen(
 @Composable
 private fun ChatMessageBubble(message: Message, isCurrentUser: Boolean) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = rememberCoroutineScope()
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = if (isCurrentUser) Alignment.End else Alignment.Start
@@ -494,14 +496,12 @@ private fun ChatMessageBubble(message: Message, isCurrentUser: Boolean) {
                         color = if (isCurrentUser) Color.White.copy(alpha = 0.18f) else Color(0xFFF3F0FF),
                         modifier = Modifier
                             .clickable {
-                                runCatching {
-                                    val intent = android.content.Intent(
-                                        android.content.Intent.ACTION_VIEW,
-                                        android.net.Uri.parse(message.attachmentUrl)
-                                    ).apply {
-                                        addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                                    }
-                                    context.startActivity(intent)
+                                scope.launch {
+                                    com.diabeto.util.PdfOpener.open(
+                                        context = context,
+                                        url = message.attachmentUrl,
+                                        fileName = message.attachmentName
+                                    )
                                 }
                             }
                     ) {
