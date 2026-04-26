@@ -92,6 +92,15 @@ class ReportViewModel @Inject constructor(
         }
     }
 
+    private fun describeError(e: Throwable): String {
+        val cls = e::class.java.simpleName
+        val msg = e.message?.takeIf { it.isNotBlank() } ?: "(pas de message)"
+        val cause = e.cause?.let { c ->
+            " | cause: ${c::class.java.simpleName}: ${c.message ?: "(pas de message)"}"
+        } ?: ""
+        return "$cls: $msg$cause"
+    }
+
     /** Genere + envoie un rapport patient (auto-export). */
     fun generateAndSendPatient() {
         val state = _uiState.value
@@ -99,7 +108,8 @@ class ReportViewModel @Inject constructor(
             _uiState.update { it.copy(isGenerating = true, error = null, info = null) }
             val fileResult = reportRepository.buildPatientReport(state.period)
             val file = fileResult.getOrElse { e ->
-                _uiState.update { it.copy(isGenerating = false, error = "Generation echouee: ${e.message}") }
+                Log.e(TAG, "Generation echouee", e)
+                _uiState.update { it.copy(isGenerating = false, error = "Generation echouee: ${describeError(e)}") }
                 return@launch
             }
             _uiState.update { it.copy(isGenerating = false, lastFile = file, isSending = true) }
@@ -128,7 +138,8 @@ class ReportViewModel @Inject constructor(
                 recommandations = state.recommandations
             )
             val file = fileResult.getOrElse { e ->
-                _uiState.update { it.copy(isGenerating = false, error = "Generation echouee: ${e.message}") }
+                Log.e(TAG, "Generation echouee", e)
+                _uiState.update { it.copy(isGenerating = false, error = "Generation echouee: ${describeError(e)}") }
                 return@launch
             }
             _uiState.update { it.copy(isGenerating = false, lastFile = file, isSending = true) }
@@ -139,7 +150,8 @@ class ReportViewModel @Inject constructor(
     private suspend fun sendReport(file: File, state: ReportUiState, type: String, periodLabel: String) {
         val uploadResult = reportRepository.uploadReport(file)
         val (_, downloadUrl) = uploadResult.getOrElse { e ->
-            _uiState.update { it.copy(isSending = false, error = "Upload echoue: ${e.message}") }
+            Log.e(TAG, "Upload echoue (file=${file.name} size=${file.length()})", e)
+            _uiState.update { it.copy(isSending = false, error = "Upload echoue: ${describeError(e)}") }
             return
         }
         _uiState.update { it.copy(lastFileUrl = downloadUrl) }

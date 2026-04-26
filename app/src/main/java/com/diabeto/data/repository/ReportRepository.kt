@@ -173,18 +173,22 @@ class ReportRepository @Inject constructor(
         }
         Log.d(TAG, "uploadReport: file=${file.name} size=${file.length()} bytes")
 
-        // Force refresh du token au cas ou la session serait stale (problemes
-        // observes cote patient).
-        val idToken = auth.currentUser?.getIdToken(true)?.await()?.token
-            ?: throw IllegalStateException("ID token indisponible (pas connecte ?)")
-
-        val bytes = file.readBytes()
-        // Vercel Hobby = ~4.5 MB body limit. Base64 = +33%, donc raw < 3.3 MB.
-        // En pratique nos PDFs sont < 200 KB donc OK, mais on garde la check.
-        if (bytes.size > 3 * 1024 * 1024) {
-            throw IllegalStateException("Fichier trop volumineux pour l'upload (${bytes.size} octets, max 3 MB)")
+        // Etape 1 : token Firebase (force refresh)
+        val idToken = try {
+            auth.currentUser?.getIdToken(true)?.await()?.token
+                ?: throw IllegalStateException("Aucun utilisateur connecte")
+        } catch (e: Exception) {
+            throw IllegalStateException(
+                "Echec recuperation token Firebase: ${e::class.java.simpleName}: ${e.message ?: "(network ?)"}",
+                e
+            )
         }
 
+        // Etape 2 : preparation du payload
+        val bytes = file.readBytes()
+        if (bytes.size > 3 * 1024 * 1024) {
+            throw IllegalStateException("Fichier trop volumineux (${bytes.size} octets, max 3 MB)")
+        }
         val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
         val payload = JSONObject().apply {
             put("folder", "reports")
@@ -197,16 +201,31 @@ class ReportRepository @Inject constructor(
             .addHeader("Authorization", "Bearer $idToken")
             .post(payload.toRequestBody(JSON_MEDIA))
             .build()
-        val (path, url) = httpClient.newCall(req).execute().use { resp ->
-            val body = resp.body?.string().orEmpty()
-            if (!resp.isSuccessful) {
-                Log.e(TAG, "Upload HTTP ${resp.code}: $body")
-                throw IllegalStateException("HTTP ${resp.code} — ${body.take(300)}")
+
+        // Etape 3 : appel reseau (wrap explicite pour ne jamais retourner null)
+        val (path, url) = try {
+            httpClient.newCall(req).execute().use { resp ->
+                val body = resp.body?.string().orEmpty()
+                if (!resp.isSuccessful) {
+                    Log.e(TAG, "Upload HTTP ${resp.code}: $body")
+                    throw IllegalStateException("HTTP ${resp.code} — ${body.take(300)}")
+                }
+                if (body.isBlank()) {
+                    throw IllegalStateException("Reponse Vercel vide (HTTP ${resp.code})")
+                }
+                val json = JSONObject(body)
+                json.optString("path") to json.optString("url")
             }
-            val json = JSONObject(body)
-            json.optString("path") to json.optString("url")
+        } catch (e: java.io.IOException) {
+            throw IllegalStateException(
+                "Reseau indisponible pour l'upload: ${e::class.java.simpleName}: ${e.message ?: "(connexion interrompue)"}",
+                e
+            )
+        } catch (e: org.json.JSONException) {
+            throw IllegalStateException("Reponse Vercel non JSON: ${e.message ?: "(parse error)"}", e)
         }
-        if (url.isBlank()) throw IllegalStateException("Reponse Supabase vide ou URL manquante")
+
+        if (url.isBlank()) throw IllegalStateException("URL Supabase manquante dans la reponse")
         Log.d(TAG, "Uploaded: $path -> $url")
         path to url
     }
