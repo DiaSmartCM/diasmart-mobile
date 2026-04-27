@@ -297,9 +297,7 @@ private fun HistorySection(state: com.diabeto.ui.viewmodel.ReportUiState) {
                         .fillMaxWidth()
                         .padding(vertical = 4.dp)
                         .clickable(enabled = r.fileUrl.isNotBlank()) {
-                            scope.launch {
-                                com.diabeto.util.PdfOpener.open(context, r.fileUrl, r.fileName)
-                            }
+                            com.diabeto.util.PdfOpener.openInBrowser(context, r.fileUrl)
                         }
                 ) {
                     Column(Modifier.padding(10.dp)) {

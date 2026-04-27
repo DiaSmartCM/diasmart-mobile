@@ -459,7 +459,41 @@ fun ConversationDetailScreen(
 @Composable
 private fun ChatMessageBubble(message: Message, isCurrentUser: Boolean) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val scope = rememberCoroutineScope()
+    var showAttachmentDialog by remember { mutableStateOf(false) }
+
+    if (showAttachmentDialog && message.hasAttachment) {
+        AlertDialog(
+            onDismissRequest = { showAttachmentDialog = false },
+            title = {
+                Text(
+                    message.attachmentName.ifBlank { "Document PDF" },
+                    fontWeight = FontWeight.SemiBold
+                )
+            },
+            text = { Text("Comment voulez-vous ouvrir ce document ?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    com.diabeto.util.PdfOpener.openInBrowser(context, message.attachmentUrl)
+                    showAttachmentDialog = false
+                }) { Text("Ouvrir dans le navigateur") }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = {
+                        com.diabeto.util.PdfOpener.downloadToDownloads(
+                            context, message.attachmentUrl, message.attachmentName
+                        )
+                        showAttachmentDialog = false
+                    }) { Text("Telecharger") }
+                    TextButton(onClick = {
+                        com.diabeto.util.PdfOpener.copyLink(context, message.attachmentUrl)
+                        showAttachmentDialog = false
+                    }) { Text("Copier le lien") }
+                }
+            }
+        )
+    }
+
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = if (isCurrentUser) Alignment.End else Alignment.Start
@@ -494,16 +528,7 @@ private fun ChatMessageBubble(message: Message, isCurrentUser: Boolean) {
                     Surface(
                         shape = RoundedCornerShape(10.dp),
                         color = if (isCurrentUser) Color.White.copy(alpha = 0.18f) else Color(0xFFF3F0FF),
-                        modifier = Modifier
-                            .clickable {
-                                scope.launch {
-                                    com.diabeto.util.PdfOpener.open(
-                                        context = context,
-                                        url = message.attachmentUrl,
-                                        fileName = message.attachmentName
-                                    )
-                                }
-                            }
+                        modifier = Modifier.clickable { showAttachmentDialog = true }
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
