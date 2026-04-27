@@ -5,4 +5,6 @@
     <!-- PDFs telecharges depuis Supabase pour ouverture in-app -->
     <cache-path name="reports_cache" path="reports/" />
     <cache-path name="downloads_cache" path="downloads/" />
+    <!-- FileOpener cache (PDF, image, doc, xlsx...) -->
+    <cache-path name="attachments_cache" path="attachments/" />
 </paths>

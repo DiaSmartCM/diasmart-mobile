@@ -308,6 +308,97 @@ class ReportRepository @Inject constructor(
     /**
      * Persiste le rapport dans /reports/{ownerUid}/items/{id} pour l'historique.
      */
+    /**
+     * Upload d'un fichier local choisi par l'utilisateur (PDF, image, Word,
+     * Excel...) via le picker systeme. On reutilise l'endpoint Vercel
+     * /api/upload-supabase mais avec un folder=`shared` et le contentType
+     * detecte par le ContentResolver Android.
+     *
+     * Retourne (publicUrl, fileName, sizeBytes).
+     */
+    suspend fun uploadLocalFile(uri: android.net.Uri): Result<Triple<String, String, Long>> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val cr = context.contentResolver
+                val mimeType = cr.getType(uri) ?: "application/octet-stream"
+                // Nom du fichier via DISPLAY_NAME du curseur (ContentResolver)
+                val fileName = cr.query(
+                    uri,
+                    arrayOf(android.provider.OpenableColumns.DISPLAY_NAME, android.provider.OpenableColumns.SIZE),
+                    null, null, null
+                )?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        cursor.getString(0) ?: "fichier"
+                    } else "fichier"
+                } ?: "fichier"
+
+                val bytes = cr.openInputStream(uri)?.use { it.readBytes() }
+                    ?: throw IllegalStateException("Lecture du fichier impossible")
+                if (bytes.isEmpty()) throw IllegalStateException("Fichier vide")
+                if (bytes.size > 10 * 1024 * 1024) {
+                    throw IllegalStateException("Fichier > 10 MB (taille = ${bytes.size / 1024} KB)")
+                }
+                if (bytes.size > 3 * 1024 * 1024) {
+                    throw IllegalStateException(
+                        "Fichier ${bytes.size / 1024} KB depasse la limite Vercel (3 MB). " +
+                            "Reduisez la taille."
+                    )
+                }
+
+                val idToken = auth.currentUser?.getIdToken(false)?.await()?.token
+                    ?: throw IllegalStateException("Aucun utilisateur connecte")
+
+                val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
+                val payload = JSONObject().apply {
+                    put("folder", "shared")
+                    put("fileName", fileName)
+                    put("contentType", mimeType)
+                    put("base64", base64)
+                }.toString()
+                val req = Request.Builder()
+                    .url(UPLOAD_URL)
+                    .addHeader("Authorization", "Bearer $idToken")
+                    .post(payload.toRequestBody(JSON_MEDIA))
+                    .build()
+                val publicUrl = httpClient.newCall(req).execute().use { resp ->
+                    val body = resp.body?.string().orEmpty()
+                    if (!resp.isSuccessful) {
+                        throw IllegalStateException("HTTP ${resp.code}: ${body.take(200)}")
+                    }
+                    JSONObject(body).optString("url")
+                }
+                if (publicUrl.isBlank()) throw IllegalStateException("URL de retour vide")
+                Triple(publicUrl, fileName, bytes.size.toLong())
+            }
+        }
+
+    /**
+     * Combine upload d'un fichier local + envoi messagerie au destinataire.
+     */
+    suspend fun shareLocalFileToRecipient(
+        uri: android.net.Uri,
+        recipientUid: String,
+        commentaire: String
+    ): Result<Unit> = runCatching {
+        val (publicUrl, fileName, _) = uploadLocalFile(uri).getOrThrow()
+        val cr = context.contentResolver
+        val contentType = cr.getType(uri) ?: "application/octet-stream"
+        val current = authRepository.getCurrentUserProfile()
+            ?: throw IllegalStateException("Non connecte")
+        val recipientProfile = authRepository.getUserProfile(recipientUid)
+            ?: throw IllegalStateException("Destinataire introuvable")
+        val convId = messagerieRepository
+            .findOrCreateConversationWith(current, recipientProfile)
+            .getOrThrow()
+        messagerieRepository.envoyerMessageAvecPieceJointe(
+            conversationId = convId,
+            contenu = commentaire,
+            attachmentUrl = publicUrl,
+            attachmentName = fileName,
+            attachmentType = contentType
+        ).getOrThrow()
+    }
+
     suspend fun recordReport(record: ReportRecord): Result<String> = runCatching {
         val owner = record.ownerUid.ifBlank { auth.currentUser?.uid.orEmpty() }
         require(owner.isNotBlank()) { "ownerUid manquant" }

@@ -2,6 +2,7 @@ package com.diabeto.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -456,42 +457,73 @@ fun ConversationDetailScreen(
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun ChatMessageBubble(message: Message, isCurrentUser: Boolean) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    var showAttachmentDialog by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    var showFallbackDialog by remember { mutableStateOf(false) }
+    var isOpening by remember { mutableStateOf(false) }
 
-    if (showAttachmentDialog && message.hasAttachment) {
+    // Dialog de fallback (long press OU echec d'ouverture native)
+    if (showFallbackDialog && message.hasAttachment) {
         AlertDialog(
-            onDismissRequest = { showAttachmentDialog = false },
+            onDismissRequest = { showFallbackDialog = false },
             title = {
                 Text(
-                    message.attachmentName.ifBlank { "Document PDF" },
+                    message.attachmentName.ifBlank { "Document" },
                     fontWeight = FontWeight.SemiBold
                 )
             },
             text = { Text("Comment voulez-vous ouvrir ce document ?") },
             confirmButton = {
                 TextButton(onClick = {
-                    com.diabeto.util.PdfOpener.openInBrowser(context, message.attachmentUrl)
-                    showAttachmentDialog = false
-                }) { Text("Ouvrir dans le navigateur") }
+                    com.diabeto.util.FileOpener.openInBrowser(context, message.attachmentUrl)
+                    showFallbackDialog = false
+                }) { Text("Navigateur") }
             },
             dismissButton = {
                 Row {
                     TextButton(onClick = {
-                        com.diabeto.util.PdfOpener.downloadToDownloads(
+                        com.diabeto.util.FileOpener.downloadToDownloads(
                             context, message.attachmentUrl, message.attachmentName
                         )
-                        showAttachmentDialog = false
+                        showFallbackDialog = false
                     }) { Text("Telecharger") }
                     TextButton(onClick = {
-                        com.diabeto.util.PdfOpener.copyLink(context, message.attachmentUrl)
-                        showAttachmentDialog = false
+                        com.diabeto.util.FileOpener.copyLink(context, message.attachmentUrl)
+                        showFallbackDialog = false
                     }) { Text("Copier le lien") }
                 }
             }
         )
+    }
+
+    fun openAttachment() {
+        if (isOpening) return
+        scope.launch {
+            isOpening = true
+            try {
+                val result = com.diabeto.util.FileOpener.openOrCache(
+                    context = context,
+                    url = message.attachmentUrl,
+                    fileName = message.attachmentName.ifBlank { "fichier" },
+                    mimeType = message.attachmentType
+                )
+                when (result) {
+                    is com.diabeto.util.FileOpener.OpenResult.Opened -> Unit
+                    is com.diabeto.util.FileOpener.OpenResult.NoViewer -> {
+                        // Pas d'app installee pour cette MIME → fallback browser
+                        com.diabeto.util.FileOpener.openInBrowser(context, result.sourceUrl)
+                    }
+                    is com.diabeto.util.FileOpener.OpenResult.Error -> {
+                        showFallbackDialog = true
+                    }
+                }
+            } finally {
+                isOpening = false
+            }
+        }
     }
 
     Column(
@@ -525,24 +557,43 @@ private fun ChatMessageBubble(message: Message, isCurrentUser: Boolean) {
                 }
                 if (message.hasAttachment) {
                     if (message.contenu.isNotBlank()) Spacer(Modifier.height(8.dp))
+                    val pdfLike = message.attachmentType.startsWith("application/pdf", ignoreCase = true)
+                        || message.attachmentName.endsWith(".pdf", ignoreCase = true)
+                    val imageLike = message.attachmentType.startsWith("image/", ignoreCase = true)
+                    val attachIcon = when {
+                        pdfLike -> androidx.compose.material.icons.Icons.Default.PictureAsPdf
+                        imageLike -> androidx.compose.material.icons.Icons.Default.Image
+                        else -> androidx.compose.material.icons.Icons.Default.AttachFile
+                    }
                     Surface(
                         shape = RoundedCornerShape(10.dp),
                         color = if (isCurrentUser) Color.White.copy(alpha = 0.18f) else Color(0xFFF3F0FF),
-                        modifier = Modifier.clickable { showAttachmentDialog = true }
+                        modifier = Modifier.combinedClickable(
+                            onClick = { openAttachment() },
+                            onLongClick = { showFallbackDialog = true }
+                        )
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)
                         ) {
                             Icon(
-                                imageVector = androidx.compose.material.icons.Icons.Default.PictureAsPdf,
+                                imageVector = attachIcon,
                                 contentDescription = null,
                                 tint = if (isCurrentUser) Color.White else Primary,
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(Modifier.width(6.dp))
+                            if (isOpening) {
+                                CircularProgressIndicator(
+                                    strokeWidth = 1.5.dp,
+                                    modifier = Modifier.size(14.dp),
+                                    color = if (isCurrentUser) Color.White else Primary
+                                )
+                                Spacer(Modifier.width(6.dp))
+                            }
                             Text(
-                                text = message.attachmentName.ifBlank { "Document PDF" },
+                                text = message.attachmentName.ifBlank { "Document" },
                                 color = if (isCurrentUser) Color.White else OnSurface,
                                 style = MaterialTheme.typography.bodySmall,
                                 fontWeight = FontWeight.Medium

@@ -92,6 +92,38 @@ class ReportViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Upload + envoi d'un fichier local (PDF, image, Word, Excel...)
+     * choisi via le picker systeme. Disponible cote medecin ET patient.
+     * Reutilise le destinataire selectionne dans l'UI.
+     */
+    fun shareLocalFile(uri: android.net.Uri, comment: String) {
+        val state = _uiState.value
+        val recipient = state.selectedRecipient
+        if (recipient == null) {
+            _uiState.update { it.copy(error = "Selectionnez un destinataire avant d'envoyer le fichier.") }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSending = true, error = null, info = null) }
+            val result = reportRepository.shareLocalFileToRecipient(uri, recipient.uid, comment)
+            result.fold(
+                onSuccess = {
+                    _uiState.update {
+                        it.copy(isSending = false, info = "Fichier envoye a ${recipient.nomComplet}")
+                    }
+                    loadHistory()
+                },
+                onFailure = { e ->
+                    Log.e(TAG, "shareLocalFile failed", e)
+                    _uiState.update {
+                        it.copy(isSending = false, error = "Envoi fichier echoue: ${describeError(e)}")
+                    }
+                }
+            )
+        }
+    }
+
     private fun describeError(e: Throwable): String {
         val cls = e::class.java.simpleName
         val msg = e.message?.takeIf { it.isNotBlank() } ?: "(pas de message)"

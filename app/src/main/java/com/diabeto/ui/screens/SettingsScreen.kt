@@ -69,22 +69,7 @@ fun SettingsScreen(
     var isBackingUp by remember { mutableStateOf(false) }
     var isDeletingAccount by remember { mutableStateOf(false) }
 
-    // Launcher pour selectionner un document (PDF, image) a partager avec un patient
-    val shareDocumentLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
-        if (uri != null) {
-            val mimeType = context.contentResolver.getType(uri) ?: "application/octet-stream"
-            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                type = mimeType
-                putExtra(Intent.EXTRA_STREAM, uri)
-                putExtra(Intent.EXTRA_SUBJECT, "Document medical DiaSmart")
-                putExtra(Intent.EXTRA_TEXT, "Bonjour,\n\nVeuillez trouver ci-joint un document (diagnostic, resultats, ordonnance) transmis par votre medecin via DiaSmart.\n\nCordialement")
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            context.startActivity(Intent.createChooser(shareIntent, "Envoyer au patient"))
-        }
-    }
+    // (Partage de fichier deplace dans l'ecran "Compte-rendu / Ordonnance".)
 
     // DayLife-inspired colors
     val screenBg = if (isDark) DarkBackground else Color(0xFFF7F8FC)
@@ -341,55 +326,9 @@ fun SettingsScreen(
                 }
             }
 
-            // ── Partage medecin -> patient (medecin uniquement) ─
-            if (uiState.isMedecin) {
-                item {
-                    DayLifeSectionHeader(
-                        title = "Partage avec un patient",
-                        color = sectionTextColor,
-                        isDark = isDark
-                    )
-                }
-                item {
-                    DayLifeSettingsCard(cardBg = cardBg) {
-                        DayLifeSettingsItem(
-                            icon = Icons.Default.PictureAsPdf,
-                            iconBg = Color(0xFFEF4444),
-                            title = "Envoyer un PDF au patient",
-                            subtitle = "Diagnostic, examens, ordonnance",
-                            titleColor = titleColor,
-                            subtitleColor = subtitleColor,
-                            onClick = {
-                                shareDocumentLauncher.launch(arrayOf("application/pdf"))
-                            }
-                        )
-                        DayLifeDivider(dividerColor)
-                        DayLifeSettingsItem(
-                            icon = Icons.Default.Image,
-                            iconBg = Color(0xFF8B5CF6),
-                            title = "Envoyer une image au patient",
-                            subtitle = "Resultats d'examens, radiographie",
-                            titleColor = titleColor,
-                            subtitleColor = subtitleColor,
-                            onClick = {
-                                shareDocumentLauncher.launch(arrayOf("image/*"))
-                            }
-                        )
-                        DayLifeDivider(dividerColor)
-                        DayLifeSettingsItem(
-                            icon = Icons.Default.AttachFile,
-                            iconBg = Color(0xFF3B82F6),
-                            title = "Envoyer un autre document",
-                            subtitle = "Tout type de fichier",
-                            titleColor = titleColor,
-                            subtitleColor = subtitleColor,
-                            onClick = {
-                                shareDocumentLauncher.launch(arrayOf("*/*"))
-                            }
-                        )
-                    }
-                }
-            }
+            // ── (Section "Partage avec un patient" deplacee vers l'ecran
+            //     "Compte-rendu / Ordonnance" : envoi via la messagerie
+            //     in-app au lieu du share Android natif.) ─
 
             // ── IA hors-ligne (patient uniquement) ───────────
             if (!uiState.isMedecin) {

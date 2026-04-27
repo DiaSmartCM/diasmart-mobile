@@ -1,5 +1,8 @@
 package com.diabeto.ui.screens
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -9,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Forum
@@ -103,6 +107,10 @@ fun ReportsScreen(
 
             // Destinataire + canaux (commun)
             RecipientSection(state, viewModel, isPatient)
+
+            // Partage d'un fichier local (PDF, image, Word, Excel...) deja
+            // present sur le telephone — alternative au PDF auto-genere.
+            ShareLocalFileSection(state, viewModel, isPatient)
 
             // Bouton Generer
             Button(
@@ -271,6 +279,122 @@ private fun RecipientSection(
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = { Text("destinataire@example.com") }
                 )
+            }
+        }
+    }
+}
+
+/**
+ * Permet a l'utilisateur de choisir un fichier local (PDF, image, Word,
+ * Excel, etc.) deja present sur son telephone et de l'envoyer via la
+ * messagerie. Reutilise le destinataire selectionne dans RecipientSection.
+ */
+@Composable
+private fun ShareLocalFileSection(
+    state: com.diabeto.ui.viewmodel.ReportUiState,
+    vm: ReportViewModel,
+    isPatient: Boolean
+) {
+    var commentaire by remember { mutableStateOf("") }
+    var pickedUri by remember { mutableStateOf<Uri?>(null) }
+    var pickedName by remember { mutableStateOf<String?>(null) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            // On persiste l'autorisation de lecture pour ne pas perdre l'acces
+            // si l'utilisateur quitte la screen et revient.
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(
+                    uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            }
+            pickedUri = uri
+            pickedName = context.contentResolver
+                .query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
+                ?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
+        }
+    }
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.AttachFile, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    if (isPatient) "Joindre un fichier (resultats, ordonnance, photo...)"
+                    else "Joindre un fichier (ordonnance, examens, photo...)",
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            Text(
+                "PDF, image, Word, Excel, ou n'importe quel fichier deja present sur le telephone. Limite : 3 MB.",
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            OutlinedButton(
+                onClick = {
+                    launcher.launch(arrayOf(
+                        "application/pdf",
+                        "image/*",
+                        "application/msword",
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        "application/vnd.ms-excel",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        "text/csv",
+                        "text/plain",
+                        "*/*"
+                    ))
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.AttachFile, contentDescription = null)
+                Spacer(Modifier.width(6.dp))
+                Text(if (pickedUri == null) "Choisir un fichier" else "Changer de fichier")
+            }
+            pickedName?.let { name ->
+                Text(
+                    "📎 $name",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            OutlinedTextField(
+                value = commentaire,
+                onValueChange = { commentaire = it },
+                label = { Text("Commentaire (optionnel)") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Button(
+                onClick = {
+                    val uri = pickedUri ?: return@Button
+                    vm.shareLocalFile(uri, commentaire)
+                },
+                enabled = pickedUri != null
+                    && state.selectedRecipient != null
+                    && !state.isSending
+                    && !state.isGenerating,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (state.isSending) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("Envoi...")
+                } else {
+                    Icon(Icons.Default.Send, contentDescription = null)
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        if (isPatient) "Envoyer ce fichier au medecin"
+                        else "Envoyer ce fichier au patient"
+                    )
+                }
             }
         }
     }
