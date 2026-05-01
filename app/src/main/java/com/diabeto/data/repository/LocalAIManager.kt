@@ -134,7 +134,7 @@ class LocalAIManager @Inject constructor(
                 Log.d(TAG, "Initializing local Gemma model on $label backend...")
                 val options = LlmInference.LlmInferenceOptions.builder()
                     .setModelPath(getModelPath())
-                    .setMaxTokens(512)
+                    .setMaxTokens(256)
                     .setPreferredBackend(backend)
                     .build()
 

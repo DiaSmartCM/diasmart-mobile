@@ -6,12 +6,15 @@ import androidx.lifecycle.viewModelScope
 import com.diabeto.data.entity.ContexteGlucose
 import com.diabeto.data.entity.LectureGlucoseEntity
 import com.diabeto.data.model.ChatbotMessage
+import com.diabeto.data.model.ConsentStatus
 import com.diabeto.data.model.RepasAnalyse
 import com.diabeto.data.model.RepasDocument
 import com.diabeto.data.repository.ChatHistoryRepository
 import com.diabeto.data.repository.ChatbotRepository
 import com.diabeto.data.repository.AuthRepository
+import com.diabeto.data.repository.DataSharingRepository
 import com.diabeto.data.repository.GlucoseRepository
+import com.diabeto.data.repository.MessagerieRepository
 import com.diabeto.data.repository.PatientRepository
 import com.diabeto.data.repository.RepasRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -78,7 +81,9 @@ class RepasViewModel @Inject constructor(
     private val chatHistoryRepository: ChatHistoryRepository,
     private val authRepository: AuthRepository,
     private val glucoseRepository: GlucoseRepository,
-    private val patientRepository: PatientRepository
+    private val patientRepository: PatientRepository,
+    private val dataSharingRepository: DataSharingRepository,
+    private val messagerieRepository: MessagerieRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RepasUiState())
@@ -293,6 +298,9 @@ class RepasViewModel @Inject constructor(
                     // Sauvegarder dans l'historique ROLLY
                     sauvegarderDansHistoriqueRolly(analyseCorrigee, glycemieAvant, glycemieApres)
 
+                    // Notifier le(s) médecin(s) traitant(s) (non-critique)
+                    notifierMedecinRepas(analyseCorrigee.nomRepas, analyseCorrigee.scoreDiabete)
+
                     // Déterminer si on doit proposer l'intégration glycémie
                     val hasGlycemie = glycemieAvant != null || glycemieApres != null
                     val glycemieAffichee = glycemieApres ?: glycemieAvant
@@ -385,6 +393,35 @@ class RepasViewModel @Inject constructor(
         } catch (e: Exception) {
             // Pas critique si ça échoue — log seulement
             android.util.Log.e("RepasVM", "Erreur sauvegarde historique ROLLY", e)
+        }
+    }
+
+    /**
+     * Envoie un message dans la messagerie de chaque médecin traitant actif
+     * pour l'informer qu'un nouveau repas a ete analyse.
+     * Non-critique : les erreurs sont absorbees silencieusement.
+     */
+    private suspend fun notifierMedecinRepas(nomRepas: String, score: Int) {
+        try {
+            val consents = dataSharingRepository.getMyConsents()
+            val medecinActifs = consents.filter {
+                it.isActive && it.status == ConsentStatus.ACCEPTED
+            }
+            if (medecinActifs.isEmpty()) return
+
+            val currentProfile = authRepository.getCurrentUserProfile() ?: return
+            medecinActifs.forEach { consent ->
+                val medecinProfile = authRepository.getUserProfile(consent.medecinUid) ?: return@forEach
+                val convId = messagerieRepository
+                    .findOrCreateConversationWith(currentProfile, medecinProfile)
+                    .getOrNull() ?: return@forEach
+                messagerieRepository.envoyerMessage(
+                    conversationId = convId,
+                    contenu = "Nouveau repas analyse par ROLLY : \"$nomRepas\" — Score diabete : $score/100"
+                )
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("RepasVM", "notifierMedecinRepas echoue (non-critique): ${e.message}")
         }
     }
 

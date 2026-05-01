@@ -12,13 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AttachFile
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Forum
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.PictureAsPdf
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -102,8 +96,12 @@ fun ReportsScreen(
                 }
             }
 
-            if (isPatient) PatientReportSection(state, viewModel)
-            else DoctorReportSection(state, viewModel)
+            if (isPatient) {
+                PatientReportSection(state, viewModel)
+                ExportCsvSection(state, viewModel)
+            } else {
+                DoctorReportSection(state, viewModel)
+            }
 
             // Destinataire + canaux (commun)
             RecipientSection(state, viewModel, isPatient)
@@ -401,6 +399,66 @@ private fun ShareLocalFileSection(
 }
 
 @Composable
+private fun ExportCsvSection(
+    state: com.diabeto.ui.viewmodel.ReportUiState,
+    vm: ReportViewModel
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    LaunchedEffect(state.exportCsvData) {
+        state.exportCsvData?.let { csv ->
+            val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                type = "text/csv"
+                putExtra(android.content.Intent.EXTRA_TEXT, csv)
+                putExtra(android.content.Intent.EXTRA_SUBJECT, "DiaSmart — Export glycemie CSV")
+            }
+            try {
+                context.startActivity(
+                    android.content.Intent.createChooser(intent, "Exporter CSV via...").apply {
+                        addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                )
+            } catch (_: Exception) {}
+            vm.clearExportCsv()
+        }
+    }
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Share, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Exporter mes donnees (CSV)", fontWeight = FontWeight.SemiBold)
+            }
+            Text(
+                "Exporte vos glycemies et HbA1c au format CSV — compatible Excel, LibreOffice, Google Sheets.",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            OutlinedButton(
+                onClick = vm::exportCsv,
+                enabled = !state.isExportingCsv,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (state.isExportingCsv) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("Preparation...")
+                } else {
+                    Icon(Icons.Default.Share, contentDescription = null)
+                    Spacer(Modifier.width(6.dp))
+                    Text("Exporter et partager CSV")
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun HistorySection(state: com.diabeto.ui.viewmodel.ReportUiState) {
     if (state.history.isEmpty()) return
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -421,12 +479,17 @@ private fun HistorySection(state: com.diabeto.ui.viewmodel.ReportUiState) {
                         .fillMaxWidth()
                         .padding(vertical = 4.dp)
                         .clickable(enabled = r.fileUrl.isNotBlank()) {
-                            com.diabeto.util.FileOpener.downloadOrOpen(
-                                context = context,
-                                url = r.fileUrl,
-                                fileName = r.fileName.ifBlank { "rapport.pdf" },
-                                mimeType = "application/pdf"
-                            )
+                            scope.launch {
+                                val result = com.diabeto.util.FileOpener.openOrCache(
+                                    context = context,
+                                    url = r.fileUrl,
+                                    fileName = r.fileName.ifBlank { "rapport.pdf" },
+                                    mimeType = "application/pdf"
+                                )
+                                if (result !is com.diabeto.util.FileOpener.OpenResult.Opened) {
+                                    com.diabeto.util.FileOpener.openInBrowser(context, r.fileUrl)
+                                }
+                            }
                         }
                 ) {
                     Column(Modifier.padding(10.dp)) {

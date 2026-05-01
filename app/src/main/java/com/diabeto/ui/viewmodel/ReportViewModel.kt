@@ -31,7 +31,9 @@ data class ReportUiState(
     val ordonnance: String = "",
     val compteRendu: String = "",
     val recommandations: String = "",
-    val history: List<ReportRecord> = emptyList()
+    val history: List<ReportRecord> = emptyList(),
+    val exportCsvData: String? = null,
+    val isExportingCsv: Boolean = false
 )
 
 @HiltViewModel
@@ -56,6 +58,24 @@ class ReportViewModel @Inject constructor(
     }
     fun clearMessages() = _uiState.update { it.copy(error = null, info = null) }
     fun clearInfo() = _uiState.update { it.copy(info = null) }
+    fun clearExportCsv() = _uiState.update { it.copy(exportCsvData = null) }
+
+    fun exportCsv() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isExportingCsv = true, error = null) }
+            reportRepository.generateCsvExport().fold(
+                onSuccess = { csv ->
+                    _uiState.update { it.copy(isExportingCsv = false, exportCsvData = csv) }
+                },
+                onFailure = { e ->
+                    Log.e(TAG, "CSV export failed", e)
+                    _uiState.update {
+                        it.copy(isExportingCsv = false, error = "Export CSV echoue: ${e.message}")
+                    }
+                }
+            )
+        }
+    }
 
     fun loadAsPatient() {
         viewModelScope.launch {

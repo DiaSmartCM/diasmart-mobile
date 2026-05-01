@@ -50,6 +50,7 @@ import java.util.*
 import android.Manifest
 import android.content.pm.PackageManager
 import android.widget.Toast
+import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
 
 // ── Theme colors ─────────────────────────────────────────────────────────
@@ -310,52 +311,152 @@ fun RepasAnalyseScreen(
 
     // ── Dialogs ──────────────────────────────────────────────────────────
     if (uiState.showConfirmationDialog) {
-        AlertDialog(
-            onDismissRequest = viewModel::annulerConfirmation,
-            containerColor = Color.White,
-            titleContentColor = TextPrimary,
-            textContentColor = TextSecondary,
-            icon = { Icon(Icons.Default.Warning, null, tint = AccentOrange) },
-            title = { Text("Validation medicale", fontWeight = FontWeight.Bold) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Dialog(onDismissRequest = viewModel::annulerConfirmation) {
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = DarkCard),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    // Header avec icone ROLLY
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = AccentCyan.copy(alpha = 0.15f),
+                            modifier = Modifier.size(46.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Default.Restaurant,
+                                    contentDescription = null,
+                                    tint = AccentCyan,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                        Column {
+                            Text(
+                                "Validation medicale",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 17.sp,
+                                color = Color.White
+                            )
+                            Text(
+                                "ROLLY — Analyse nutritionnelle",
+                                fontSize = 12.sp,
+                                color = AccentCyan
+                            )
+                        }
+                    }
+
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+
+                    // Avertissement IA
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = AccentOrange.copy(alpha = 0.1f)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Info,
+                                contentDescription = null,
+                                tint = AccentOrange,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "Estimations IA — non substituables a un avis medical",
+                                fontSize = 12.sp,
+                                color = AccentOrange
+                            )
+                        }
+                    }
+
+                    // Checklist de verification
                     Text(
-                        "Ces valeurs sont des estimations de l'intelligence artificielle (ROLLY).",
-                        fontWeight = FontWeight.Medium,
-                        color = AccentOrange
-                    )
-                    HorizontalDivider(color = Outline)
-                    Text("Avant d'enregistrer, veuillez verifier que :", color = TextPrimary)
-                    Text("- Le nom du repas est correct", color = TextSecondary)
-                    Text("- Les glucides estimes vous semblent corrects", color = TextSecondary)
-                    Text("- L'index glycemique est coherent", color = TextSecondary)
-                    Text("- Vous avez corrige les valeurs si necessaire", color = TextSecondary)
-                    HorizontalDivider(color = Outline)
-                    Text(
-                        "L'analyse sera aussi enregistree dans l'historique ROLLY.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = AccentCyan,
+                        "Verifiez avant de confirmer :",
+                        fontSize = 13.sp,
+                        color = DimWhite,
                         fontWeight = FontWeight.Medium
                     )
-                    Text(
-                        "Ces donnees ne remplacent pas l'avis de votre medecin ou dieteticien.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextTertiary
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = viewModel::confirmerEtSauvegarder,
-                    colors = ButtonDefaults.buttonColors(containerColor = AccentGreen)
-                ) { Text("Je confirme les valeurs", color = Color.White) }
-            },
-            dismissButton = {
-                TextButton(onClick = viewModel::annulerConfirmation) {
-                    Text("Modifier d'abord", color = AccentCyan)
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(
+                            "Nom du repas identifie correctement",
+                            "Glucides estimes coherents",
+                            "Index glycemique raisonnable",
+                            "Valeurs corrigees si necessaire"
+                        ).forEach { item ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = AccentGreen,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(item, fontSize = 13.sp, color = DimWhite)
+                            }
+                        }
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = AccentCyan.copy(alpha = 0.08f)
+                    ) {
+                        Text(
+                            "L'analyse sera sauvegardee dans l'historique ROLLY et partagee avec votre medecin traitant.",
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            fontSize = 11.sp,
+                            color = AccentCyan
+                        )
+                    }
+
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+
+                    // Boutons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = viewModel::annulerConfirmation,
+                            modifier = Modifier.weight(1f),
+                            border = BorderStroke(1.dp, AccentCyan.copy(alpha = 0.5f)),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = AccentCyan),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Modifier", fontSize = 13.sp)
+                        }
+                        Button(
+                            onClick = viewModel::confirmerEtSauvegarder,
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(containerColor = AccentGreen),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = Color.White
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text("Confirmer", fontSize = 13.sp, color = Color.White)
+                        }
+                    }
                 }
             }
-        )
+        }
     }
 
     if (uiState.showIntegrerGlycemieDialog) {
@@ -734,7 +835,7 @@ private fun AnalyseDrawerItem(
 
                     // Recommandations
                     if (repas.recommandations.isNotEmpty()) {
-                        repas.recommandations.take(2).forEach { r ->
+                        repas.recommandations.forEach { r ->
                             Text("- $r", fontSize = 10.sp, color = DimWhite)
                         }
                     }

@@ -302,15 +302,17 @@ class DataSharingRepository @Inject constructor(
             Log.w("DataSharing", "Accès refusé : pas de consentement pour $patientUid")
             return emptyList()
         }
+        // Glucose est sauvegardé dans backups/{uid}/glucose/ par CloudBackupRepository
         return try {
-            val snap = firestore.collection("glucose")
-                .whereEqualTo("userId", patientUid)
+            val snap = firestore.collection("backups")
+                .document(patientUid)
+                .collection("glucose")
                 .get().await()
             snap.documents.mapNotNull {
                 @Suppress("UNCHECKED_CAST")
                 it.data as? Map<String, Any?>
             }
-        } catch (e: Exception) { Log.w("DataSharing", "Query failed: ${e.message}"); emptyList() }
+        } catch (e: Exception) { Log.w("DataSharing", "Glucose query failed: ${e.message}"); emptyList() }
     }
 
     suspend fun getPatientRepasData(patientUid: String): List<Map<String, Any?>> {
@@ -319,14 +321,16 @@ class DataSharingRepository @Inject constructor(
             Log.w("DataSharing", "Accès refusé : pas de consentement pour $patientUid")
             return emptyList()
         }
+        // Repas est sauvegardé dans users/{uid}/repas/ par RepasRepository
         return try {
-            val snap = firestore.collection("repas")
-                .whereEqualTo("userId", patientUid)
+            val snap = firestore.collection("users")
+                .document(patientUid)
+                .collection("repas")
                 .get().await()
             snap.documents.mapNotNull {
                 @Suppress("UNCHECKED_CAST")
                 it.data as? Map<String, Any?>
             }
-        } catch (e: Exception) { Log.w("DataSharing", "Query failed: ${e.message}"); emptyList() }
+        } catch (e: Exception) { Log.w("DataSharing", "Repas query failed: ${e.message}"); emptyList() }
     }
 }

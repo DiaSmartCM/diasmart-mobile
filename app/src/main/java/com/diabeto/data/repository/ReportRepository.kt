@@ -20,6 +20,7 @@ import org.json.JSONObject
 import java.io.File
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -446,5 +447,32 @@ class ReportRepository @Inject constructor(
         val consents = runCatching { dataSharingRepository.getSharedPatients() }
             .getOrDefault(emptyList())
         return consents.mapNotNull { authRepository.getUserProfile(it.patientUid) }
+    }
+
+    /**
+     * Genere un export CSV des glycemies et HbA1c du patient courant.
+     * Retourne le contenu CSV sous forme de String, pret a etre partage.
+     */
+    suspend fun generateCsvExport(): Result<String> = runCatching {
+        val dateFmt = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
+        val dateFmtShort = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+        val sb = StringBuilder()
+        sb.appendLine("Date,Glycemie (mg/dL),Contexte,HbA1c (%),Type HbA1c")
+        val patients = patientRepository.getAllPatientsList()
+        patients.forEach { patient ->
+            val lectures = glucoseRepository.getLecturesByPatientList(patient.id, 500)
+            lectures.forEach { l ->
+                sb.appendLine(
+                    "${l.dateHeure.format(dateFmt)},${l.valeur.toInt()},${l.contexte.getDisplayName()},,"
+                )
+            }
+            val hba1cList = glucoseRepository.getHbA1cByPatientList(patient.id)
+            hba1cList.forEach { h ->
+                sb.appendLine(
+                    "${h.dateMesure.format(dateFmtShort)},,,${h.valeur},${if (h.estEstimation) "estimee" else "labo"}"
+                )
+            }
+        }
+        sb.toString()
     }
 }

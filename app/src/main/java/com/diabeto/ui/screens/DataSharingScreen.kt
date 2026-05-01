@@ -1,11 +1,8 @@
 package com.diabeto.ui.screens
 
 import android.Manifest
-import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,26 +11,26 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.diabeto.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.diabeto.data.model.ConsentStatus
+import com.diabeto.data.model.DataSharingConsent
 import com.diabeto.data.model.GeoUtils
 import com.diabeto.data.model.UserProfile
 import com.diabeto.ui.theme.*
 import com.diabeto.ui.viewmodel.DataSharingViewModel
+import com.diabeto.ui.viewmodel.DataSharingUiState
 import com.diabeto.ui.viewmodel.DoctorListItem
 import com.diabeto.ui.viewmodel.DoctorSortMode
 
@@ -46,7 +43,15 @@ fun DataSharingScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    var showMedecinDialog by remember { mutableStateOf(false) }
+
+    // Permission GPS pour tri par proximité
+    val locPermLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { granted ->
+        val ok = granted[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                granted[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (ok) viewModel.captureMyLocation()
+    }
 
     LaunchedEffect(uiState.message) {
         uiState.message?.let {
@@ -55,10 +60,15 @@ fun DataSharingScreen(
         }
     }
 
+    LaunchedEffect(Unit) {
+        // Charge la liste des médecins dès l'ouverture pour l'onglet Médecin
+        viewModel.loadMedecins()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.data_sharing_title)) },
+                title = { Text(if (uiState.isPatient) "Médecin" else "Mes patients") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, "Retour")
@@ -69,240 +79,22 @@ fun DataSharingScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            item { Spacer(Modifier.height(4.dp)) }
-
-            // Info carte
-            item {
-                Card(
-                    Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Primary.copy(alpha = 0.08f))
-                ) {
-                    Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Security, null, tint = Primary, modifier = Modifier.size(32.dp))
-                        Spacer(Modifier.width(12.dp))
-                        Column {
-                            Text(stringResource(R.string.data_sharing_control), fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                            Text(
-                                "Vous décidez quelles données partager avec votre médecin. Vous pouvez révoquer l'accès à tout moment.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = OnSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Bouton ajouter un médecin
-            if (uiState.isPatient) {
-                item {
-                    Button(
-                        onClick = { showMedecinDialog = true; viewModel.loadMedecins() },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(Icons.Default.PersonAdd, null, Modifier.size(20.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.data_sharing_share_with_doctor))
-                    }
-                }
-            }
-
-            // Consentements actifs
-            if (uiState.consents.isNotEmpty()) {
-                item {
-                    Text(
-                        if (uiState.isPatient) "Médecins ayant accès" else "Patients partagés",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                }
-                items(uiState.consents) { consent ->
-                    Card(
-                        Modifier.fillMaxWidth(),
-                        elevation = CardDefaults.cardElevation(2.dp)
-                    ) {
-                        Row(
-                            Modifier.fillMaxWidth().padding(16.dp),
-                            Arrangement.SpaceBetween,
-                            Alignment.CenterVertically
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = if (consent.isActive) Success.copy(alpha = 0.15f) else Error.copy(alpha = 0.15f),
-                                    modifier = Modifier.size(40.dp)
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            if (uiState.isPatient) Icons.Default.LocalHospital else Icons.Default.Person,
-                                            null,
-                                            tint = if (consent.isActive) Success else Error,
-                                            modifier = Modifier.size(22.dp)
-                                        )
-                                    }
-                                }
-                                Spacer(Modifier.width(12.dp))
-                                Column {
-                                    Text(
-                                        if (uiState.isPatient) consent.medecinNom else consent.patientNom,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                    Text(
-                                        if (consent.isActive) "Accès actif" else "Accès révoqué",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = if (consent.isActive) Success else Error
-                                    )
-                                    // Badges données partagées
-                                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        if (consent.shareGlucose) DataBadge("Glycémie")
-                                        if (consent.shareHbA1c) DataBadge("HbA1c")
-                                        if (consent.shareMedications) DataBadge("Médicaments")
-                                    }
-                                }
-                            }
-                            if (uiState.isPatient && consent.isActive) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    // Bouton "Noter ce medecin" — ouvre le dialog de notation
-                                    IconButton(
-                                        onClick = {
-                                            viewModel.openRateDoctor(
-                                                UserProfile(
-                                                    uid = consent.medecinUid,
-                                                    nom = consent.medecinNom
-                                                )
-                                            )
-                                        }
-                                    ) {
-                                        Icon(
-                                            Icons.Default.StarRate,
-                                            contentDescription = "Noter ce médecin",
-                                            tint = Color(0xFFF59E0B)
-                                        )
-                                    }
-                                    IconButton(
-                                        onClick = { viewModel.revokeConsent(consent.medecinUid) }
-                                    ) {
-                                        Icon(Icons.Default.Close, "Révoquer", tint = Error)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
-                item {
-                    Card(Modifier.fillMaxWidth()) {
-                        Column(
-                            Modifier.fillMaxWidth().padding(32.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Icon(
-                                Icons.Outlined.Share,
-                                null,
-                                Modifier.size(48.dp),
-                                tint = OnSurfaceVariant
-                            )
-                            Spacer(Modifier.height(12.dp))
-                            Text(
-                                if (uiState.isPatient) "Aucun partage actif" else "Aucun patient n'a partagé ses données",
-                                fontWeight = FontWeight.SemiBold,
-                                textAlign = TextAlign.Center
-                            )
-                            Text(
-                                if (uiState.isPatient) "Partagez vos données avec votre médecin pour un meilleur suivi"
-                                else "Les patients peuvent partager leurs données depuis leur application",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = OnSurfaceVariant,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Option export (patient)
-            if (uiState.isPatient) {
-                item {
-                    Spacer(Modifier.height(8.dp))
-                    Text("Autres options", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                }
-                item {
-                    val context = LocalContext.current
-                    Card(
-                        Modifier.fillMaxWidth(),
-                        elevation = CardDefaults.cardElevation(2.dp)
-                    ) {
-                        Column(Modifier.padding(16.dp)) {
-                            Text(
-                                "Envoyer un rapport",
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 15.sp
-                            )
-                            Text(
-                                "Exportez vos données sous forme de fichier à envoyer à votre médecin",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = OnSurfaceVariant
-                            )
-                            Spacer(Modifier.height(12.dp))
-                            Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(8.dp)) {
-                                OutlinedButton(
-                                    onClick = {
-                                        viewModel.generateExportData("csv")
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
-                                    Icon(Icons.Default.TableChart, null, Modifier.size(18.dp))
-                                    Spacer(Modifier.width(6.dp))
-                                    Text("Export CSV", fontSize = 13.sp)
-                                }
-                                OutlinedButton(
-                                    onClick = {
-                                        viewModel.generateExportData("text")
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
-                                    Icon(Icons.Default.Description, null, Modifier.size(18.dp))
-                                    Spacer(Modifier.width(6.dp))
-                                    Text("Rapport texte", fontSize = 13.sp)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            item { Spacer(Modifier.height(16.dp)) }
+        if (uiState.isPatient) {
+            PatientDoctorView(
+                modifier = Modifier.padding(padding),
+                uiState = uiState,
+                viewModel = viewModel,
+                locPermLauncher = locPermLauncher
+            )
+        } else {
+            DoctorPatientsView(
+                modifier = Modifier.padding(padding),
+                uiState = uiState
+            )
         }
     }
 
-    // Dialog sélection médecin — version enrichie (notes + distance + tri)
-    if (showMedecinDialog) {
-        DoctorPickerDialog(
-            items = uiState.availableMedecins,
-            sortMode = uiState.sortMode,
-            hasPatientLocation = uiState.patientLat != null,
-            onSelectSort = viewModel::setSortMode,
-            onCaptureLocation = viewModel::captureMyLocation,
-            onSelect = { medecin ->
-                viewModel.grantConsent(medecin.uid)
-                showMedecinDialog = false
-            },
-            onShowReviews = { viewModel.openDoctorReviews(it) },
-            onDismiss = { showMedecinDialog = false }
-        )
-    }
-
-    // Dialog de notation d'un medecin
+    // Dialog de notation d'un médecin (patient → médecin traitant)
     uiState.ratingTarget?.let { doctor ->
         RateDoctorDialog(
             doctor = doctor,
@@ -314,7 +106,7 @@ fun DataSharingScreen(
         )
     }
 
-    // Dialog de consultation des avis
+    // Dialog consultation avis
     uiState.reviewsTarget?.let { doctor ->
         DoctorReviewsDialog(
             doctor = doctor,
@@ -323,22 +115,452 @@ fun DataSharingScreen(
             onDismiss = viewModel::closeDoctorReviews
         )
     }
+}
 
-    // Handle export sharing
-    val context = LocalContext.current
-    LaunchedEffect(uiState.exportData) {
-        uiState.exportData?.let { data ->
-            val sendIntent = Intent().apply {
-                action = Intent.ACTION_SEND
-                putExtra(Intent.EXTRA_TEXT, data)
-                putExtra(Intent.EXTRA_SUBJECT, "DiaSmart - Rapport de données")
-                type = "text/plain"
-            }
-            context.startActivity(Intent.createChooser(sendIntent, "Envoyer le rapport"))
-            viewModel.clearExportData()
+// ══════════════════════════════════════════════════════════════════
+//  VUE PATIENT — onglets Médecin | Mon Médecin
+// ══════════════════════════════════════════════════════════════════
+
+@Composable
+private fun PatientDoctorView(
+    modifier: Modifier = Modifier,
+    uiState: DataSharingUiState,
+    viewModel: DataSharingViewModel,
+    locPermLauncher: androidx.activity.result.ActivityResultLauncher<Array<String>>
+) {
+    var selectedTab by remember { mutableIntStateOf(0) }
+
+    Column(modifier.fillMaxSize()) {
+        TabRow(
+            selectedTabIndex = selectedTab,
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = Primary
+        ) {
+            Tab(
+                selected = selectedTab == 0,
+                onClick = { selectedTab = 0 },
+                text = { Text("Médecin", fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal) },
+                icon = { Icon(Icons.Default.LocalHospital, null, modifier = Modifier.size(18.dp)) }
+            )
+            Tab(
+                selected = selectedTab == 1,
+                onClick = { selectedTab = 1 },
+                text = { Text("Mon Médecin", fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal) },
+                icon = { Icon(Icons.Default.Favorite, null, modifier = Modifier.size(18.dp)) }
+            )
+        }
+
+        when (selectedTab) {
+            0 -> MedecinTabContent(uiState, viewModel, locPermLauncher)
+            1 -> MonMedecinTabContent(uiState, viewModel)
         }
     }
 }
+
+// ─── Onglet 1 : Répertoire de tous les médecins ─────────────────────────────
+
+@Composable
+private fun MedecinTabContent(
+    uiState: DataSharingUiState,
+    viewModel: DataSharingViewModel,
+    locPermLauncher: androidx.activity.result.ActivityResultLauncher<Array<String>>
+) {
+    Column(Modifier.fillMaxSize()) {
+        // Barre de tri
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            SortChip(
+                label = "Meilleure note",
+                selected = uiState.sortMode == DoctorSortMode.SCORE,
+                onClick = { viewModel.setSortMode(DoctorSortMode.SCORE) },
+                modifier = Modifier.weight(1f)
+            )
+            SortChip(
+                label = if (uiState.patientLat != null) "Proximité" else "📍 GPS",
+                selected = uiState.sortMode == DoctorSortMode.DISTANCE,
+                onClick = {
+                    if (uiState.patientLat != null) {
+                        viewModel.setSortMode(DoctorSortMode.DISTANCE)
+                    } else {
+                        locPermLauncher.launch(
+                            arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                            )
+                        )
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        if (uiState.isLoading) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = Primary)
+            }
+        } else if (uiState.availableMedecins.isEmpty()) {
+            Column(
+                Modifier.fillMaxSize().padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    Icons.Default.SearchOff, null,
+                    Modifier.size(56.dp), tint = OnSurfaceVariant.copy(alpha = 0.4f)
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    "Aucun médecin disponible",
+                    fontWeight = FontWeight.SemiBold,
+                    color = OnSurfaceVariant
+                )
+            }
+        } else {
+            LazyColumn(
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(uiState.availableMedecins, key = { it.profile.uid }) { item ->
+                    BrowseDoctorCard(
+                        item = item,
+                        onShowReviews = { viewModel.openDoctorReviews(item.profile) }
+                    )
+                }
+                item { Spacer(Modifier.height(16.dp)) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BrowseDoctorCard(
+    item: DoctorListItem,
+    onShowReviews: () -> Unit
+) {
+    val d = item.profile
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(2.dp),
+        shape = RoundedCornerShape(14.dp)
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(14.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            // Avatar
+            Surface(
+                shape = CircleShape,
+                color = Primary.copy(alpha = 0.12f),
+                modifier = Modifier.size(52.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.LocalHospital, null, tint = Primary, modifier = Modifier.size(26.dp))
+                }
+            }
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(d.nomComplet.ifBlank { d.email }, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                if (d.specialite.isNotBlank()) {
+                    Text(d.specialite, fontSize = 13.sp, color = OnSurfaceVariant)
+                }
+                // Étoiles sous le nom
+                Spacer(Modifier.height(5.dp))
+                StarRatingDisplay(d.averageRating, size = 15)
+                Spacer(Modifier.height(2.dp))
+                if (d.reviewCount > 0) {
+                    Text(
+                        "%.1f / 5  ·  %d avis".format(d.averageRating, d.reviewCount),
+                        fontSize = 12.sp,
+                        color = OnSurfaceVariant,
+                        fontWeight = FontWeight.Medium
+                    )
+                } else {
+                    Text("Pas encore d'avis", fontSize = 12.sp, color = OnSurfaceVariant)
+                }
+                // Distance + ville
+                Row(
+                    Modifier.padding(top = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    item.distanceKm?.let {
+                        Icon(Icons.Default.Place, null, Modifier.size(13.dp), tint = OnSurfaceVariant)
+                        Text(GeoUtils.formatDistance(it), fontSize = 12.sp, color = OnSurfaceVariant)
+                    }
+                    if (d.ville.isNotBlank()) {
+                        if (item.distanceKm != null) Text("·", fontSize = 12.sp, color = OnSurfaceVariant)
+                        Text(d.ville, fontSize = 12.sp, color = OnSurfaceVariant)
+                    }
+                }
+                if (d.reviewCount > 0) {
+                    TextButton(
+                        onClick = onShowReviews,
+                        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 2.dp)
+                    ) {
+                        Icon(Icons.Default.RateReview, null, tint = Primary, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Voir les avis", fontSize = 12.sp, color = Primary, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ─── Onglet 2 : Mon Médecin traitant ─────────────────────────────────────────
+
+@Composable
+private fun MonMedecinTabContent(
+    uiState: DataSharingUiState,
+    viewModel: DataSharingViewModel
+) {
+    val treatingDoctors = uiState.consents.filter {
+        it.isActive && it.status == ConsentStatus.ACCEPTED
+    }
+    val pendingRequests = uiState.consents.filter {
+        it.status == ConsentStatus.PENDING
+    }
+
+    if (uiState.isLoading) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = Primary)
+        }
+        return
+    }
+
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Demandes en attente
+        if (pendingRequests.isNotEmpty()) {
+            item {
+                Text(
+                    "Demandes d'accès en attente",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    color = Warning
+                )
+            }
+            items(pendingRequests) { consent ->
+                PatientPendingRequestCard(
+                    consent = consent,
+                    onAccept = { viewModel.acceptRequest(consent.medecinUid) },
+                    onReject = { viewModel.rejectRequest(consent.medecinUid) }
+                )
+            }
+            item { HorizontalDivider(Modifier.padding(vertical = 4.dp)) }
+        }
+
+        if (treatingDoctors.isEmpty()) {
+            item {
+                Column(
+                    Modifier.fillMaxWidth().padding(top = 48.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        Icons.Outlined.FavoriteBorder, null,
+                        Modifier.size(64.dp), tint = OnSurfaceVariant.copy(alpha = 0.4f)
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Text("Aucun médecin traitant", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Votre médecin peut vous envoyer une demande d'accès depuis son application DiaSmart.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = OnSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        } else {
+            item {
+                Text(
+                    "Mes médecins traitants",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
+                )
+            }
+            items(treatingDoctors, key = { it.medecinUid }) { consent ->
+                TreatingDoctorCard(
+                    consent = consent,
+                    onRateDoctor = {
+                        viewModel.openRateDoctor(UserProfile(uid = consent.medecinUid, nom = consent.medecinNom))
+                    }
+                )
+            }
+        }
+        item { Spacer(Modifier.height(16.dp)) }
+    }
+}
+
+@Composable
+private fun TreatingDoctorCard(
+    consent: DataSharingConsent,
+    onRateDoctor: () -> Unit
+) {
+    Card(
+        Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(2.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Primary.copy(alpha = 0.06f))
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = Primary.copy(alpha = 0.15f),
+                modifier = Modifier.size(56.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.LocalHospital, null, tint = Primary, modifier = Modifier.size(28.dp))
+                }
+            }
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(consent.medecinNom, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Spacer(Modifier.height(4.dp))
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = StatusGreen.copy(alpha = 0.15f)
+                ) {
+                    Text(
+                        "Médecin traitant",
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                        fontSize = 11.sp,
+                        color = StatusGreen,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
+                // Badges données partagées
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (consent.shareGlucose) DataBadge("Glycémie")
+                    if (consent.shareHbA1c) DataBadge("HbA1c")
+                    if (consent.shareMedications) DataBadge("Médicaments")
+                }
+            }
+            // Bouton noter
+            IconButton(onClick = onRateDoctor) {
+                Icon(Icons.Default.StarRate, "Noter", tint = Color(0xFFF59E0B))
+            }
+        }
+    }
+}
+
+@Composable
+private fun PatientPendingRequestCard(
+    consent: DataSharingConsent,
+    onAccept: () -> Unit,
+    onReject: () -> Unit
+) {
+    Card(
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Warning.copy(alpha = 0.08f)),
+        elevation = CardDefaults.cardElevation(1.dp)
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = Warning.copy(alpha = 0.15f),
+                modifier = Modifier.size(40.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.MedicalServices, null, tint = Warning, modifier = Modifier.size(22.dp))
+                }
+            }
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Dr. ${consent.medecinNom}", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Text("Souhaite accéder à vos données", fontSize = 12.sp, color = OnSurfaceVariant)
+            }
+            IconButton(onClick = onAccept, modifier = Modifier.size(38.dp)) {
+                Icon(Icons.Default.CheckCircle, "Accepter", tint = StatusGreen)
+            }
+            IconButton(onClick = onReject, modifier = Modifier.size(38.dp)) {
+                Icon(Icons.Default.Cancel, "Refuser", tint = StatusRedDark)
+            }
+        }
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  VUE MÉDECIN — ses patients partagés (lecture seule, visuel)
+// ══════════════════════════════════════════════════════════════════
+
+@Composable
+private fun DoctorPatientsView(
+    modifier: Modifier = Modifier,
+    uiState: DataSharingUiState
+) {
+    val patients = uiState.consents.filter { it.isActive }
+
+    if (patients.isEmpty()) {
+        Column(
+            modifier.fillMaxSize().padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(Icons.Default.PeopleOutline, null, Modifier.size(64.dp), tint = OnSurfaceVariant.copy(alpha = 0.4f))
+            Spacer(Modifier.height(16.dp))
+            Text("Aucun patient partagé", fontWeight = FontWeight.SemiBold)
+            Text(
+                "Les patients peuvent partager leurs données depuis l'onglet Médecin de leur application.",
+                style = MaterialTheme.typography.bodySmall,
+                color = OnSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+        }
+    } else {
+        LazyColumn(
+            modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            items(patients, key = { it.patientUid }) { consent ->
+                Card(
+                    Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(2.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Surface(shape = CircleShape, color = Primary.copy(alpha = 0.15f), modifier = Modifier.size(44.dp)) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    consent.patientNom.take(2).uppercase(),
+                                    fontWeight = FontWeight.Bold,
+                                    color = Primary,
+                                    fontSize = 16.sp
+                                )
+                            }
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(consent.patientNom, fontWeight = FontWeight.SemiBold)
+                            Text("Accès actif", fontSize = 12.sp, color = StatusGreen)
+                        }
+                    }
+                }
+            }
+            item { Spacer(Modifier.height(16.dp)) }
+        }
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  Composants partagés
+// ══════════════════════════════════════════════════════════════════
 
 @Composable
 private fun DataBadge(label: String) {
@@ -355,104 +577,6 @@ private fun DataBadge(label: String) {
     }
 }
 
-// ══════════════════════════════════════════════════════════════════
-//  Doctor picker dialog — ratings + distance + sort
-// ══════════════════════════════════════════════════════════════════
-
-@Composable
-private fun DoctorPickerDialog(
-    items: List<DoctorListItem>,
-    sortMode: DoctorSortMode,
-    hasPatientLocation: Boolean,
-    onSelectSort: (DoctorSortMode) -> Unit,
-    onCaptureLocation: () -> Unit,
-    onSelect: (UserProfile) -> Unit,
-    onShowReviews: (UserProfile) -> Unit,
-    onDismiss: () -> Unit
-) {
-    // Demande la permission GPS si besoin, puis declenche la capture
-    val locPermLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { granted ->
-        val ok = granted[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-                granted[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        if (ok) onCaptureLocation()
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Column {
-                Text(stringResource(R.string.data_sharing_choose_doctor))
-                Text(
-                    "Les mieux notés et les plus proches en premier",
-                    fontSize = 12.sp,
-                    color = OnSurfaceVariant,
-                    fontWeight = FontWeight.Normal
-                )
-            }
-        },
-        text = {
-            if (items.isEmpty()) {
-                Text(stringResource(R.string.data_sharing_no_doctor), color = OnSurfaceVariant)
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // Barre de tri
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        SortChip(
-                            label = "Meilleure note",
-                            selected = sortMode == DoctorSortMode.SCORE,
-                            onClick = { onSelectSort(DoctorSortMode.SCORE) },
-                            modifier = Modifier.weight(1f)
-                        )
-                        SortChip(
-                            label = if (hasPatientLocation) "Proximité" else "📍 Activer GPS",
-                            selected = sortMode == DoctorSortMode.DISTANCE,
-                            onClick = {
-                                if (hasPatientLocation) {
-                                    onSelectSort(DoctorSortMode.DISTANCE)
-                                } else {
-                                    locPermLauncher.launch(
-                                        arrayOf(
-                                            Manifest.permission.ACCESS_FINE_LOCATION,
-                                            Manifest.permission.ACCESS_COARSE_LOCATION
-                                        )
-                                    )
-                                }
-                            },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-
-                    Spacer(Modifier.height(4.dp))
-
-                    // Liste des medecins (scrollable en cas de debordement)
-                    Column(
-                        Modifier.heightIn(max = 400.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            items(items) { item ->
-                                DoctorCard(
-                                    item = item,
-                                    onClick = { onSelect(item.profile) },
-                                    onShowReviews = { onShowReviews(item.profile) }
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Fermer") }
-        }
-    )
-}
-
 @Composable
 private fun SortChip(
     label: String,
@@ -465,8 +589,9 @@ private fun SortChip(
         onClick = onClick,
         shape = RoundedCornerShape(10.dp),
         color = if (selected) Primary else SurfaceVariant,
-        border = if (selected) null
-        else androidx.compose.foundation.BorderStroke(1.dp, OnSurfaceVariant.copy(alpha = 0.15f))
+        border = if (!selected)
+            androidx.compose.foundation.BorderStroke(1.dp, OnSurfaceVariant.copy(alpha = 0.15f))
+        else null
     ) {
         Text(
             label,
@@ -474,119 +599,15 @@ private fun SortChip(
             fontWeight = FontWeight.SemiBold,
             fontSize = 12.sp,
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(vertical = 8.dp, horizontal = 10.dp).fillMaxWidth()
+            modifier = Modifier
+                .padding(vertical = 8.dp, horizontal = 10.dp)
+                .fillMaxWidth()
         )
     }
 }
 
 @Composable
-private fun DoctorCard(
-    item: DoctorListItem,
-    onClick: () -> Unit,
-    onShowReviews: () -> Unit
-) {
-    val d = item.profile
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = SurfaceVariant,
-        onClick = onClick
-    ) {
-        Row(
-            Modifier.fillMaxWidth().padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                Icons.Default.LocalHospital,
-                null,
-                tint = Primary,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(d.nomComplet.ifBlank { d.email }, fontWeight = FontWeight.SemiBold)
-                if (d.specialite.isNotBlank()) {
-                    Text(
-                        d.specialite,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = OnSurfaceVariant
-                    )
-                }
-                // Ligne note + avis + distance
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(top = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    if (d.reviewCount > 0) {
-                        StarRatingDisplay(d.averageRating, size = 14)
-                        Text(
-                            "%.1f (%d)".format(d.averageRating, d.reviewCount),
-                            fontSize = 12.sp,
-                            color = OnSurfaceVariant,
-                            fontWeight = FontWeight.Medium
-                        )
-                    } else {
-                        Text(
-                            "Aucun avis",
-                            fontSize = 12.sp,
-                            color = OnSurfaceVariant
-                        )
-                    }
-                    item.distanceKm?.let {
-                        Text("•", fontSize = 12.sp, color = OnSurfaceVariant)
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Default.Place,
-                                null,
-                                modifier = Modifier.size(12.dp),
-                                tint = OnSurfaceVariant
-                            )
-                            Spacer(Modifier.width(2.dp))
-                            Text(
-                                GeoUtils.formatDistance(it),
-                                fontSize = 12.sp,
-                                color = OnSurfaceVariant,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-                }
-                if (d.ville.isNotBlank()) {
-                    Text(
-                        d.ville,
-                        fontSize = 11.sp,
-                        color = OnSurfaceVariant.copy(alpha = 0.8f),
-                        modifier = Modifier.padding(top = 2.dp)
-                    )
-                }
-                if (d.reviewCount > 0) {
-                    TextButton(
-                        onClick = onShowReviews,
-                        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 2.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.RateReview,
-                            null,
-                            tint = Primary,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        Text(
-                            "Voir les avis",
-                            fontSize = 12.sp,
-                            color = Primary,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-/** Affiche 5 etoiles remplies/vides selon le rating (0.0 a 5.0). */
-@Composable
-private fun StarRatingDisplay(rating: Double, size: Int = 16) {
+internal fun StarRatingDisplay(rating: Double, size: Int = 16) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         for (i in 1..5) {
             val filled = rating >= i - 0.25
@@ -639,7 +660,6 @@ private fun RateDoctorDialog(
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                // Selecteur d'etoiles interactif
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center
@@ -681,9 +701,7 @@ private fun RateDoctorDialog(
                     minLines = 3,
                     maxLines = 5,
                     shape = RoundedCornerShape(12.dp),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Text
-                    ),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                     modifier = Modifier.fillMaxWidth()
                 )
                 Text(
@@ -702,26 +720,20 @@ private fun RateDoctorDialog(
                 shape = RoundedCornerShape(10.dp)
             ) {
                 if (isSubmitting) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp,
-                        color = Color.White
-                    )
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Color.White)
                 } else {
                     Text(if (existingRating != null) "Mettre à jour" else "Publier")
                 }
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSubmitting) {
-                Text("Annuler")
-            }
+            TextButton(onClick = onDismiss, enabled = !isSubmitting) { Text("Annuler") }
         }
     )
 }
 
 // ══════════════════════════════════════════════════════════════════
-//  Doctor reviews dialog — lecture seule, liste des avis patients
+//  Doctor reviews dialog
 // ══════════════════════════════════════════════════════════════════
 
 @Composable
@@ -757,24 +769,14 @@ private fun DoctorReviewsDialog(
         text = {
             Column(Modifier.heightIn(min = 120.dp, max = 480.dp)) {
                 when {
-                    isLoading -> {
-                        Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator()
-                        }
+                    isLoading -> Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
                     }
-                    reviews.isEmpty() -> {
-                        Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                            Text(
-                                "Aucun avis publié pour le moment.",
-                                color = OnSurfaceVariant,
-                                textAlign = TextAlign.Center
-                            )
-                        }
+                    reviews.isEmpty() -> Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                        Text("Aucun avis publié pour le moment.", color = OnSurfaceVariant, textAlign = TextAlign.Center)
                     }
-                    else -> {
-                        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            items(reviews) { r -> ReviewItemCard(r) }
-                        }
+                    else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        items(reviews) { r -> ReviewItemCard(r) }
                     }
                 }
             }
@@ -793,12 +795,7 @@ private fun ReviewItemCard(review: com.diabeto.data.model.DoctorReview) {
     ) {
         Column(Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Default.Person,
-                    null,
-                    tint = OnSurfaceVariant,
-                    modifier = Modifier.size(16.dp)
-                )
+                Icon(Icons.Default.Person, null, tint = OnSurfaceVariant, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(
                     review.patientNom.ifBlank { "Patient" },
@@ -810,15 +807,9 @@ private fun ReviewItemCard(review: com.diabeto.data.model.DoctorReview) {
             }
             if (review.comment.isNotBlank()) {
                 Spacer(Modifier.height(6.dp))
-                Text(
-                    review.comment,
-                    fontSize = 13.sp,
-                    color = OnSurfaceVariant
-                )
+                Text(review.comment, fontSize = 13.sp, color = OnSurfaceVariant)
             }
-            // Date "il y a X jours" simplifiee
-            val daysAgo = ((System.currentTimeMillis() - review.createdAt.toDate().time) /
-                    (1000L * 60 * 60 * 24)).toInt()
+            val daysAgo = ((System.currentTimeMillis() - review.createdAt.toDate().time) / (1000L * 60 * 60 * 24)).toInt()
             val dateLabel = when {
                 daysAgo <= 0 -> "Aujourd'hui"
                 daysAgo == 1 -> "Hier"
@@ -827,11 +818,7 @@ private fun ReviewItemCard(review: com.diabeto.data.model.DoctorReview) {
                 else -> "Il y a ${daysAgo / 365} an(s)"
             }
             Spacer(Modifier.height(4.dp))
-            Text(
-                dateLabel,
-                fontSize = 11.sp,
-                color = OnSurfaceVariant.copy(alpha = 0.7f)
-            )
+            Text(dateLabel, fontSize = 11.sp, color = OnSurfaceVariant.copy(alpha = 0.7f))
         }
     }
 }

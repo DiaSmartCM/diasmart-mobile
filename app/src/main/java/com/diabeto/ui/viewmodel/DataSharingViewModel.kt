@@ -346,6 +346,36 @@ class DataSharingViewModel @Inject constructor(
         }
     }
 
+    /** Patient accepte une demande d'acces d'un medecin. */
+    fun acceptRequest(medecinUid: String) {
+        viewModelScope.launch {
+            dataSharingRepository.acceptRequest(medecinUid).fold(
+                onSuccess = {
+                    _uiState.update { it.copy(message = "Demande acceptee") }
+                    loadData()
+                },
+                onFailure = { e ->
+                    _uiState.update { it.copy(message = "Erreur: ${e.message}") }
+                }
+            )
+        }
+    }
+
+    /** Patient refuse une demande d'acces d'un medecin. */
+    fun rejectRequest(medecinUid: String) {
+        viewModelScope.launch {
+            dataSharingRepository.rejectRequest(medecinUid).fold(
+                onSuccess = {
+                    _uiState.update { it.copy(message = "Demande refusee") }
+                    loadData()
+                },
+                onFailure = { e ->
+                    _uiState.update { it.copy(message = "Erreur: ${e.message}") }
+                }
+            )
+        }
+    }
+
     fun clearMessage() = _uiState.update { it.copy(message = null) }
     fun clearExportData() = _uiState.update { it.copy(exportData = null) }
 }

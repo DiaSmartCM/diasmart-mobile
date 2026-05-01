@@ -64,7 +64,7 @@ class SharedPatientDataViewModel @Inject constructor(
 
     private fun loadPatientData() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update { it.copy(isLoading = true, error = null) }
             try {
                 val profile = authRepository.getUserProfile(patientUid)
                 val glucose = dataSharingRepository.getPatientGlucoseData(patientUid)
@@ -82,6 +82,10 @@ class SharedPatientDataViewModel @Inject constructor(
                 _uiState.update { it.copy(isLoading = false, error = e.message) }
             }
         }
+    }
+
+    fun refresh() {
+        loadPatientData()
     }
 
     fun clearError() {
@@ -185,7 +189,7 @@ fun SharedPatientDataScreen(
                             icon = Icons.Default.Refresh,
                             label = "Actualiser",
                             color = Primary,
-                            onClick = { viewModel.clearError() },
+                            onClick = { viewModel.refresh() },
                             modifier = Modifier.weight(1f)
                         )
                     }
