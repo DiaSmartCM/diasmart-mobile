@@ -36,6 +36,24 @@ import java.util.concurrent.TimeUnit
 object FileOpener {
 
     private const val TAG = "FileOpener"
+    private const val DIASMART_SUBDIR = "DiaSmart"
+    private const val PREFS_DOWNLOADS = "diasmart_downloads_map"
+
+    /** URLs en cours de telechargement — evite les enqueue multiples si l'utilisateur retape. */
+    private val pendingDownloads = mutableSetOf<String>()
+
+    private fun getCachedPath(context: Context, url: String): String? =
+        context.getSharedPreferences(PREFS_DOWNLOADS, Context.MODE_PRIVATE).getString(url, null)
+
+    private fun saveCachedPath(context: Context, url: String, path: String) {
+        context.getSharedPreferences(PREFS_DOWNLOADS, Context.MODE_PRIVATE)
+            .edit().putString(url, path).apply()
+    }
+
+    private fun removeCachedPath(context: Context, url: String) {
+        context.getSharedPreferences(PREFS_DOWNLOADS, Context.MODE_PRIVATE)
+            .edit().remove(url).apply()
+    }
 
     private val client: OkHttpClient by lazy {
         OkHttpClient.Builder()
@@ -78,6 +96,129 @@ object FileOpener {
         } catch (e: Exception) {
             Log.e(TAG, "download failed", e)
             OpenResult.Error("Echec telechargement : ${e::class.java.simpleName}: ${e.message ?: ""}")
+        }
+    }
+
+    /**
+     * Comportement par defaut au tap sur une piece jointe :
+     *  - 1er tap : enqueue DownloadManager → fichier ecrit dans
+     *    /storage/emulated/0/Download/DiaSmart/{nom}, notification systeme
+     *    (l'utilisateur peut taper la notif pour ouvrir avec sa visionneuse).
+     *  - 2eme tap (et suivants) : detecte le fichier deja telecharge → ouvre
+     *    directement avec FileProvider sans re-telecharger.
+     *
+     * Avantages vs cacheDir :
+     *  - persiste apres redemarrage / reinstallation app
+     *  - visible dans le gestionnaire de fichiers (Files, Documents...)
+     *  - accessible offline indefiniment
+     *  - aucune permission speciale requise (DownloadManager systeme)
+     *
+     * Une SharedPreferences URL → chemin local conserve la trace pour
+     * qu'on retrouve le fichier instantanement au prochain tap.
+     */
+    fun downloadOrOpen(
+        context: Context,
+        url: String,
+        fileName: String,
+        mimeType: String?
+    ) {
+        if (url.isBlank()) {
+            toast(context, "URL invalide")
+            return
+        }
+        val safeName = sanitizeFileName(fileName.ifBlank { "fichier" })
+        val mime = (mimeType?.takeIf { it.isNotBlank() } ?: guessMime(safeName))
+
+        // 1) Verifier si le fichier est deja telecharge
+        val downloadsRoot = Environment.getExternalStoragePublicDirectory(
+            Environment.DIRECTORY_DOWNLOADS
+        )
+        val targetDir = File(downloadsRoot, DIASMART_SUBDIR).apply { mkdirs() }
+        val target = File(targetDir, safeName)
+
+        // 1a) Mapping URL → path memorise
+        val cachedPath = getCachedPath(context, url)
+        if (cachedPath != null) {
+            val cached = File(cachedPath)
+            if (cached.exists() && cached.length() > 0) {
+                Log.d(TAG, "open via cache map: $cachedPath")
+                openLocalFile(context, cached, mime)
+                return
+            }
+            removeCachedPath(context, url)
+        }
+
+        // 1b) Verification directe sur disque (fichier present sans mapping,
+        //     p. ex. apres un download precedent qui n'a pas eu le temps de
+        //     persister la map, ou apres reinstallation app)
+        if (target.exists() && target.length() > 0) {
+            Log.d(TAG, "open via direct path: ${target.absolutePath}")
+            saveCachedPath(context, url, target.absolutePath)
+            openLocalFile(context, target, mime)
+            return
+        }
+
+        // 2) Pas encore telecharge — eviter la duplication si deja en cours
+        synchronized(pendingDownloads) {
+            if (pendingDownloads.contains(url)) {
+                toast(context, "Telechargement en cours — voir la notification")
+                return
+            }
+            pendingDownloads.add(url)
+        }
+        try {
+            val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            val req = DownloadManager.Request(Uri.parse(url)).apply {
+                setTitle(safeName)
+                setDescription("DiaSmart — fichier joint")
+                setMimeType(mime)
+                setDestinationInExternalPublicDir(
+                    Environment.DIRECTORY_DOWNLOADS,
+                    "$DIASMART_SUBDIR/$safeName"
+                )
+                setNotificationVisibility(
+                    DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
+                )
+                setAllowedOverMetered(true)
+                setAllowedOverRoaming(true)
+            }
+            dm.enqueue(req)
+            // On enregistre le chemin attendu : si l'utilisateur tape a nouveau
+            // apres la fin du telechargement, openOrCache trouvera le fichier.
+            saveCachedPath(context, url, target.absolutePath)
+            toast(
+                context,
+                "Telechargement vers Downloads/DiaSmart — appuyez sur la notification a la fin"
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "downloadOrOpen failed", e)
+            synchronized(pendingDownloads) { pendingDownloads.remove(url) }
+            toast(context, "Echec : ${e::class.java.simpleName}: ${e.message ?: ""}")
+        }
+    }
+
+    private fun openLocalFile(context: Context, file: File, mimeType: String) {
+        val authority = "${context.packageName}.provider"
+        val uri = try {
+            FileProvider.getUriForFile(context, authority, file)
+        } catch (e: Exception) {
+            Log.e(TAG, "FileProvider failed for ${file.absolutePath}", e)
+            toast(context, "Cache inaccessible (${e::class.java.simpleName})")
+            return
+        }
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, mimeType)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        try {
+            context.startActivity(
+                Intent.createChooser(intent, "Ouvrir avec...").apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+            )
+        } catch (e: ActivityNotFoundException) {
+            toast(context, "Aucune application pour ouvrir ce type de fichier")
         }
     }
 

@@ -461,9 +461,7 @@ fun ConversationDetailScreen(
 @Composable
 private fun ChatMessageBubble(message: Message, isCurrentUser: Boolean) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val scope = rememberCoroutineScope()
     var showFallbackDialog by remember { mutableStateOf(false) }
-    var isOpening by remember { mutableStateOf(false) }
 
     // Dialog de fallback (long press OU echec d'ouverture native)
     if (showFallbackDialog && message.hasAttachment) {
@@ -500,30 +498,15 @@ private fun ChatMessageBubble(message: Message, isCurrentUser: Boolean) {
     }
 
     fun openAttachment() {
-        if (isOpening) return
-        scope.launch {
-            isOpening = true
-            try {
-                val result = com.diabeto.util.FileOpener.openOrCache(
-                    context = context,
-                    url = message.attachmentUrl,
-                    fileName = message.attachmentName.ifBlank { "fichier" },
-                    mimeType = message.attachmentType
-                )
-                when (result) {
-                    is com.diabeto.util.FileOpener.OpenResult.Opened -> Unit
-                    is com.diabeto.util.FileOpener.OpenResult.NoViewer -> {
-                        // Pas d'app installee pour cette MIME → fallback browser
-                        com.diabeto.util.FileOpener.openInBrowser(context, result.sourceUrl)
-                    }
-                    is com.diabeto.util.FileOpener.OpenResult.Error -> {
-                        showFallbackDialog = true
-                    }
-                }
-            } finally {
-                isOpening = false
-            }
-        }
+        // Telechargement systeme dans /Downloads/DiaSmart : visible dans
+        // l'app Fichiers, persistant, ouvert via la notification ou au prochain
+        // tap sans re-telechargement.
+        com.diabeto.util.FileOpener.downloadOrOpen(
+            context = context,
+            url = message.attachmentUrl,
+            fileName = message.attachmentName.ifBlank { "fichier" },
+            mimeType = message.attachmentType
+        )
     }
 
     Column(
@@ -584,14 +567,6 @@ private fun ChatMessageBubble(message: Message, isCurrentUser: Boolean) {
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(Modifier.width(6.dp))
-                            if (isOpening) {
-                                CircularProgressIndicator(
-                                    strokeWidth = 1.5.dp,
-                                    modifier = Modifier.size(14.dp),
-                                    color = if (isCurrentUser) Color.White else Primary
-                                )
-                                Spacer(Modifier.width(6.dp))
-                            }
                             Text(
                                 text = message.attachmentName.ifBlank { "Document" },
                                 color = if (isCurrentUser) Color.White else OnSurface,
