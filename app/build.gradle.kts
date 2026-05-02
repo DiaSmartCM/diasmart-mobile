@@ -26,8 +26,8 @@ android {
         applicationId = "com.diabeto"
         minSdk = 26
         targetSdk = 34
-        versionCode = 44
-        versionName = "2.1.28"
+        versionCode = 45
+        versionName = "2.1.29"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
