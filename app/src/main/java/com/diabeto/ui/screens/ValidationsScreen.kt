@@ -3,6 +3,8 @@ package com.diabeto.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -200,9 +202,9 @@ private fun ValidationCard(
                     Text("Question :", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Primary)
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        validation.question.take(200),
+                        validation.question,
                         fontSize = 13.sp,
-                        color = OnSurface.copy(alpha = 0.7f),
+                        color = OnSurface.copy(alpha = 0.85f),
                         lineHeight = 18.sp
                     )
                 }
@@ -210,13 +212,18 @@ private fun ValidationCard(
 
             Spacer(Modifier.height(8.dp))
 
-            // ROLLY response
+            // ROLLY response (texte complet, scrollable si tres long)
             Surface(
                 shape = RoundedCornerShape(10.dp),
                 color = Primary.copy(alpha = 0.06f),
                 border = androidx.compose.foundation.BorderStroke(1.dp, Primary.copy(alpha = 0.15f))
             ) {
-                Column(modifier = Modifier.padding(10.dp).heightIn(max = 150.dp)) {
+                Column(
+                    modifier = Modifier
+                        .padding(10.dp)
+                        .heightIn(max = 380.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("🤖", fontSize = 14.sp)
                         Spacer(Modifier.width(6.dp))
@@ -224,9 +231,9 @@ private fun ValidationCard(
                     }
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        validation.rollyResponse.take(500),
+                        validation.rollyResponse,
                         fontSize = 13.sp,
-                        color = OnSurface.copy(alpha = 0.7f),
+                        color = OnSurface.copy(alpha = 0.85f),
                         lineHeight = 18.sp
                     )
                 }

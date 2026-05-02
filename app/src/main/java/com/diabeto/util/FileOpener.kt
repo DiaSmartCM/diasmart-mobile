@@ -6,10 +6,13 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Environment
 import android.util.Log
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -129,11 +132,31 @@ object FileOpener {
         val safeName = sanitizeFileName(fileName.ifBlank { "fichier" })
         val mime = (mimeType?.takeIf { it.isNotBlank() } ?: guessMime(safeName))
 
-        // 1) Verifier si le fichier est deja telecharge
-        val downloadsRoot = Environment.getExternalStoragePublicDirectory(
-            Environment.DIRECTORY_DOWNLOADS
-        )
-        val targetDir = File(downloadsRoot, DIASMART_SUBDIR).apply { mkdirs() }
+        // 1) Determiner le dossier cible selon la version Android :
+        //  - API >= 29 : public Downloads (pas de permission necessaire avec
+        //    setDestinationInExternalPublicDir + DownloadManager)
+        //  - API <= 28 : public Downloads exige WRITE_EXTERNAL_STORAGE,
+        //    qui peut etre refusee par l'utilisateur ou non encore accordee.
+        //    On retombe sur le dossier external-files de l'app
+        //    (Android/data/com.diabeto/files/Download/DiaSmart/), qui ne
+        //    necessite aucune permission, est visible dans Files et persiste.
+        val usePublicDownloads = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ||
+            ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+            ) == PackageManager.PERMISSION_GRANTED
+
+        val targetDir = if (usePublicDownloads) {
+            File(
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                DIASMART_SUBDIR
+            )
+        } else {
+            File(
+                context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
+                DIASMART_SUBDIR
+            )
+        }.apply { mkdirs() }
         val target = File(targetDir, safeName)
 
         // 1a) Mapping URL → path memorise
@@ -172,10 +195,17 @@ object FileOpener {
                 setTitle(safeName)
                 setDescription("DiaSmart — fichier joint")
                 setMimeType(mime)
-                setDestinationInExternalPublicDir(
-                    Environment.DIRECTORY_DOWNLOADS,
-                    "$DIASMART_SUBDIR/$safeName"
-                )
+                if (usePublicDownloads) {
+                    // public Downloads : visible immediatement dans Files
+                    setDestinationInExternalPublicDir(
+                        Environment.DIRECTORY_DOWNLOADS,
+                        "$DIASMART_SUBDIR/$safeName"
+                    )
+                } else {
+                    // external-files de l'app : pas de permission requise
+                    // (Android/data/<package>/files/Download/DiaSmart/<file>)
+                    setDestinationUri(Uri.fromFile(target))
+                }
                 setNotificationVisibility(
                     DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
                 )
@@ -186,9 +216,13 @@ object FileOpener {
             // On enregistre le chemin attendu : si l'utilisateur tape a nouveau
             // apres la fin du telechargement, openOrCache trouvera le fichier.
             saveCachedPath(context, url, target.absolutePath)
+            val locationLabel = if (usePublicDownloads)
+                "Downloads/DiaSmart"
+            else
+                "stockage app (Android/data/${context.packageName}/files/Download/DiaSmart)"
             toast(
                 context,
-                "Telechargement vers Downloads/DiaSmart — appuyez sur la notification a la fin"
+                "Telechargement vers $locationLabel — voir la notification"
             )
         } catch (e: Exception) {
             Log.e(TAG, "downloadOrOpen failed", e)

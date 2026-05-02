@@ -551,7 +551,7 @@ fun SettingsScreen(
                         icon = Icons.Default.Info,
                         iconBg = Color(0xFF6771E4),
                         title = "Version",
-                        subtitle = "2.1.15",
+                        subtitle = "${com.diabeto.BuildConfig.VERSION_NAME} (build ${com.diabeto.BuildConfig.VERSION_CODE})",
                         titleColor = titleColor,
                         subtitleColor = subtitleColor
                     )

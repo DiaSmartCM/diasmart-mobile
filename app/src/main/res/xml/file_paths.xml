@@ -7,4 +7,7 @@
     <cache-path name="downloads_cache" path="downloads/" />
     <!-- FileOpener cache (PDF, image, doc, xlsx...) -->
     <cache-path name="attachments_cache" path="attachments/" />
+    <!-- Downloads dans le stockage app-specifique (fallback si pas de
+         permission WRITE_EXTERNAL_STORAGE sur Android <= 9) -->
+    <external-files-path name="external_downloads" path="Download/" />
 </paths>
