@@ -11,8 +11,6 @@ import com.diabeto.data.repository.AuthRepository
 import com.diabeto.data.repository.CloudBackupRepository
 import com.diabeto.data.repository.GlucoseRepository
 import com.diabeto.data.repository.GlucoseUnit
-import com.diabeto.data.repository.LocalAIManager
-import com.diabeto.data.repository.LocalAIStatus
 import com.diabeto.data.repository.MeasureType
 import com.diabeto.data.repository.PatientRepository
 import com.diabeto.data.repository.PreferencesRepository
@@ -37,12 +35,6 @@ data class SettingsUiState(
     val measureType: MeasureType = MeasureType.CAPILLARY,
     val targetMin: Double = 70.0,
     val targetMax: Double = 180.0,
-    // IA hors-ligne
-    val localAIStatus: LocalAIStatus = LocalAIStatus.NOT_DOWNLOADED,
-    val modelDownloadProgress: Float = 0f,
-    val isDownloadingModel: Boolean = false,
-    val downloadError: String? = null,
-    val modelSizeMB: Int = 550,
     // Role utilisateur — gate les sections specifiques
     val isMedecin: Boolean = false
 )
@@ -53,7 +45,6 @@ class SettingsViewModel @Inject constructor(
     private val cloudBackupRepository: CloudBackupRepository,
     private val patientRepository: PatientRepository,
     private val glucoseRepository: GlucoseRepository,
-    private val localAIManager: LocalAIManager,
     private val authRepository: AuthRepository
 ) : ViewModel() {
 
@@ -66,28 +57,7 @@ class SettingsViewModel @Inject constructor(
             val profile = authRepository.getCurrentUserProfile()
             _uiState.update { it.copy(isMedecin = profile?.role == UserRole.MEDECIN) }
         }
-        // Observer le statut du modele local
-        _uiState.update {
-            it.copy(
-                localAIStatus = localAIManager.getStatus(),
-                modelSizeMB = localAIManager.getModelSizeMB()
-            )
-        }
-        viewModelScope.launch {
-            localAIManager.downloadProgress.collect { progress ->
-                _uiState.update { it.copy(modelDownloadProgress = progress) }
-            }
-        }
-        viewModelScope.launch {
-            localAIManager.isDownloading.collect { downloading ->
-                _uiState.update { it.copy(isDownloadingModel = downloading) }
-            }
-        }
-        viewModelScope.launch {
-            localAIManager.downloadError.collect { error ->
-                _uiState.update { it.copy(downloadError = error) }
-            }
-        }
+        // (Suppression IA hors-ligne v2.1.31 — Rolly est cloud-only.)
         viewModelScope.launch {
             preferencesRepository.themeMode.collect { mode ->
                 _uiState.update { it.copy(themeMode = mode) }
@@ -176,29 +146,8 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { preferencesRepository.setGlycemicTarget(min, max) }
     }
 
-    // ── IA hors-ligne ──
-
-    fun downloadLocalModel() {
-        viewModelScope.launch {
-            val success = localAIManager.downloadModel()
-            if (success) {
-                localAIManager.initializeModel()
-            }
-            _uiState.update { it.copy(localAIStatus = localAIManager.getStatus()) }
-        }
-    }
-
-    fun deleteLocalModel() {
-        localAIManager.deleteModel()
-        _uiState.update { it.copy(localAIStatus = localAIManager.getStatus()) }
-    }
-
-    fun initLocalModel() {
-        viewModelScope.launch {
-            localAIManager.initializeModel()
-            _uiState.update { it.copy(localAIStatus = localAIManager.getStatus()) }
-        }
-    }
+    // (Suppression IA hors-ligne v2.1.31 : downloadLocalModel / deleteLocalModel /
+    // initLocalModel retires. Rolly fonctionne uniquement en ligne.)
 
     suspend fun performCloudBackup() {
         cloudBackupRepository.performFullBackup()

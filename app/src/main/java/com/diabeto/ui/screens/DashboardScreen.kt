@@ -57,6 +57,7 @@ fun DashboardScreen(
     onNavigateToMessagerie: () -> Unit = {},
     onNavigateToRepasAnalyse: () -> Unit = {},
     onNavigateToDataSharing: () -> Unit = {},
+    onNavigateToMonMedecin: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
     onNavigateToJournal: () -> Unit = {},
@@ -521,11 +522,11 @@ fun DashboardScreen(
                         )
                         FeatureCard(
                             title = "Mon médecin",
-                            subtitle = "Trouver et partager",
+                            subtitle = "Mon médecin traitant",
                             icon = Icons.Outlined.MedicalServices,
                             cardColor = CardInsulin,
                             iconTint = Warning,
-                            onClick = onNavigateToDataSharing,
+                            onClick = onNavigateToMonMedecin,
                             modifier = Modifier.weight(1f)
                         )
                     }

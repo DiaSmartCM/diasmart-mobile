@@ -39,6 +39,7 @@ import com.diabeto.ui.viewmodel.DoctorSortMode
 fun DataSharingScreen(
     onNavigateBack: () -> Unit,
     onNavigateToPatientDetail: (Long) -> Unit = {},
+    initialTab: Int = 0,
     viewModel: DataSharingViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -84,7 +85,8 @@ fun DataSharingScreen(
                 modifier = Modifier.padding(padding),
                 uiState = uiState,
                 viewModel = viewModel,
-                locPermLauncher = locPermLauncher
+                locPermLauncher = locPermLauncher,
+                initialTab = initialTab
             )
         } else {
             DoctorPatientsView(
@@ -126,9 +128,10 @@ private fun PatientDoctorView(
     modifier: Modifier = Modifier,
     uiState: DataSharingUiState,
     viewModel: DataSharingViewModel,
-    locPermLauncher: androidx.activity.result.ActivityResultLauncher<Array<String>>
+    locPermLauncher: androidx.activity.result.ActivityResultLauncher<Array<String>>,
+    initialTab: Int = 0
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedTab by remember { mutableIntStateOf(initialTab.coerceIn(0, 1)) }
 
     Column(modifier.fillMaxSize()) {
         TabRow(

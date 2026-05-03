@@ -26,8 +26,8 @@ android {
         applicationId = "com.diabeto"
         minSdk = 26
         targetSdk = 34
-        versionCode = 46
-        versionName = "2.1.30"
+        versionCode = 47
+        versionName = "2.1.31"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -208,11 +208,8 @@ dependencies {
     // ============================================================
     implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
 
-    // ============================================================
-    // MediaPipe LLM Inference — Gemma on-device (mode hors-ligne)
-    // Permet d'exécuter Gemma 3 1B localement sur l'appareil
-    // ============================================================
-    implementation("com.google.mediapipe:tasks-genai:0.10.24")
+    // (v2.1.31 : MediaPipe tasks-genai supprime — Rolly est cloud-only,
+    //  Gemma on-device retire pour reduire la taille de l'APK.)
 
     // Testing
     testImplementation("junit:junit:4.13.2")

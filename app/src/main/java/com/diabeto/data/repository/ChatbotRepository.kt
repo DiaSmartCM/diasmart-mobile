@@ -1,6 +1,9 @@
 package com.diabeto.data.repository
 
+import android.content.Context
 import android.graphics.Bitmap
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.util.Log
 import com.diabeto.data.dao.AiCacheDao
 import com.diabeto.data.entity.AiCacheEntity
@@ -10,6 +13,7 @@ import com.diabeto.data.entity.PatientEntity
 import com.diabeto.util.UrgencyDetector
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.content
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.sync.Mutex
@@ -23,30 +27,37 @@ import javax.inject.Singleton
 private const val TAG = "ChatbotRepository"
 
 /**
- * Repository pour les interactions avec Gemini AI (ROLLY)
- * Architecture hybride :
- * - En ligne  → Gemini 2.5 Flash (cloud, puissant, streaming)
- * - Hors ligne → Gemma 3 1B (on-device via MediaPipe, basique)
- * - Cache local Room : évite les appels redondants pour questions génériques
+ * Repository pour les interactions avec Gemini AI (ROLLY).
+ *
+ * Architecture cloud-only depuis v2.1.31 :
+ * - Le modele on-device (Gemma 3 1B via MediaPipe) a ete supprime pour
+ *   reduire la taille de l'APK, la conso batterie et la complexite.
+ * - Mode hors-ligne : ROLLY indique simplement "Pas de connexion" et
+ *   propose de reessayer ; les donnees patient (glycemies, repas...)
+ *   continuent d'etre saisies localement (Room) puis synchronisees au
+ *   retour reseau via les repositories habituels.
+ *
+ * Cache local Room : evite les appels redondants pour questions generiques.
  */
 @Singleton
 class ChatbotRepository @Inject constructor(
     @Named("primary") private val geminiModel: GenerativeModel,
     @Named("fallback") private val fallbackModel: GenerativeModel,
     private val aiCacheDao: AiCacheDao,
-    val localAI: LocalAIManager
+    @ApplicationContext private val context: Context
 ) {
     private var chatSession = geminiModel.startChat()
     private val chatMutex = Mutex()
 
-    /** Vérifie la connectivité réseau */
-    fun isOnline(): Boolean = localAI.isOnline()
-
-    /** Vérifie si le modèle local est prêt */
-    fun isLocalModelReady(): Boolean = localAI.getStatus() == LocalAIStatus.READY
-
-    /** Statut du modèle local */
-    fun getLocalAIStatus(): LocalAIStatus = localAI.getStatus()
+    /** Verifie la connectivite reseau via le ConnectivityManager systeme. */
+    fun isOnline(): Boolean {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            ?: return false
+        val network = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(network) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }
 
     // HMAC key derived from app package — prevents cache tampering
     private val hmacKey: ByteArray = "diasmart-ai-cache-integrity-key".toByteArray(Charsets.UTF_8)
@@ -151,27 +162,13 @@ class ChatbotRepository @Inject constructor(
             }
 
             if (!isOnline()) {
-                // ── MODE HORS-LIGNE : Gemma local ──
-                Log.d(TAG, "envoyerMessage (OFFLINE/local): $message")
-
-                // v2.1.8 : bail-out precoce si modele non installe,
-                // avec un message d'action clair (au lieu du header + message generique)
-                if (!localAI.isModelDownloaded()) {
-                    emit(
-                        "${urgencyPrefix}📴 *Mode hors-ligne*\n\n" +
-                        "Le modele IA local n'est pas installe sur cet appareil.\n\n" +
-                        "Pour discuter avec ROLLY sans connexion, ouvrez " +
-                        "**Parametres > Mode hors-ligne** et telechargez ROLLY Local (~550 Mo, " +
-                        "WiFi recommande)."
-                    )
-                    return@flow
-                }
-
-                val header = "$urgencyPrefix📴 *Mode hors-ligne — ROLLY Local*\n\n"
-                emit(header)
-                localAI.generateResponseStream(message).collect { chunk ->
-                    emit("$header$chunk")
-                }
+                emit(
+                    "${urgencyPrefix}📴 *Pas de connexion internet*\n\n" +
+                        "ROLLY a besoin d'une connexion internet pour repondre. " +
+                        "Vos saisies (glycemies, repas, journal...) sont enregistrees " +
+                        "localement et seront synchronisees automatiquement au retour " +
+                        "du reseau."
+                )
                 return@flow
             }
 
@@ -191,15 +188,12 @@ class ChatbotRepository @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e(TAG, "Erreur envoyerMessage", e)
-            // Tentative de fallback local en cas d'erreur réseau
             if (!isOnline() || e.message?.contains("Unable to resolve host") == true) {
-                Log.d(TAG, "Falling back to local model after network error")
-                try {
-                    val localResponse = localAI.generateResponse(message)
-                    emit("📴 *Mode hors-ligne (fallback)*\n\n$localResponse")
-                } catch (localEx: Exception) {
-                    emit("❌ Erreur IA : ${e.message}")
-                }
+                emit(
+                    "📴 *Pas de connexion internet*\n\n" +
+                        "Reessayez quand votre signal sera retabli. Vos donnees " +
+                        "personnelles continuent d'etre enregistrees localement."
+                )
             } else {
                 emit("❌ Erreur IA : ${cleanGeminiException(e)}")
             }
@@ -248,27 +242,13 @@ class ChatbotRepository @Inject constructor(
             val contexte = buildContexte(patient, lecturesRecentes, latestHbA1c, hba1cEstimee)
 
             if (!isOnline()) {
-                // ── MODE HORS-LIGNE : Gemma local avec contexte réduit ──
-                Log.d(TAG, "envoyerMessageAvecContexte (OFFLINE/local): ${message.take(100)}")
-
-                // v2.1.8 : bail-out precoce si modele non installe
-                if (!localAI.isModelDownloaded()) {
-                    emit(
-                        "${urgencyPrefix}📴 *Mode hors-ligne*\n\n" +
-                        "Le modele IA local n'est pas installe sur cet appareil.\n\n" +
-                        "Pour discuter avec ROLLY sans connexion, ouvrez " +
-                        "**Parametres > Mode hors-ligne** et telechargez ROLLY Local (~550 Mo, " +
-                        "WiFi recommande)."
-                    )
-                    return@flow
-                }
-
-                val localResponse = localAI.generateResponseWithContext(
-                    message = message,
-                    patientContext = contexte,
-                    historiqueChat = historiqueChat
+                emit(
+                    "${urgencyPrefix}📴 *Pas de connexion internet*\n\n" +
+                        "ROLLY a besoin d'internet pour analyser vos donnees " +
+                        "(glycemies, contexte clinique). Vos saisies restent " +
+                        "enregistrees localement et seront synchronisees au retour " +
+                        "du reseau."
                 )
-                emit("$urgencyPrefix📴 *Mode hors-ligne — ROLLY Local*\n\n$localResponse")
                 return@flow
             }
 
@@ -308,14 +288,11 @@ class ChatbotRepository @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e(TAG, "Erreur envoyerMessageAvecContexte", e)
-            // Fallback local si erreur réseau
             if (!isOnline() || e.message?.contains("Unable to resolve host") == true) {
-                try {
-                    val localResponse = localAI.generateResponseWithContext(message, patientContext = "")
-                    emit("📴 *Mode hors-ligne (fallback)*\n\n$localResponse")
-                } catch (localEx: Exception) {
-                    emit("❌ Erreur IA : ${cleanGeminiException(e)}")
-                }
+                emit(
+                    "📴 *Pas de connexion internet*\n\n" +
+                        "Reessayez quand votre signal sera retabli."
+                )
             } else {
                 emit("❌ Erreur IA : ${cleanGeminiException(e)}")
             }

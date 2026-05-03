@@ -1,7 +1,6 @@
 package com.diabeto
 
 import android.app.Application
-import com.diabeto.data.repository.LocalAIManager
 import com.google.firebase.FirebaseApp
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
@@ -29,9 +28,6 @@ import javax.inject.Inject
 @HiltAndroidApp
 class DiabetoApplication : Application() {
 
-    @Inject
-    lateinit var localAIManager: LocalAIManager
-
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
@@ -40,9 +36,6 @@ class DiabetoApplication : Application() {
         // App Check DÉSACTIVÉ — cause le blocage de connexion en side-loading
         // initFirebaseAppCheck()
 
-        // Pre-chauffe Gemma en arriere-plan (non bloquant)
-        appScope.launch {
-            localAIManager.preloadIfAvailable()
-        }
+        // (v2.1.31 : preload Gemma supprime — Rolly est cloud-only.)
     }
 }

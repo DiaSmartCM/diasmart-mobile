@@ -29,7 +29,8 @@ object Routes {
     const val REPAS_ANALYSE    = "repas_analyse"
     const val MESSAGERIE       = "messagerie"
     const val CONVERSATION     = "messagerie/{conversationId}?interlocuteur={interlocuteur}"
-    const val DATA_SHARING     = "data_sharing"
+    const val DATA_SHARING     = "data_sharing?tab={tab}"
+    fun dataSharing(tab: Int = 0) = "data_sharing?tab=$tab"
     const val REPORTS          = "reports"
     const val SETTINGS         = "settings"
     const val PROFILE          = "profile"
@@ -143,7 +144,8 @@ fun DiabetoNavigation(
                 onNavigateToChatbot        = { navController.navigate(Routes.chatbot()) },
                 onNavigateToMessagerie     = { navController.navigate(Routes.MESSAGERIE) },
                 onNavigateToRepasAnalyse   = { navController.navigate(Routes.REPAS_ANALYSE) },
-                onNavigateToDataSharing    = { navController.navigate(Routes.DATA_SHARING) },
+                onNavigateToDataSharing    = { navController.navigate(Routes.dataSharing(0)) },
+                onNavigateToMonMedecin     = { navController.navigate(Routes.dataSharing(1)) },
                 onNavigateToSettings       = { navController.navigate(Routes.SETTINGS) },
                 onNavigateToProfile        = { navController.navigate(Routes.PROFILE) },
                 onNavigateToJournal        = { navController.navigate(Routes.journal()) },
@@ -294,10 +296,18 @@ fun DiabetoNavigation(
         }
 
         // ── Partage de donnees ──────────────────────────────────────────────
-        composable(Routes.DATA_SHARING) {
+        composable(
+            route = Routes.DATA_SHARING,
+            arguments = listOf(navArgument("tab") {
+                type = NavType.IntType
+                defaultValue = 0
+            })
+        ) { entry ->
+            val initialTab = entry.arguments?.getInt("tab") ?: 0
             DataSharingScreen(
                 onNavigateBack        = { navController.popBackStack() },
-                onNavigateToPatientDetail = { id -> navController.navigate(Routes.patientDetail(id)) }
+                onNavigateToPatientDetail = { id -> navController.navigate(Routes.patientDetail(id)) },
+                initialTab = initialTab
             )
         }
 
