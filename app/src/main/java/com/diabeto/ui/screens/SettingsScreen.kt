@@ -277,6 +277,45 @@ fun SettingsScreen(
             }
 
             // ── Export & Données ──────────────────────────────
+            // ── Securite ──────────────────────────────────────
+            item {
+                DayLifeSectionHeader(
+                    title = "Securite",
+                    color = sectionTextColor,
+                    isDark = isDark
+                )
+            }
+            item {
+                DayLifeSettingsCard(cardBg = cardBg) {
+                    DayLifeToggleItem(
+                        icon = Icons.Default.Lock,
+                        iconBg = Color(0xFF6771E4),
+                        title = "Verrouiller l'application",
+                        subtitle = if (uiState.appLockEnabled)
+                            "Empreinte, PIN, schema ou mot de passe au demarrage"
+                        else
+                            "Desactive",
+                        checked = uiState.appLockEnabled,
+                        onCheckedChange = { viewModel.setAppLockEnabled(it) },
+                        titleColor = titleColor,
+                        subtitleColor = subtitleColor,
+                        isDark = isDark
+                    )
+                    if (uiState.appLockEnabled) {
+                        DayLifeDivider(dividerColor)
+                        Text(
+                            "L'application demandera votre empreinte digitale, votre code PIN, " +
+                                "votre schema ou votre mot de passe au demarrage et apres 30 secondes " +
+                                "en arriere-plan. Configurez ces methodes dans les Parametres Android > " +
+                                "Securite si ce n'est pas deja fait.",
+                            fontSize = 12.sp,
+                            color = subtitleColor,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                        )
+                    }
+                }
+            }
+
             item {
                 DayLifeSectionHeader(
                     title = "Export & Données",

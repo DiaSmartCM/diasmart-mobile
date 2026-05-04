@@ -60,6 +60,21 @@ class PreferencesRepository @Inject constructor(
         val PENDING_UPDATE_URL = stringPreferencesKey("pending_update_url")
         val PENDING_UPDATE_CHANGELOG = stringPreferencesKey("pending_update_changelog")
         val PENDING_UPDATE_FORCE = booleanPreferencesKey("pending_update_force")
+        val APP_LOCK_ENABLED = booleanPreferencesKey("app_lock_enabled")
+    }
+
+    /**
+     * Verrouillage de l'application au demarrage / retour en avant-plan.
+     * - true : l'utilisateur doit s'authentifier (empreinte / PIN / schema /
+     *   mot de passe du systeme) pour acceder a l'app.
+     * - false (defaut) : pas de verrouillage.
+     */
+    val appLockEnabled: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[Keys.APP_LOCK_ENABLED] ?: false
+    }
+
+    suspend fun setAppLockEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.APP_LOCK_ENABLED] = enabled }
     }
 
     val themeMode: Flow<ThemeMode> = context.dataStore.data.map { prefs ->

@@ -26,8 +26,8 @@ android {
         applicationId = "com.diabeto"
         minSdk = 26
         targetSdk = 34
-        versionCode = 47
-        versionName = "2.1.31"
+        versionCode = 48
+        versionName = "2.1.32"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -210,6 +210,13 @@ dependencies {
 
     // (v2.1.31 : MediaPipe tasks-genai supprime — Rolly est cloud-only,
     //  Gemma on-device retire pour reduire la taille de l'APK.)
+
+    // ============================================================
+    // Biometric / Device-credential authentication (App Lock)
+    // - empreinte digitale, mot de passe, schema, code PIN
+    // - BiometricPrompt unifie + fallback automatique sur les credentials systeme
+    // ============================================================
+    implementation("androidx.biometric:biometric:1.1.0")
 
     // Testing
     testImplementation("junit:junit:4.13.2")

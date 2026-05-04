@@ -2,7 +2,6 @@ package com.diabeto
 
 import android.os.Bundle
 import android.util.Log
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -13,6 +12,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import com.diabeto.data.repository.CloudBackupRepository
 import com.diabeto.data.repository.PreferencesRepository
@@ -21,6 +21,7 @@ import com.diabeto.notifications.DiaSmartFCMService
 import com.diabeto.notifications.NotificationHelper
 import com.diabeto.notifications.ReminderScheduler
 import com.diabeto.sync.BatchSyncWorker
+import com.diabeto.ui.components.AppLockGate
 import com.diabeto.ui.navigation.DiabetoNavigation
 import com.diabeto.ui.theme.DiabetoTheme
 import com.diabeto.voip.CallManager
@@ -33,7 +34,7 @@ import javax.inject.Inject
  * Activity principale de l'application
  */
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
 
     @Inject lateinit var preferencesRepository: PreferencesRepository
     @Inject lateinit var callManager: CallManager
@@ -95,13 +96,18 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.DARK -> true
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
             }
+            // Verrouillage applicatif (empreinte / PIN / schema / mot de passe)
+            val appLockEnabled by preferencesRepository.appLockEnabled
+                .collectAsState(initial = false)
 
             DiabetoTheme(darkTheme = darkTheme) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    DiabetoNavigation(callManager = callManager)
+                    AppLockGate(enabled = appLockEnabled) {
+                        DiabetoNavigation(callManager = callManager)
+                    }
                 }
             }
         }

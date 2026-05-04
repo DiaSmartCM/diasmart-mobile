@@ -35,6 +35,8 @@ data class SettingsUiState(
     val measureType: MeasureType = MeasureType.CAPILLARY,
     val targetMin: Double = 70.0,
     val targetMax: Double = 180.0,
+    // Securite : verrouillage app (empreinte / PIN / schema / mot de passe)
+    val appLockEnabled: Boolean = false,
     // Role utilisateur — gate les sections specifiques
     val isMedecin: Boolean = false
 )
@@ -108,6 +110,15 @@ class SettingsViewModel @Inject constructor(
                 _uiState.update { it.copy(targetMax = max) }
             }
         }
+        viewModelScope.launch {
+            preferencesRepository.appLockEnabled.collect { enabled ->
+                _uiState.update { it.copy(appLockEnabled = enabled) }
+            }
+        }
+    }
+
+    fun setAppLockEnabled(enabled: Boolean) {
+        viewModelScope.launch { preferencesRepository.setAppLockEnabled(enabled) }
     }
 
     fun setThemeMode(mode: ThemeMode) {
