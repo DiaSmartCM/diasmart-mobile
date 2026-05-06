@@ -53,6 +53,19 @@ fun ReportsScreen(
             viewModel.clearInfo()
         }
     }
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(state.pendingWhatsappShare) {
+        state.pendingWhatsappShare?.let { p ->
+            com.diabeto.util.WhatsAppShare.share(
+                context = ctx,
+                phone = p.phone,
+                fileName = p.fileName,
+                downloadUrl = p.downloadUrl,
+                introMessage = p.intro
+            )
+            viewModel.consumePendingWhatsappShare()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -276,6 +289,32 @@ private fun RecipientSection(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = { Text("destinataire@example.com") }
+                )
+            }
+            // ── WhatsApp ──
+            val recipientPhone = state.selectedRecipient?.telephone.orEmpty()
+            val canWhatsapp = recipientPhone.isNotBlank() &&
+                com.diabeto.util.WhatsAppShare.isLikelyPhoneNumber(recipientPhone)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(
+                    checked = state.sendByWhatsapp,
+                    onCheckedChange = vm::setSendByWhatsapp,
+                    enabled = canWhatsapp
+                )
+                Icon(
+                    androidx.compose.material.icons.Icons.Default.Chat,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    if (canWhatsapp)
+                        "Envoyer sur WhatsApp (${recipientPhone})"
+                    else
+                        "WhatsApp indisponible (numero du destinataire absent)",
+                    fontSize = 13.sp,
+                    color = if (canWhatsapp) MaterialTheme.colorScheme.onSurface
+                        else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

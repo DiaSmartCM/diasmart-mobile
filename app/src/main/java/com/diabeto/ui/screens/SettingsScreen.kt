@@ -26,6 +26,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -63,6 +65,8 @@ fun SettingsScreen(
     var showUnitDialog by remember { mutableStateOf(false) }
     var showMeasureTypeDialog by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
+    var showAppLockChooser by remember { mutableStateOf(false) }
+    var pendingMethod by remember { mutableStateOf<com.diabeto.security.AppLockMethod?>(null) }
     var showTargetDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var isBackingUp by remember { mutableStateOf(false) }
@@ -287,30 +291,40 @@ fun SettingsScreen(
             }
             item {
                 DayLifeSettingsCard(cardBg = cardBg) {
+                    val methodLabel = when (uiState.appLockMethod) {
+                        com.diabeto.security.AppLockMethod.BIOMETRIC -> "Empreinte digitale"
+                        com.diabeto.security.AppLockMethod.PIN -> "Code PIN (4 chiffres)"
+                        com.diabeto.security.AppLockMethod.PASSWORD -> "Mot de passe"
+                        com.diabeto.security.AppLockMethod.NONE -> "Aucune"
+                    }
                     DayLifeToggleItem(
                         icon = Icons.Default.Lock,
                         iconBg = Color(0xFF6771E4),
                         title = "Verrouiller l'application",
-                        subtitle = if (uiState.appLockEnabled)
-                            "Empreinte, PIN, schema ou mot de passe au demarrage"
-                        else
-                            "Desactive",
+                        subtitle = if (uiState.appLockEnabled) "Active — $methodLabel"
+                            else "Desactive",
                         checked = uiState.appLockEnabled,
-                        onCheckedChange = { viewModel.setAppLockEnabled(it) },
+                        onCheckedChange = { enabled ->
+                            if (enabled) {
+                                showAppLockChooser = true
+                            } else {
+                                viewModel.setAppLockEnabled(false)
+                            }
+                        },
                         titleColor = titleColor,
                         subtitleColor = subtitleColor,
                         isDark = isDark
                     )
                     if (uiState.appLockEnabled) {
                         DayLifeDivider(dividerColor)
-                        Text(
-                            "L'application demandera votre empreinte digitale, votre code PIN, " +
-                                "votre schema ou votre mot de passe au demarrage et apres 30 secondes " +
-                                "en arriere-plan. Configurez ces methodes dans les Parametres Android > " +
-                                "Securite si ce n'est pas deja fait.",
-                            fontSize = 12.sp,
-                            color = subtitleColor,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                        DayLifeSettingsItem(
+                            icon = Icons.Default.Edit,
+                            iconBg = Color(0xFF8B93F0),
+                            title = "Changer la methode",
+                            subtitle = "Choisir entre empreinte, PIN ou mot de passe",
+                            titleColor = titleColor,
+                            subtitleColor = subtitleColor,
+                            onClick = { showAppLockChooser = true }
                         )
                     }
                 }
@@ -571,6 +585,36 @@ fun SettingsScreen(
                 showTargetDialog = false
             },
             onDismiss = { showTargetDialog = false }
+        )
+    }
+
+    // App Lock — chooser de la methode
+    if (showAppLockChooser) {
+        AppLockMethodChooser(
+            current = uiState.appLockMethod,
+            isDark = isDark,
+            onPick = { m ->
+                showAppLockChooser = false
+                if (m == com.diabeto.security.AppLockMethod.BIOMETRIC) {
+                    viewModel.configureAppLock(m, null)
+                } else {
+                    pendingMethod = m
+                }
+            },
+            onDismiss = { showAppLockChooser = false }
+        )
+    }
+
+    // App Lock — setup PIN / mot de passe
+    pendingMethod?.let { method ->
+        AppLockSecretSetup(
+            method = method,
+            isDark = isDark,
+            onConfirm = { secret ->
+                viewModel.configureAppLock(method, secret)
+                pendingMethod = null
+            },
+            onDismiss = { pendingMethod = null }
         )
     }
 
@@ -1134,6 +1178,201 @@ private fun DayLifeTargetDialog(
             TextButton(onClick = onDismiss) {
                 Text("Annuler", color = Primary, fontWeight = FontWeight.SemiBold)
             }
+        }
+    )
+}
+
+// ─── Verrouillage app : chooser de methode ─────────────────────────────────
+@Composable
+private fun AppLockMethodChooser(
+    current: com.diabeto.security.AppLockMethod,
+    isDark: Boolean,
+    onPick: (com.diabeto.security.AppLockMethod) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = if (isDark) Color(0xFF1A1A2E) else Color.White,
+        shape = RoundedCornerShape(20.dp),
+        title = { Text("Methode de verrouillage", fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                Text(
+                    "Choisissez comment vous souhaitez deverrouiller DiaSmart.",
+                    fontSize = 13.sp,
+                    color = if (isDark) DarkTextSecondary else TextSecondary
+                )
+                Spacer(Modifier.height(12.dp))
+                MethodChoice(
+                    icon = Icons.Default.Fingerprint,
+                    label = "Empreinte digitale",
+                    description = "Capteur biometrique du telephone (rapide)",
+                    selected = current == com.diabeto.security.AppLockMethod.BIOMETRIC,
+                    onClick = { onPick(com.diabeto.security.AppLockMethod.BIOMETRIC) }
+                )
+                MethodChoice(
+                    icon = Icons.Default.Pin,
+                    label = "Code PIN",
+                    description = "4 chiffres",
+                    selected = current == com.diabeto.security.AppLockMethod.PIN,
+                    onClick = { onPick(com.diabeto.security.AppLockMethod.PIN) }
+                )
+                MethodChoice(
+                    icon = Icons.Default.Password,
+                    label = "Mot de passe",
+                    description = "Lettres, chiffres, caracteres speciaux (8+ caracteres)",
+                    selected = current == com.diabeto.security.AppLockMethod.PASSWORD,
+                    onClick = { onPick(com.diabeto.security.AppLockMethod.PASSWORD) }
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Annuler", color = Primary, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    )
+}
+
+@Composable
+private fun MethodChoice(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    description: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(12.dp),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            if (selected) Primary else Color.Gray.copy(alpha = 0.25f)
+        ),
+        color = if (selected) Primary.copy(alpha = 0.08f) else Color.Transparent,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+    ) {
+        Row(
+            Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(icon, contentDescription = null, tint = Primary, modifier = Modifier.size(24.dp))
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(label, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Text(description, fontSize = 12.sp, color = TextSecondary)
+            }
+            if (selected) {
+                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Primary)
+            }
+        }
+    }
+}
+
+// ─── Verrouillage app : setup PIN / mot de passe ──────────────────────────
+@Composable
+private fun AppLockSecretSetup(
+    method: com.diabeto.security.AppLockMethod,
+    isDark: Boolean,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var first by remember { mutableStateOf("") }
+    var second by remember { mutableStateOf("") }
+    var visible by remember { mutableStateOf(false) }
+    val isPin = method == com.diabeto.security.AppLockMethod.PIN
+    val title = if (isPin) "Configurer un code PIN" else "Configurer un mot de passe"
+    val description = if (isPin) {
+        "Saisissez 4 chiffres puis confirmez-les."
+    } else {
+        "Au moins 8 caracteres, dont au moins une lettre, un chiffre et un caractere special."
+    }
+    val isStrong: Boolean = if (isPin) {
+        first.length == 4 && first.all { it.isDigit() }
+    } else {
+        first.length >= 8 &&
+            first.any { it.isLetter() } &&
+            first.any { it.isDigit() } &&
+            first.any { !it.isLetterOrDigit() }
+    }
+    val matches = first == second && first.isNotEmpty()
+    val canConfirm = isStrong && matches
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = if (isDark) Color(0xFF1A1A2E) else Color.White,
+        shape = RoundedCornerShape(20.dp),
+        title = { Text(title, fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                Text(description, fontSize = 13.sp, color = if (isDark) DarkTextSecondary else TextSecondary)
+                Spacer(Modifier.height(14.dp))
+                OutlinedTextField(
+                    value = first,
+                    onValueChange = { v ->
+                        first = if (isPin) v.filter { it.isDigit() }.take(4) else v
+                    },
+                    label = { Text(if (isPin) "Code PIN" else "Mot de passe") },
+                    singleLine = true,
+                    visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = if (isPin) KeyboardType.NumberPassword else KeyboardType.Password
+                    ),
+                    trailingIcon = {
+                        IconButton(onClick = { visible = !visible }) {
+                            Icon(
+                                if (visible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = null
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = second,
+                    onValueChange = { v ->
+                        second = if (isPin) v.filter { it.isDigit() }.take(4) else v
+                    },
+                    label = { Text("Confirmer") },
+                    singleLine = true,
+                    visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = if (isPin) KeyboardType.NumberPassword else KeyboardType.Password
+                    ),
+                    isError = second.isNotEmpty() && !matches,
+                    supportingText = {
+                        when {
+                            !isStrong && first.isNotEmpty() -> Text(
+                                if (isPin) "Le PIN doit contenir 4 chiffres."
+                                else "Mot de passe trop faible : 8+ caracteres avec lettre, chiffre et caractere special.",
+                                color = MaterialTheme.colorScheme.error,
+                                fontSize = 11.sp
+                            )
+                            second.isNotEmpty() && !matches -> Text(
+                                "Les deux saisies ne correspondent pas.",
+                                color = MaterialTheme.colorScheme.error,
+                                fontSize = 11.sp
+                            )
+                            canConfirm -> Text(
+                                "Tout est bon, vous pouvez confirmer.",
+                                color = Color(0xFF10B981),
+                                fontSize = 11.sp
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { if (canConfirm) onConfirm(first) },
+                enabled = canConfirm
+            ) { Text("Confirmer", fontWeight = FontWeight.SemiBold) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Annuler") }
         }
     )
 }

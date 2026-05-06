@@ -96,16 +96,24 @@ class MainActivity : FragmentActivity() {
                 ThemeMode.DARK -> true
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
             }
-            // Verrouillage applicatif (empreinte / PIN / schema / mot de passe)
+            // Verrouillage applicatif (empreinte / PIN / mot de passe)
             val appLockEnabled by preferencesRepository.appLockEnabled
                 .collectAsState(initial = false)
+            val appLockMethod by preferencesRepository.appLockMethod
+                .collectAsState(initial = com.diabeto.security.AppLockMethod.NONE)
+            val appLockCredential by preferencesRepository.appLockCredential
+                .collectAsState(initial = null)
 
             DiabetoTheme(darkTheme = darkTheme) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    AppLockGate(enabled = appLockEnabled) {
+                    AppLockGate(
+                        enabled = appLockEnabled,
+                        method = appLockMethod,
+                        credentialSerialized = appLockCredential
+                    ) {
                         DiabetoNavigation(callManager = callManager)
                     }
                 }

@@ -61,12 +61,13 @@ class PreferencesRepository @Inject constructor(
         val PENDING_UPDATE_CHANGELOG = stringPreferencesKey("pending_update_changelog")
         val PENDING_UPDATE_FORCE = booleanPreferencesKey("pending_update_force")
         val APP_LOCK_ENABLED = booleanPreferencesKey("app_lock_enabled")
+        val APP_LOCK_METHOD = stringPreferencesKey("app_lock_method")
+        val APP_LOCK_CREDENTIAL = stringPreferencesKey("app_lock_credential")
     }
 
     /**
      * Verrouillage de l'application au demarrage / retour en avant-plan.
-     * - true : l'utilisateur doit s'authentifier (empreinte / PIN / schema /
-     *   mot de passe du systeme) pour acceder a l'app.
+     * - true : l'utilisateur doit s'authentifier (empreinte / PIN / mot de passe)
      * - false (defaut) : pas de verrouillage.
      */
     val appLockEnabled: Flow<Boolean> = context.dataStore.data.map { prefs ->
@@ -75,6 +76,39 @@ class PreferencesRepository @Inject constructor(
 
     suspend fun setAppLockEnabled(enabled: Boolean) {
         context.dataStore.edit { it[Keys.APP_LOCK_ENABLED] = enabled }
+    }
+
+    /**
+     * Methode de verrouillage choisie par l'utilisateur :
+     * BIOMETRIC | PIN | PASSWORD | NONE.
+     */
+    val appLockMethod: Flow<com.diabeto.security.AppLockMethod> = context.dataStore.data.map { prefs ->
+        try {
+            com.diabeto.security.AppLockMethod.valueOf(
+                prefs[Keys.APP_LOCK_METHOD] ?: com.diabeto.security.AppLockMethod.NONE.name
+            )
+        } catch (_: Exception) {
+            com.diabeto.security.AppLockMethod.NONE
+        }
+    }
+
+    suspend fun setAppLockMethod(method: com.diabeto.security.AppLockMethod) {
+        context.dataStore.edit { it[Keys.APP_LOCK_METHOD] = method.name }
+    }
+
+    /**
+     * Credential serialise (sel\$hash en Base64) pour les methodes PIN et
+     * PASSWORD. La valeur en clair n'est JAMAIS stockee.
+     */
+    val appLockCredential: Flow<String?> = context.dataStore.data.map { prefs ->
+        prefs[Keys.APP_LOCK_CREDENTIAL]?.takeIf { it.isNotBlank() }
+    }
+
+    suspend fun setAppLockCredential(serialized: String?) {
+        context.dataStore.edit {
+            if (serialized.isNullOrBlank()) it.remove(Keys.APP_LOCK_CREDENTIAL)
+            else it[Keys.APP_LOCK_CREDENTIAL] = serialized
+        }
     }
 
     val themeMode: Flow<ThemeMode> = context.dataStore.data.map { prefs ->

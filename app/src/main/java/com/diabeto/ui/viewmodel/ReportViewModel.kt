@@ -15,6 +15,13 @@ import kotlinx.coroutines.launch
 import java.io.File
 import javax.inject.Inject
 
+data class WhatsappSharePayload(
+    val phone: String,
+    val downloadUrl: String,
+    val fileName: String,
+    val intro: String
+)
+
 data class ReportUiState(
     val isGenerating: Boolean = false,
     val isSending: Boolean = false,
@@ -28,6 +35,9 @@ data class ReportUiState(
     val emailOverride: String = "",
     val sendByEmail: Boolean = true,
     val sendByMessagerie: Boolean = true,
+    val sendByWhatsapp: Boolean = false,
+    /** Apres un upload reussi, l'ecran lit ce trio pour ouvrir WhatsApp. */
+    val pendingWhatsappShare: WhatsappSharePayload? = null,
     val ordonnance: String = "",
     val compteRendu: String = "",
     val recommandations: String = "",
@@ -53,6 +63,8 @@ class ReportViewModel @Inject constructor(
     fun setEmailOverride(v: String) = _uiState.update { it.copy(emailOverride = v) }
     fun setSendByEmail(v: Boolean) = _uiState.update { it.copy(sendByEmail = v) }
     fun setSendByMessagerie(v: Boolean) = _uiState.update { it.copy(sendByMessagerie = v) }
+    fun setSendByWhatsapp(v: Boolean) = _uiState.update { it.copy(sendByWhatsapp = v) }
+    fun consumePendingWhatsappShare() = _uiState.update { it.copy(pendingWhatsappShare = null) }
     fun selectRecipient(p: UserProfile?) = _uiState.update {
         it.copy(selectedRecipient = p, emailOverride = p?.email ?: it.emailOverride)
     }
@@ -249,6 +261,24 @@ class ReportViewModel @Inject constructor(
                 onSuccess = { channels.add(ReportRecord.CHANNEL_EMAIL) },
                 onFailure = { Log.w(TAG, "email failed: ${it.message}") }
             )
+        }
+        // Partage WhatsApp : on prepare le payload, l'ecran ouvrira l'Intent.
+        if (state.sendByWhatsapp && recipient != null && recipient.telephone.isNotBlank()) {
+            val intro = if (type == ReportRecord.TYPE_PATIENT)
+                "Bonjour Dr. ${recipient.nomComplet}, voici mon rapport DiaSmart ($periodLabel)."
+            else
+                "Bonjour ${recipient.nomComplet}, voici votre compte-rendu/ordonnance."
+            _uiState.update {
+                it.copy(
+                    pendingWhatsappShare = WhatsappSharePayload(
+                        phone = recipient.telephone,
+                        downloadUrl = downloadUrl,
+                        fileName = file.name,
+                        intro = intro
+                    )
+                )
+            }
+            channels.add("whatsapp")
         }
 
         // Historique

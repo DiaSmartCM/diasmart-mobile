@@ -35,8 +35,10 @@ data class SettingsUiState(
     val measureType: MeasureType = MeasureType.CAPILLARY,
     val targetMin: Double = 70.0,
     val targetMax: Double = 180.0,
-    // Securite : verrouillage app (empreinte / PIN / schema / mot de passe)
+    // Securite : verrouillage app
     val appLockEnabled: Boolean = false,
+    val appLockMethod: com.diabeto.security.AppLockMethod = com.diabeto.security.AppLockMethod.NONE,
+    val appLockHasCredential: Boolean = false,
     // Role utilisateur — gate les sections specifiques
     val isMedecin: Boolean = false
 )
@@ -115,10 +117,56 @@ class SettingsViewModel @Inject constructor(
                 _uiState.update { it.copy(appLockEnabled = enabled) }
             }
         }
+        viewModelScope.launch {
+            preferencesRepository.appLockMethod.collect { m ->
+                _uiState.update { it.copy(appLockMethod = m) }
+            }
+        }
+        viewModelScope.launch {
+            preferencesRepository.appLockCredential.collect { c ->
+                _uiState.update { it.copy(appLockHasCredential = !c.isNullOrBlank()) }
+            }
+        }
     }
 
     fun setAppLockEnabled(enabled: Boolean) {
-        viewModelScope.launch { preferencesRepository.setAppLockEnabled(enabled) }
+        viewModelScope.launch {
+            preferencesRepository.setAppLockEnabled(enabled)
+            if (!enabled) {
+                preferencesRepository.setAppLockMethod(com.diabeto.security.AppLockMethod.NONE)
+                preferencesRepository.setAppLockCredential(null)
+            }
+        }
+    }
+
+    /**
+     * Active une methode de verrouillage. Pour BIOMETRIC, aucun credential
+     * a stocker (delegation systeme). Pour PIN / PASSWORD, le secret en clair
+     * est immediatement hashe (PBKDF2) puis l'original est detruit.
+     */
+    fun configureAppLock(method: com.diabeto.security.AppLockMethod, secret: String?) {
+        viewModelScope.launch {
+            when (method) {
+                com.diabeto.security.AppLockMethod.BIOMETRIC -> {
+                    preferencesRepository.setAppLockMethod(method)
+                    preferencesRepository.setAppLockCredential(null)
+                    preferencesRepository.setAppLockEnabled(true)
+                }
+                com.diabeto.security.AppLockMethod.PIN,
+                com.diabeto.security.AppLockMethod.PASSWORD -> {
+                    val s = secret?.takeIf { it.isNotBlank() } ?: return@launch
+                    val hashed = com.diabeto.security.AppLockCredential.hash(s)
+                    preferencesRepository.setAppLockMethod(method)
+                    preferencesRepository.setAppLockCredential(hashed.serialize())
+                    preferencesRepository.setAppLockEnabled(true)
+                }
+                com.diabeto.security.AppLockMethod.NONE -> {
+                    preferencesRepository.setAppLockMethod(method)
+                    preferencesRepository.setAppLockCredential(null)
+                    preferencesRepository.setAppLockEnabled(false)
+                }
+            }
+        }
     }
 
     fun setThemeMode(mode: ThemeMode) {
