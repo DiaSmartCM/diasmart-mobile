@@ -1,5 +1,8 @@
 package com.diabeto.ui.screens
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -52,6 +55,21 @@ fun RendezVousScreen(
     val bookState by viewModel.bookState.collectAsStateWithLifecycle()
     val addState by viewModel.addState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    // Demande la permission calendrier au premier affichage de l'ecran RDV
+    // pour que les ajouts ulterieurs se fassent en silence.
+    val calendarPermLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { /* ignored : si refuse, on retombe sur l'Intent calendrier */ }
+    LaunchedEffect(Unit) {
+        if (!com.diabeto.util.CalendarHelper.hasPermission(context)) {
+            calendarPermLauncher.launch(arrayOf(
+                Manifest.permission.READ_CALENDAR,
+                Manifest.permission.WRITE_CALENDAR
+            ))
+        }
+    }
 
     LaunchedEffect(uiState.error) {
         uiState.error?.let {

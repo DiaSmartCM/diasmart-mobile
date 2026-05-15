@@ -1,5 +1,6 @@
 package com.diabeto.ui.viewmodel
 
+import android.content.Context
 import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -14,8 +15,10 @@ import com.diabeto.data.repository.AuthRepository
 import com.diabeto.data.repository.DataSharingRepository
 import com.diabeto.data.repository.PatientRepository
 import com.diabeto.data.repository.RendezVousRepository
+import com.diabeto.util.CalendarHelper
 import com.google.firebase.firestore.FirebaseFirestore
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -108,6 +111,7 @@ data class BookAppointmentState(
 
 @HiltViewModel
 class RendezVousViewModel @Inject constructor(
+    @ApplicationContext private val appContext: Context,
     savedStateHandle: SavedStateHandle,
     private val rendezVousRepository: RendezVousRepository,
     private val patientRepository: PatientRepository,
@@ -263,6 +267,30 @@ class RendezVousViewModel @Inject constructor(
                     isMedecin = false
                 )
             }
+
+            // Synchronisation calendrier cote patient : pour chaque RDV
+            // confirme et a venir, on tente l'ajout dans l'agenda. Idempotent
+            // grace au cache des requestIds deja ajoutes.
+            val now = LocalDateTime.now()
+            rdvList.filter { it.estConfirme && it.dateHeure.isAfter(now) }
+                .forEach { rdv ->
+                    runCatching {
+                        val notes = buildString {
+                            if (rdv.notes.isNotBlank()) appendLine(rdv.notes)
+                            append("Medecin : ${rdv.medecinNom}")
+                        }
+                        val result = CalendarHelper.addOrUpdateEvent(
+                            context = appContext,
+                            requestId = rdv.id,
+                            title = "RDV : ${rdv.medecinNom}".take(120),
+                            dateHeureIso = rdv.dateHeure.toString(),
+                            dureeMinutes = rdv.dureeMinutes,
+                            description = notes,
+                            location = rdv.lieu.ifBlank { "Cabinet medical" }
+                        )
+                        Log.d(TAG, "Calendar add (patient) for ${rdv.id}: $result")
+                    }.onFailure { Log.w(TAG, "calendar add failed (patient)", it) }
+                }
         } catch (e: Exception) {
             Log.e(TAG, "Error loading patient RDV from Firestore", e)
             _uiState.update { it.copy(isLoading = false, error = "Impossible de charger les rendez-vous") }
@@ -548,6 +576,29 @@ class RendezVousViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 appointmentRequestRepository.acceptRequest(requestId, reponse)
+                // Recupere la demande pour alimenter l'agenda du medecin
+                runCatching {
+                    val request = _uiState.value.appointmentRequests
+                        .firstOrNull { it.id == requestId }
+                    if (request != null) {
+                        val title = "Consultation : ${request.patientNom}".take(120)
+                        val notes = buildString {
+                            if (request.motif.isNotBlank()) appendLine("Motif : ${request.motif}")
+                            if (reponse.isNotBlank()) appendLine("Reponse : $reponse")
+                            append("Patient : ${request.patientNom}")
+                        }
+                        val result = CalendarHelper.addOrUpdateEvent(
+                            context = appContext,
+                            requestId = requestId,
+                            title = title,
+                            dateHeureIso = request.dateHeureSouhaitee,
+                            dureeMinutes = request.dureeMinutes.coerceAtLeast(15),
+                            description = notes,
+                            location = "Cabinet medical"
+                        )
+                        Log.d(TAG, "Calendar add (medecin) for $requestId: $result")
+                    }
+                }.onFailure { Log.w(TAG, "calendar add failed (medecin)", it) }
                 loadData()
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = e.message) }
