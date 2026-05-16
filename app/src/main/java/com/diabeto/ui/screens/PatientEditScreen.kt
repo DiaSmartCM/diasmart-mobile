@@ -6,6 +6,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -93,7 +94,7 @@ fun PatientEditScreen(
                 title = { Text("Édition Patient") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Retour")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
                     }
                 },
                 colors = diaSmartTopAppBarColors()

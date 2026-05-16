@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.foundation.shape.CircleShape
@@ -82,7 +83,7 @@ fun GlucoseTrackingScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Suivi glycémique") },
-                navigationIcon = { IconButton(onClick = onNavigateBack) { Icon(Icons.Default.ArrowBack, "Retour") } },
+                navigationIcon = { IconButton(onClick = onNavigateBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Retour") } },
                 actions = {
                     // Bouton export/partage
                     IconButton(onClick = { viewModel.generateExportData() }) {

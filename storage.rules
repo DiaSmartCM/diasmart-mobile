@@ -19,10 +19,13 @@ service firebase.storage {
     }
 
     // Rapports PDF (patient → medecin, medecin → patient).
-    // Proprietaire seul peut uploader. Lecture autorisee a tout utilisateur
-    // authentifie : le destinataire recoit l'URL via la messagerie.
+    // Durcis v2.1.35 : lecture restreinte au proprietaire uniquement.
+    // Le destinataire passe par les URLs Supabase Storage signees
+    // (les rapports PDF de DiaSmart sont stockes sur Supabase, pas ici).
+    // Cette regle reste pour les anciens uploads Firebase Storage avant
+    // la migration v2.1.21.
     match /reports/{userId}/{fileName} {
-      allow read: if request.auth != null;
+      allow read: if request.auth != null && request.auth.uid == userId;
       allow write: if request.auth != null
                    && request.auth.uid == userId
                    && request.resource.size < 10 * 1024 * 1024

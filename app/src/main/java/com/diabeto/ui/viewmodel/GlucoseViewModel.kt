@@ -171,10 +171,18 @@ class GlucoseViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Code couleur glycemique aligne sur le design system (`theme/Color.kt`).
+     * v2.1.35 : ne plus utiliser de hex codes hardcodes — chaque seuil clinique
+     * doit etre rendu avec la meme teinte partout dans l'app (dashboard,
+     * carnet, predictif, message).
+     */
     fun getGlucoseColor(valeur: Double): androidx.compose.ui.graphics.Color = when {
-        valeur < 70 -> androidx.compose.ui.graphics.Color(0xFFE57373)
-        valeur > 180 -> androidx.compose.ui.graphics.Color(0xFFFFB74D)
-        else -> androidx.compose.ui.graphics.Color(0xFF81C784)
+        valeur < 54 -> com.diabeto.ui.theme.GlucoseSevere   // Hypoglycemie severe — alerte
+        valeur < 70 -> com.diabeto.ui.theme.GlucoseLow      // Hypoglycemie
+        valeur > 250 -> com.diabeto.ui.theme.GlucoseSevere  // Hyperglycemie severe
+        valeur > 180 -> com.diabeto.ui.theme.GlucoseHigh    // Hyperglycemie
+        else -> com.diabeto.ui.theme.GlucoseNormal          // Cible 70-180
     }
 
     fun getGlucoseStatus(valeur: Double): String = glucoseRepository.getGlucoseStatus(valeur)

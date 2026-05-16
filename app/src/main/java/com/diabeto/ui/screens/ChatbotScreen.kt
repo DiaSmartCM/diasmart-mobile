@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.res.stringResource
 import com.diabeto.R
@@ -99,7 +100,7 @@ fun ChatbotScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, stringResource(R.string.chatbot_back), tint = chatTopBarText)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.chatbot_back), tint = chatTopBarText)
                     }
                     // Hamburger menu for sessions
                     IconButton(onClick = { viewModel.toggleSessionDrawer() }) {
