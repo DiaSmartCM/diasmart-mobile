@@ -351,7 +351,7 @@ private fun MonMedecinTabContent(
                     color = Warning
                 )
             }
-            items(pendingRequests) { consent ->
+            items(pendingRequests, key = { it.documentId }) { consent ->
                 PatientPendingRequestCard(
                     consent = consent,
                     onAccept = { viewModel.acceptRequest(consent.medecinUid) },
@@ -780,7 +780,7 @@ private fun DoctorReviewsDialog(
                         Text("Aucun avis publié pour le moment.", color = OnSurfaceVariant, textAlign = TextAlign.Center)
                     }
                     else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        items(reviews) { r -> ReviewItemCard(r) }
+                        items(reviews, key = { it.id }) { r -> ReviewItemCard(r) }
                     }
                 }
             }

@@ -206,7 +206,10 @@ fun SharedPatientDataScreen(
                         EmptyDataCard("Aucune donnee de glycemie partagee")
                     }
                 } else {
-                    items(uiState.glucoseData.take(20)) { glucose ->
+                    items(
+                        uiState.glucoseData.take(20),
+                        key = { (it["id"] as? String) ?: (it["dateHeure"]?.toString() ?: it.hashCode().toString()) }
+                    ) { glucose ->
                         GlucoseDataCard(glucose)
                     }
                 }
@@ -221,7 +224,10 @@ fun SharedPatientDataScreen(
                         EmptyDataCard("Aucune donnee de repas partagee")
                     }
                 } else {
-                    items(uiState.repasData.take(20)) { repas ->
+                    items(
+                        uiState.repasData.take(20),
+                        key = { (it["id"] as? String) ?: (it["dateHeure"]?.toString() ?: it.hashCode().toString()) }
+                    ) { repas ->
                         RepasDataCard(repas)
                     }
                 }

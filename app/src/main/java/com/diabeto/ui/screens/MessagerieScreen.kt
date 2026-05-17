@@ -161,7 +161,7 @@ fun MessagerieScreen(
                     Text("Aucun médecin disponible pour le moment.")
                 } else {
                     LazyColumn(modifier = Modifier.heightIn(max = 300.dp)) {
-                        items(uiState.medecins) { medecin ->
+                        items(uiState.medecins, key = { it.uid }) { medecin ->
                             MedecinItem(
                                 medecin = medecin,
                                 onClick = {

@@ -169,7 +169,7 @@ fun JournalScreen(
                             modifier = Modifier.padding(top = 8.dp)
                         )
                     }
-                    items(uiState.entries.take(30)) { entry ->
+                    items(uiState.entries.take(30), key = { it.id }) { entry ->
                         JournalHistoryItem(entry)
                     }
                 }
@@ -228,7 +228,7 @@ private fun JournalEditForm(
             // Humeur
             Text("Humeur", fontWeight = FontWeight.Medium)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(Humeur.entries) { h ->
+                items(Humeur.entries, key = { it.name }) { h ->
                     FilterChip(
                         selected = humeur == h,
                         onClick = { onHumeurChange(h) },
@@ -240,7 +240,7 @@ private fun JournalEditForm(
             // Stress
             Text("Niveau de stress", fontWeight = FontWeight.Medium)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(NiveauStress.entries) { s ->
+                items(NiveauStress.entries, key = { it.name }) { s ->
                     FilterChip(
                         selected = stress == s,
                         onClick = { onStressChange(s) },
@@ -252,7 +252,7 @@ private fun JournalEditForm(
             // Sommeil
             Text("Qualité du sommeil", fontWeight = FontWeight.Medium)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(QualiteSommeil.entries) { q ->
+                items(QualiteSommeil.entries, key = { it.name }) { q ->
                     FilterChip(
                         selected = sommeil == q,
                         onClick = { onSommeilChange(q) },

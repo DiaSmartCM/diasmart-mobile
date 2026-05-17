@@ -287,7 +287,7 @@ fun ChatbotScreen(
                             )
                             Spacer(Modifier.height(8.dp))
                             LazyColumn(modifier = Modifier.heightIn(max = 250.dp)) {
-                                items(uiState.availableDoctors) { medecin ->
+                                items(uiState.availableDoctors, key = { it.uid }) { medecin ->
                                     Surface(
                                         onClick = { viewModel.submitForValidation(medecin) },
                                         shape = RoundedCornerShape(12.dp),
@@ -430,7 +430,7 @@ fun ChatbotScreen(
                     }
                 }
 
-                items(uiState.messages) { message ->
+                items(uiState.messages, key = { it.id }) { message ->
                     RollyMessageBubble(message = message)
                 }
             }
@@ -1156,7 +1156,7 @@ private fun SessionDrawer(
                                     color = Color.White.copy(alpha = 0.4f)
                                 )
                             }
-                            items(sessionList) { session ->
+                            items(sessionList, key = { it.id }) { session ->
                                 SessionItem(
                                     session = session,
                                     isActive = session.id == currentSessionId,
