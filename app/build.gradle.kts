@@ -1,6 +1,8 @@
 import java.util.Properties
 
-// Lecture de la clé Gemini depuis local.properties
+// Lecture des secrets locaux (TURN credentials, keystore).
+// La cle Gemini n'est plus dans l'APK depuis v2.1.37 : toutes les requetes
+// passent par le proxy Vercel (/api/rolly-chat).
 val localProps = Properties()
 val localPropsFile = rootProject.file("local.properties")
 if (localPropsFile.exists()) {
@@ -26,20 +28,16 @@ android {
         applicationId = "com.diabeto"
         minSdk = 26
         targetSdk = 34
-        versionCode = 52
-        versionName = "2.1.36"
+        versionCode = 53
+        versionName = "2.1.37"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
         }
 
-        // Secrets injectés depuis local.properties (jamais dans le code source)
-        buildConfigField(
-            "String",
-            "GEMINI_API_KEY",
-            "\"${localProps.getProperty("GEMINI_API_KEY", "")}\""
-        )
+        // Secrets injectés depuis local.properties (jamais dans le code source).
+        // v2.1.37 : GEMINI_API_KEY supprime — la cle vit cote serveur (Vercel env).
         buildConfigField(
             "String",
             "TURN_USERNAME",
@@ -203,13 +201,10 @@ dependencies {
     // Coil (chargement d'images)
     implementation("io.coil-kt:coil-compose:2.6.0")
 
-    // ============================================================
-    // Google Gemini AI (client direct — gardé pour compatibilité)
-    // ============================================================
-    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
-
-    // (v2.1.31 : MediaPipe tasks-genai supprime — Rolly est cloud-only,
-    //  Gemma on-device retire pour reduire la taille de l'APK.)
+    // (v2.1.37 : SDK Gemini Android supprime — ROLLY passe par le proxy Vercel,
+    //  cf. RollyChatClient.kt. La cle API vit cote serveur uniquement.)
+    // (v2.1.31 : MediaPipe tasks-genai supprime — Gemma on-device retire pour
+    //  reduire la taille de l'APK.)
 
     // ============================================================
     // Biometric / Device-credential authentication (App Lock)
