@@ -1,5 +1,6 @@
 package com.diabeto
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.compose.setContent
@@ -17,6 +18,8 @@ import androidx.lifecycle.lifecycleScope
 import com.diabeto.data.repository.CloudBackupRepository
 import com.diabeto.data.repository.PreferencesRepository
 import com.diabeto.data.repository.ThemeMode
+import com.diabeto.notifications.DeepLinkBus
+import com.diabeto.notifications.DeepLinkEvent
 import com.diabeto.notifications.DiaSmartFCMService
 import com.diabeto.notifications.NotificationHelper
 import com.diabeto.notifications.ReminderScheduler
@@ -62,6 +65,9 @@ class MainActivity : FragmentActivity() {
         DiaSmartFCMService.subscribeToUpdatesTopic()
         // Sauvegarder le token FCM dans Firestore
         DiaSmartFCMService.saveTokenToFirestore()
+
+        // Deep-link issu du tap sur une notification (app froide)
+        handleNotificationIntent(intent)
 
         // Initialize VoIP CallManager when user is authenticated
         FirebaseAuth.getInstance().currentUser?.let { user ->
@@ -119,5 +125,33 @@ class MainActivity : FragmentActivity() {
                 }
             }
         }
+    }
+
+    /**
+     * Tap sur une notif quand l'activity est deja en arriere-plan : on recoit
+     * un nouvel intent. On l'enregistre pour que les prochaines lectures de
+     * `intent` voient le bon, et on emet le deep-link sur le bus.
+     */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleNotificationIntent(intent)
+    }
+
+    /**
+     * Extrait les extras de l'intent place par les PendingIntent des notifs
+     * (`navigate_to`, `conversation_id`...) et les pousse sur [DeepLinkBus]
+     * pour que [DiabetoNavigation] navigue une fois pret.
+     */
+    private fun handleNotificationIntent(intent: Intent?) {
+        if (intent == null) return
+        val target = intent.getStringExtra("navigate_to") ?: return
+        val conversationId = intent.getStringExtra("conversation_id")
+        Log.d("MainActivity", "Deep-link from notif: $target conv=$conversationId")
+        DeepLinkBus.post(DeepLinkEvent(target = target, conversationId = conversationId))
+        // Nettoie l'intent pour eviter qu'une recreation d'activity (rotation,
+        // theme change) ne re-emette le deep-link.
+        intent.removeExtra("navigate_to")
+        intent.removeExtra("conversation_id")
     }
 }

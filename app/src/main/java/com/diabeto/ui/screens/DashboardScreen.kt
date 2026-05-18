@@ -67,6 +67,7 @@ fun DashboardScreen(
     onNavigateToValidations: () -> Unit = {},
     onNavigateToCommunity: () -> Unit = {},
     onNavigateToReports: () -> Unit = {},
+    onNavigateToMesAvis: () -> Unit = {},
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -659,7 +660,15 @@ fun DashboardScreen(
                             onClick = onNavigateToReports,
                             modifier = Modifier.weight(1f)
                         )
-                        Spacer(modifier = Modifier.weight(1f))
+                        FeatureCard(
+                            title = "Mes avis",
+                            subtitle = "Note moyenne",
+                            icon = Icons.Outlined.Star,
+                            cardColor = CardAppointment,
+                            iconTint = Color(0xFFF59E0B),
+                            onClick = onNavigateToMesAvis,
+                            modifier = Modifier.weight(1f)
+                        )
                     }
                 }
             }

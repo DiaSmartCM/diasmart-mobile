@@ -149,7 +149,8 @@ class DiaSmartFCMService : FirebaseMessagingService() {
 
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            putExtra("navigate_to", "dashboard")
+            // v2.1.39 : ouvre directement la vue "Mes avis" (lecture seule)
+            putExtra("navigate_to", "mes_avis")
         }
         val pendingIntent = PendingIntent.getActivity(
             this, 2, intent,

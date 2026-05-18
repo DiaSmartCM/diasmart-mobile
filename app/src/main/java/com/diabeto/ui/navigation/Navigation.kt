@@ -1,13 +1,16 @@
 package com.diabeto.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.navigation.*
 import androidx.navigation.compose.*
+import com.diabeto.notifications.DeepLinkBus
 import com.diabeto.ui.screens.*
 import com.diabeto.voip.CallManager
 import com.diabeto.voip.CallScreen
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.delay
 
 /**
  * Routes de navigation DiaSmart
@@ -39,6 +42,7 @@ object Routes {
     const val PREDICTIVE       = "predictive?patientId={patientId}"
     const val VALIDATIONS      = "validations"
     const val COMMUNITY        = "community"
+    const val MES_AVIS         = "mes_avis"
     const val VIDEO_CALL       = "videocall/{roomName}?interlocuteur={interlocuteur}&audioOnly={audioOnly}"
     const val VOIP_CALL        = "voip_call"
     const val SHARED_PATIENT   = "shared_patient/{patientUid}?patientNom={patientNom}"
@@ -83,6 +87,48 @@ fun DiabetoNavigation(
     startDestination: String = Routes.SPLASH,
     callManager: CallManager? = null
 ) {
+    // ── Deep-links provenant du tap sur une notification ─────────────────
+    // Le bus est rempli par MainActivity.onCreate / onNewIntent. On consomme
+    // l'event une fois que l'utilisateur est passe le splash + l'auth (sinon
+    // la nav saute par-dessus le login). On poll la route courante jusqu'a
+    // ce qu'elle soit "prete".
+    LaunchedEffect(Unit) {
+        DeepLinkBus.events.collect { event ->
+            // Attendre que la nav soit montee + l'utilisateur authentifie.
+            var waited = 0
+            while (waited < 12000) { // max 12s d'attente (splash + auth)
+                val route = navController.currentDestination?.route
+                val ready = route != null &&
+                    route != Routes.SPLASH &&
+                    route != Routes.ONBOARDING &&
+                    route != Routes.LOGIN
+                if (ready) break
+                delay(200); waited += 200
+            }
+            val current = navController.currentDestination?.route
+            if (current == null || current == Routes.SPLASH ||
+                current == Routes.ONBOARDING || current == Routes.LOGIN) {
+                // Toujours pas authentifie : on jette l'event (le user verra
+                // l'app sur le dashboard apres login, sans deep-link).
+                return@collect
+            }
+            when (event.target) {
+                "messagerie" -> {
+                    val convId = event.conversationId
+                    if (!convId.isNullOrBlank()) {
+                        navController.navigate(Routes.conversation(convId, ""))
+                    } else {
+                        navController.navigate(Routes.MESSAGERIE)
+                    }
+                }
+                "community" -> navController.navigate(Routes.COMMUNITY)
+                "mes_avis" -> navController.navigate(Routes.MES_AVIS)
+                // "dashboard" → noop, on y est deja
+            }
+            DeepLinkBus.clearReplayCache()
+        }
+    }
+
     NavHost(
         navController = navController,
         startDestination = startDestination,
@@ -153,7 +199,8 @@ fun DiabetoNavigation(
                 onNavigateToPredictive     = { navController.navigate(Routes.predictive()) },
                 onNavigateToValidations    = { navController.navigate(Routes.VALIDATIONS) },
                 onNavigateToCommunity      = { navController.navigate(Routes.COMMUNITY) },
-                onNavigateToReports        = { navController.navigate(Routes.REPORTS) }
+                onNavigateToReports        = { navController.navigate(Routes.REPORTS) },
+                onNavigateToMesAvis        = { navController.navigate(Routes.MES_AVIS) }
             )
         }
 
@@ -452,6 +499,13 @@ fun DiabetoNavigation(
         // ── Communaute patients ─────────────────────────────────────────
         composable(Routes.COMMUNITY) {
             CommunityScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // ── Mes avis (cote medecin) — lecture seule ────────────────────
+        composable(Routes.MES_AVIS) {
+            MesAvisScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
