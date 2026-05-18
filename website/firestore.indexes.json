@@ -47,6 +47,14 @@
         { "fieldPath": "patientUid", "order": "ASCENDING" },
         { "fieldPath": "dateHeure", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "doctor_reviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "doctorUid", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
