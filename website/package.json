@@ -1,6 +1,6 @@
 {
   "name": "diasmart-website",
-  "version": "2.1.37",
+  "version": "2.1.40",
   "private": true,
   "description": "DiaSmart website + Vercel serverless endpoints (OTP, reports, ROLLY proxy)",
   "dependencies": {

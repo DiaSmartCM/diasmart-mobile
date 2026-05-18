@@ -1268,7 +1268,7 @@ body{display:flex;flex-direction:column}
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
 import{getAuth,signInWithEmailAndPassword,createUserWithEmailAndPassword,signInWithPopup,GoogleAuthProvider,onAuthStateChanged,signOut,updateProfile,RecaptchaVerifier,signInWithPhoneNumber,updateEmail,linkWithPopup,PhoneAuthProvider,updatePhoneNumber}from"https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-import{getFirestore,collection,addDoc,getDocs,getDoc,query,where,orderBy,limit,doc,setDoc,updateDoc,serverTimestamp,Timestamp}from"https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+import{getFirestore,collection,addDoc,getDocs,getDoc,query,where,orderBy,limit,doc,setDoc,updateDoc,serverTimestamp,Timestamp,onSnapshot}from"https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 import{getStorage,ref,uploadBytes,getDownloadURL}from"https://www.gstatic.com/firebasejs/11.6.0/firebase-storage.js";
 
 const firebaseConfig={
@@ -1290,7 +1290,7 @@ window._auth=auth;
 window._db=db;
 window._storage=storage;
 window._googleProvider=googleProvider;
-window._fbFuncs={signInWithEmailAndPassword,createUserWithEmailAndPassword,signInWithPopup,signOut,updateProfile,updateEmail,linkWithPopup,RecaptchaVerifier,signInWithPhoneNumber,PhoneAuthProvider,updatePhoneNumber,collection,addDoc,getDocs,getDoc,query,where,orderBy,limit,doc,setDoc,updateDoc,serverTimestamp,Timestamp,ref,uploadBytes,getDownloadURL};
+window._fbFuncs={signInWithEmailAndPassword,createUserWithEmailAndPassword,signInWithPopup,signOut,updateProfile,updateEmail,linkWithPopup,RecaptchaVerifier,signInWithPhoneNumber,PhoneAuthProvider,updatePhoneNumber,collection,addDoc,getDocs,getDoc,query,where,orderBy,limit,doc,setDoc,updateDoc,serverTimestamp,Timestamp,ref,uploadBytes,getDownloadURL,onSnapshot};
 
 // ── Auth state listener ──
 onAuthStateChanged(auth,async user=>{
@@ -1350,6 +1350,8 @@ onAuthStateChanged(auth,async user=>{
     loadConsents();
     loadDoctors();
     loadValidations();
+    // v2.1.40 : in-app notifications (messages + community)
+    if(window.initInAppNotifs){window.initInAppNotifs();}
     // Show validations card for doctors
     const userDoc=await getDoc(doc(db,'users',user.uid));
     if(userDoc.exists()){
@@ -1437,95 +1439,75 @@ window.savePatientToDb=async(name,dob,type)=>{
   }catch(e){console.error('Save patient error:',e);alert('Erreur sauvegarde: '+e.message)}
 };
 
-// ── Gemini AI for ROLLY (with fallback) ──
-window.callGemini=async(prompt,includeHistory=true)=>{
-  const GEMINI_KEY='AIzaSyD4eOlk-Agx1rUVurd9o-jwE4MC6z760SI';
-  const models=['gemini-2.0-flash','gemini-1.5-flash'];
-  const systemPrompt=`Tu es ROLLY, un assistant medical IA specialise en diabetologie pour l'app DiaSmart.AI. Tu es bienveillant, professionnel et tu reponds en francais. Tu donnes des conseils pratiques mais tu rappelles toujours de consulter un medecin pour les decisions medicales importantes. Utilise du markdown pour formater tes reponses (gras, listes, titres). Si un historique de conversations est fourni, utilise-le pour personnaliser tes reponses et assurer la continuite du suivi.`;
+// ── ROLLY proxy (v2.1.40+) ──────────────────────────────────────────
+// La cle Gemini n'est plus dans le client : toutes les requetes passent
+// par /api/rolly-chat sur Vercel, qui detient la cle cote serveur.
+// Auth : Firebase ID token (Bearer header).
+const ROLLY_PROXY_URL='https://website-omega-umber-20.vercel.app/api/rolly-chat';
 
+async function _rollyCall(body){
+  if(!auth.currentUser){
+    throw new Error('Veuillez vous reconnecter pour utiliser ROLLY.');
+  }
+  const idToken=await auth.currentUser.getIdToken(false);
+  let res;
+  let lastErr=null;
+  // 2 tentatives : primary (gemini-2.5-flash) puis fallback (gemini-2.0-flash)
+  for(const useFallback of [false,true]){
+    try{
+      res=await fetch(ROLLY_PROXY_URL,{
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'Authorization':'Bearer '+idToken
+        },
+        body:JSON.stringify({...body,useFallback,stream:false})
+      });
+      if(!res.ok){
+        const errBody=await res.text();
+        const code=res.status;
+        if((code===502||code===503||code===429)&&!useFallback){
+          console.warn('Rolly proxy '+code+', tentative fallback');
+          await new Promise(r=>setTimeout(r,1000));
+          continue;
+        }
+        if(code===401)throw new Error('Session expiree. Reconnectez-vous.');
+        if(code===429)throw new Error('Limite quotidienne ROLLY atteinte. Reessayez demain.');
+        if(code===502||code===503)throw new Error('Le service IA est temporairement surcharge. Reessayez dans quelques instants.');
+        throw new Error('Erreur Rolly ('+code+') : '+errBody.slice(0,120));
+      }
+      const data=await res.json();
+      return data;
+    }catch(e){
+      lastErr=e;
+      if(!useFallback&&(e.message.includes('fetch')||e.message.includes('network'))){
+        await new Promise(r=>setTimeout(r,1000));
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw lastErr||new Error('Le service IA est temporairement indisponible.');
+}
+
+// ── ROLLY chat (texte) ──
+window.callGemini=async(prompt,includeHistory=true)=>{
   let fullPrompt=prompt;
   if(includeHistory && _chatHistoryContext){
     fullPrompt=_chatHistoryContext+'\n\nQuestion actuelle : '+prompt;
   }
-
-  for(let i=0;i<models.length;i++){
-    const url=`https://generativelanguage.googleapis.com/v1beta/models/${models[i]}:generateContent?key=${GEMINI_KEY}`;
-    try{
-      const res=await fetch(url,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          system_instruction:{parts:[{text:systemPrompt}]},
-          contents:[{parts:[{text:fullPrompt}]}],
-          generationConfig:{temperature:0.7,maxOutputTokens:1024}
-        })
-      });
-      const data=await res.json();
-      if(data?.error){
-        const code=data.error.code||0;
-        const msg=data.error.message||'';
-        if((code===503||code===429||msg.includes('UNAVAILABLE')||msg.includes('high demand'))&&i<models.length-1){
-          console.warn('Gemini '+models[i]+' surcharge, basculement vers '+models[i+1]);
-          await new Promise(r=>setTimeout(r,1000));
-          continue;
-        }
-        if(code===503||code===429)throw new Error('Le service IA est temporairement surcharge. Reessayez dans quelques instants.');
-        throw new Error(msg||'Erreur API Gemini');
-      }
-      return data?.candidates?.[0]?.content?.parts?.[0]?.text||"Desole, je n'ai pas pu generer de reponse.";
-    }catch(e){
-      if(i<models.length-1&&(e.message.includes('503')||e.message.includes('fetch'))){
-        console.warn('Erreur '+models[i]+', tentative '+models[i+1]);
-        await new Promise(r=>setTimeout(r,1000));
-        continue;
-      }
-      throw e;
-    }
-  }
-  throw new Error('Le service IA est temporairement indisponible. Reessayez plus tard.');
+  const data=await _rollyCall({mode:'chat',message:fullPrompt});
+  return data?.text||"Desole, je n'ai pas pu generer de reponse.";
 };
 
-// ── Gemini Vision (image analysis) ──
+// ── ROLLY vision (image + prompt) ──
 window.callGeminiVision=async(base64Image,mimeType,prompt)=>{
-  const GEMINI_KEY='AIzaSyD4eOlk-Agx1rUVurd9o-jwE4MC6z760SI';
-  const models=['gemini-2.0-flash','gemini-1.5-flash'];
-
-  for(let i=0;i<models.length;i++){
-    const url=`https://generativelanguage.googleapis.com/v1beta/models/${models[i]}:generateContent?key=${GEMINI_KEY}`;
-    try{
-      const res=await fetch(url,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          contents:[{parts:[
-            {inlineData:{mimeType:mimeType,data:base64Image}},
-            {text:prompt}
-          ]}],
-          generationConfig:{temperature:0.4,maxOutputTokens:2048}
-        })
-      });
-      const data=await res.json();
-      if(data?.error){
-        const code=data.error.code||0;
-        const msg=data.error.message||'';
-        if((code===503||code===429||msg.includes('UNAVAILABLE'))&&i<models.length-1){
-          console.warn('Vision '+models[i]+' surcharge, basculement vers '+models[i+1]);
-          await new Promise(r=>setTimeout(r,1000));
-          continue;
-        }
-        if(code===503||code===429)throw new Error('Le service IA est temporairement surcharge. Reessayez dans quelques instants.');
-        throw new Error(msg||'Erreur API Gemini Vision');
-      }
-      return data?.candidates?.[0]?.content?.parts?.[0]?.text||"Desole, je n'ai pas pu analyser l'image.";
-    }catch(e){
-      if(i<models.length-1&&(e.message.includes('503')||e.message.includes('fetch'))){
-        await new Promise(r=>setTimeout(r,1000));
-        continue;
-      }
-      throw e;
-    }
-  }
-  throw new Error('Le service IA Vision est temporairement indisponible.');
+  // Le proxy attend imageBase64 (sans prefixe data:); mimeType est gere
+  // server-side (image/jpeg). On envoie via mode "chat" pour rester souple
+  // sur les prompts custom.
+  const cleaned=base64Image.replace(/^data:[^,]+,/,'');
+  const data=await _rollyCall({mode:'chat',message:prompt,imageBase64:cleaned});
+  return data?.text||"Desole, je n'ai pas pu analyser l'image.";
 };
 
 // ── Medicaments data ──
@@ -1804,6 +1786,157 @@ function showUpdateBanner(){
   b.innerHTML='<div style="display:flex;align-items:center;gap:10px"><span style="font-size:20px">&#128260;</span><div><b>Nouvelle version disponible</b><br><small>Cliquez pour mettre a jour</small></div></div><button onclick="window.location.reload(true)" style="background:#fff;color:#6C63FF;border:none;padding:8px 20px;border-radius:20px;font-weight:bold;cursor:pointer">Mettre a jour</button>';
   document.body.appendChild(b);
 }
+
+// ════════════════════════════════════════════════════════════════════
+//  IN-APP NOTIFICATIONS (PWA v2.1.40+)
+//  - Demande la permission Notification au 1er login.
+//  - Firestore onSnapshot sur conversations + community_messages.
+//  - Notif systeme via Notification API quand un message arrive en
+//    foreground (l'utilisateur peut etre sur un autre onglet). Pour
+//    le background pur (PWA fermee), il faudra FCM Web push (VAPID).
+//  - Filtre : on ne notifie pas l'emetteur de son propre message.
+// ════════════════════════════════════════════════════════════════════
+window._inAppNotifInit=false;
+window._lastMsgSeen={};       // convId -> timestamp ms du dernier vu
+window._lastCommunitySeen=0;  // timestamp ms du dernier post community vu
+
+window.initInAppNotifs=async function(){
+  if(window._inAppNotifInit)return;
+  window._inAppNotifInit=true;
+  // 1) Permission Notification (silencieux si refuse)
+  if('Notification' in window && Notification.permission==='default'){
+    try{ await Notification.requestPermission(); }catch(_){}
+  }
+  const fbDb=window._db;
+  const fbFn=window._fbFuncs;
+  const user=window._auth?.currentUser;
+  if(!user||!fbDb||!fbFn)return;
+
+  // ── 2) Listener messages prives : on ecoute les conversations
+  //      ou je suis participant, et pour chaque conversation on
+  //      ecoute les NOUVEAUX messages (dont senderId != moi).
+  try{
+    const convQ=fbFn.query(
+      fbFn.collection(fbDb,'conversations'),
+      fbFn.where('participants','array-contains',user.uid)
+    );
+    fbFn.onSnapshot(convQ,(snap)=>{
+      snap.docChanges().forEach(ch=>{
+        if(ch.type!=='added' && ch.type!=='modified')return;
+        const convId=ch.doc.id;
+        if(window._msgListeners&&window._msgListeners[convId])return;
+        window._msgListeners=window._msgListeners||{};
+        // Hooke un listener sur les messages de cette conv
+        const msgsQ=fbFn.query(
+          fbFn.collection(fbDb,'conversations',convId,'messages'),
+          fbFn.orderBy('timestamp','desc'),
+          fbFn.limit(5)
+        );
+        const initialMs=Date.now();
+        window._msgListeners[convId]=fbFn.onSnapshot(msgsQ,(msgSnap)=>{
+          msgSnap.docChanges().forEach(mch=>{
+            if(mch.type!=='added')return;
+            const m=mch.doc.data();
+            const ts=m.timestamp?.toDate?.()?.getTime?.()||0;
+            // Ignore les messages plus anciens que le moment ou on a
+            // attache le listener (sinon on notifie tout l'historique).
+            if(ts<initialMs-30000)return;
+            if(m.envoyeurId===user.uid)return;
+            const sender=m.envoyeurNom||'Nouveau message';
+            const body=(m.contenu||'').toString().slice(0,120);
+            _showNotif({
+              title:sender,
+              body:body||'Nouveau message',
+              tag:'msg-'+convId,
+              data:{type:'message',convId}
+            });
+          });
+        });
+      });
+    });
+  }catch(e){console.warn('msg listener failed:',e.message)}
+
+  // ── 3) Listener community
+  try{
+    const initialCommunityMs=Date.now();
+    const commQ=fbFn.query(
+      fbFn.collection(fbDb,'community_messages'),
+      fbFn.orderBy('timestamp','desc'),
+      fbFn.limit(5)
+    );
+    fbFn.onSnapshot(commQ,(snap)=>{
+      snap.docChanges().forEach(ch=>{
+        if(ch.type!=='added')return;
+        const m=ch.doc.data();
+        const ts=m.timestamp?.toDate?.()?.getTime?.()||0;
+        if(ts<initialCommunityMs-30000)return;
+        if(m.userId===user.uid)return;
+        _showNotif({
+          title:(m.userName||'Communaute')+' — Communaute',
+          body:(m.content||'').toString().slice(0,120),
+          tag:'community-'+ch.doc.id,
+          data:{type:'community'}
+        });
+      });
+    });
+  }catch(e){console.warn('community listener failed:',e.message)}
+};
+
+function _showNotif({title,body,tag,data}){
+  // 1) Banniere in-app toujours (meme si Notification API refusee)
+  _showInAppToast(title,body,data);
+  // 2) Notification systeme si permission accordee
+  if('Notification' in window && Notification.permission==='granted'){
+    try{
+      const n=new Notification(title,{
+        body,
+        icon:'/diasmart-logo.png',
+        badge:'/diasmart-logo.png',
+        tag,
+        renotify:false
+      });
+      n.onclick=()=>{
+        window.focus();
+        if(data?.type==='message'){
+          if(window.showScreen)window.showScreen('messagerie');
+          if(data.convId && window.openConversation){
+            try{window.openConversation(data.convId)}catch(_){}
+          }
+        }else if(data?.type==='community'){
+          if(window.showScreen)window.showScreen('community');
+        }
+        n.close();
+      };
+    }catch(e){console.warn('Notification API failed:',e.message)}
+  }
+}
+
+function _showInAppToast(title,body,data){
+  // Toast non bloquant en bas a droite (4 sec)
+  let host=document.getElementById('_notifToastHost');
+  if(!host){
+    host=document.createElement('div');
+    host.id='_notifToastHost';
+    host.style.cssText='position:fixed;bottom:80px;right:16px;left:16px;max-width:360px;margin-left:auto;z-index:99998;display:flex;flex-direction:column;gap:8px;pointer-events:none';
+    document.body.appendChild(host);
+  }
+  const t=document.createElement('div');
+  t.style.cssText='background:linear-gradient(135deg,#6C63FF,#00D2FF);color:#fff;padding:12px 14px;border-radius:14px;box-shadow:0 8px 20px rgba(0,0,0,0.25);font-family:system-ui;pointer-events:auto;cursor:pointer;animation:slideIn 0.25s ease-out';
+  t.innerHTML='<div style="font-weight:700;font-size:13px;margin-bottom:2px">'+escapeHtml(title)+'</div><div style="font-size:12px;opacity:0.95">'+escapeHtml(body)+'</div>';
+  t.onclick=()=>{
+    if(data?.type==='message'){
+      if(window.showScreen)window.showScreen('messagerie');
+      if(data.convId && window.openConversation){try{window.openConversation(data.convId)}catch(_){}}
+    }else if(data?.type==='community'){
+      if(window.showScreen)window.showScreen('community');
+    }
+    t.remove();
+  };
+  host.appendChild(t);
+  setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateX(20px)'; t.style.transition='all 0.3s ease-out'; setTimeout(()=>t.remove(),300); },4500);
+}
+
+function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 
 // ── Splash ──
 setTimeout(()=>{
