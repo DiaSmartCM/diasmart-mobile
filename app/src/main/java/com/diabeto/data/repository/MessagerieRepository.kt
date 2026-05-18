@@ -1,5 +1,7 @@
 package com.diabeto.data.repository
 
+import android.util.Log
+import com.diabeto.data.api.NotificationApi
 import com.diabeto.data.model.Conversation
 import com.diabeto.data.model.Message
 import com.diabeto.data.model.UserProfile
@@ -20,7 +22,8 @@ import javax.inject.Singleton
 @Singleton
 class MessagerieRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val notificationApi: NotificationApi
 ) {
     companion object {
         private const val COL_CONVERSATIONS = "conversations"
@@ -112,6 +115,13 @@ class MessagerieRepository @Inject constructor(
                 )
                 .await()
 
+            // Push FCM au destinataire (best-effort, n'echoue pas la conv).
+            try {
+                notificationApi.notifyMessage(conversationId = conversationId, preview = contenu)
+            } catch (e: Exception) {
+                Log.w("MessagerieRepository", "notifyMessage failed: ${e.message}")
+            }
+
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -160,6 +170,17 @@ class MessagerieRepository @Inject constructor(
                     )
                 )
                 .await()
+
+            // Push FCM au destinataire (best-effort).
+            try {
+                notificationApi.notifyMessage(
+                    conversationId = conversationId,
+                    preview = contenu,
+                    attachmentName = attachmentName
+                )
+            } catch (e: Exception) {
+                Log.w("MessagerieRepository", "notifyMessage (attachment) failed: ${e.message}")
+            }
 
             Result.success(Unit)
         } catch (e: Exception) {

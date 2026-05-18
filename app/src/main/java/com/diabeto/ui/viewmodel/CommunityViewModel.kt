@@ -3,6 +3,7 @@ package com.diabeto.ui.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.diabeto.data.api.NotificationApi
 import com.diabeto.data.repository.AuthRepository
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
@@ -34,7 +35,8 @@ data class CommunityUiState(
 
 @HiltViewModel
 class CommunityViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val notificationApi: NotificationApi
 ) : ViewModel() {
 
     private val db = FirebaseFirestore.getInstance()
@@ -114,6 +116,13 @@ class CommunityViewModel @Inject constructor(
                         "timestamp" to Timestamp.now()
                     )
                 ).await()
+
+                // Push FCM topic "community" (best-effort).
+                try {
+                    notificationApi.notifyCommunity(preview = text, senderName = userName)
+                } catch (e: Exception) {
+                    Log.w("CommunityVM", "notifyCommunity failed: ${e.message}")
+                }
 
                 _uiState.update { it.copy(inputText = "", isSending = false) }
             } catch (e: Exception) {
