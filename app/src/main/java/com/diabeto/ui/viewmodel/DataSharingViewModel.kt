@@ -209,6 +209,36 @@ class DataSharingViewModel @Inject constructor(
         }
     }
 
+    /** v2.1.44 : medecin se desabonne d'un patient. */
+    fun unlinkPatient(patientUid: String) {
+        viewModelScope.launch {
+            dataSharingRepository.unlinkAsDoctor(patientUid).fold(
+                onSuccess = {
+                    _uiState.update { it.copy(message = "Patient retire de votre liste") }
+                    loadData()
+                },
+                onFailure = { e ->
+                    _uiState.update { it.copy(message = "Erreur: ${e.message}") }
+                }
+            )
+        }
+    }
+
+    /** v2.1.44 : reactive un lien precedemment revoque (n'importe quelle des 2 parties). */
+    fun reactivateLink(otherUid: String) {
+        viewModelScope.launch {
+            dataSharingRepository.reactivateConsent(otherUid).fold(
+                onSuccess = {
+                    _uiState.update { it.copy(message = "Lien reactive") }
+                    loadData()
+                },
+                onFailure = { e ->
+                    _uiState.update { it.copy(message = "Erreur: ${e.message}") }
+                }
+            )
+        }
+    }
+
     // ── Ratings ─────────────────────────────────────────────────────
 
     /** Ouvre le dialog de notation pour un medecin. Precharge l'avis existant du patient. */

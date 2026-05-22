@@ -138,4 +138,8 @@ interface RendezVousDao {
         ORDER BY dateHeure ASC
     """)
     suspend fun getUpcomingRendezVousAfter(fromDate: LocalDateTime, toDate: LocalDateTime): List<RendezVousEntity>
+
+    /** v2.1.44 : sync delta. */
+    @Query("SELECT * FROM rendez_vous WHERE lastModified > :since ORDER BY lastModified ASC LIMIT :limit")
+    suspend fun getRendezVousModifiedSince(since: Long, limit: Int = 2000): List<RendezVousEntity>
 }

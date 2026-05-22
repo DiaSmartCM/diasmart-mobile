@@ -5,9 +5,11 @@ import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.*
 import com.diabeto.data.repository.CloudBackupRepository
+import com.diabeto.data.repository.PreferencesRepository
 import com.google.firebase.auth.FirebaseAuth
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import kotlinx.coroutines.flow.first
 import java.util.concurrent.TimeUnit
 
 private const val TAG = "BatchSyncWorker"
@@ -25,7 +27,8 @@ private const val TAG = "BatchSyncWorker"
 class BatchSyncWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
-    private val cloudBackupRepository: CloudBackupRepository
+    private val cloudBackupRepository: CloudBackupRepository,
+    private val preferencesRepository: PreferencesRepository
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
@@ -43,11 +46,19 @@ class BatchSyncWorker @AssistedInject constructor(
         }
 
         return try {
-            Log.d(TAG, "Starting batch sync...")
-            val result = cloudBackupRepository.performFullBackup()
+            // v2.1.44 : delta-only sync. Si lastSyncAt = 0 -> 1er sync, full backup.
+            val lastSync = preferencesRepository.lastSyncAt.first()
+            val startTimestamp = System.currentTimeMillis()
+            Log.d(TAG, "Starting batch sync (delta since $lastSync)...")
+            val result = if (lastSync == 0L) {
+                cloudBackupRepository.performFullBackup()
+            } else {
+                cloudBackupRepository.performIncrementalBackup(lastSync)
+            }
             result.fold(
                 onSuccess = { count ->
                     Log.d(TAG, "Batch sync complete: $count documents synced")
+                    preferencesRepository.setLastSyncAt(startTimestamp)
                     Result.success()
                 },
                 onFailure = { e ->
@@ -75,8 +86,11 @@ class BatchSyncWorker @AssistedInject constructor(
                 .setRequiresBatteryNotLow(true)
                 .build()
 
+            // v2.1.44 : 6h au lieu de 1h. Delta-only -> moins de pression sur
+            // le quota Firestore. Si l'utilisateur veut sync immediat il a
+            // toujours syncNow() au demarrage de l'app + bouton manuel.
             val request = PeriodicWorkRequestBuilder<BatchSyncWorker>(
-                1, TimeUnit.HOURS
+                6, TimeUnit.HOURS
             )
                 .setConstraints(constraints)
                 .setBackoffCriteria(
@@ -89,10 +103,10 @@ class BatchSyncWorker @AssistedInject constructor(
 
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
                 PERIODIC_WORK_NAME,
-                ExistingPeriodicWorkPolicy.KEEP,
+                ExistingPeriodicWorkPolicy.UPDATE,  // v2.1.44 : update vs KEEP pour appliquer la nouvelle periode 6h
                 request
             )
-            Log.d(TAG, "Periodic batch sync scheduled (every 1h)")
+            Log.d(TAG, "Periodic batch sync scheduled (every 6h, delta-only)")
         }
 
         /**

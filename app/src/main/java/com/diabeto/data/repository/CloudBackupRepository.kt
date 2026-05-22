@@ -59,6 +59,92 @@ class CloudBackupRepository @Inject constructor(
     private val uid: String? get() = auth.currentUser?.uid
 
     // ══════════════════════════════════════════════════════════════
+    // INCREMENTAL BACKUP (v2.1.44+) — uploads only docs modified since
+    // `since` timestamp. Used by BatchSyncWorker (delta-only sync).
+    //
+    // Avantage : O(delta) au lieu de O(P × N).
+    // - WriteBatch Firestore par paquets de 500 (limite API).
+    // - Si delta vide -> retourne immediatement.
+    // - Si > 5000 docs en attente -> on bascule en full backup (premier sync,
+    //   ou retard de plusieurs jours).
+    //
+    // Retourne le nombre de docs effectivement pushes.
+    // ══════════════════════════════════════════════════════════════
+
+    private val BATCH_LIMIT = 500
+    private val FULL_BACKUP_THRESHOLD = 5000
+
+    suspend fun performIncrementalBackup(since: Long): Result<Int> = withContext(Dispatchers.IO) {
+        val userId = uid ?: return@withContext Result.failure(Exception("Non connecte"))
+        if (!syncMutex.tryLock()) {
+            Log.d(TAG, "Sync already in progress — skipping incremental backup")
+            return@withContext Result.success(0)
+        }
+        try {
+            val userRef = db.collection(BACKUPS).document(userId)
+
+            // Collecte delta
+            val patients = patientDao.getPatientsModifiedSince(since)
+            val glucose = glucoseDao.getLecturesModifiedSince(since)
+            val hba1cs = hbA1cDao.getHbA1cModifiedSince(since)
+            val meds = medicamentDao.getMedicamentsModifiedSince(since)
+            val rdvs = rendezVousDao.getRendezVousModifiedSince(since)
+            val journals = journalDao.getEntriesModifiedSince(since)
+            val total = patients.size + glucose.size + hba1cs.size + meds.size + rdvs.size + journals.size
+
+            if (total == 0) {
+                Log.d(TAG, "Incremental backup : aucun delta depuis $since")
+                return@withContext Result.success(0)
+            }
+
+            // Trop de docs -> full backup plus efficace (1 seul lot Firestore)
+            if (total > FULL_BACKUP_THRESHOLD) {
+                Log.d(TAG, "Incremental backup : $total docs > threshold $FULL_BACKUP_THRESHOLD, bascule sur full backup")
+                syncMutex.unlock()
+                return@withContext performFullBackup()
+            }
+
+            // Push par batches de BATCH_LIMIT
+            data class Item(val coll: String, val id: String, val map: Map<String, Any?>)
+            val items = buildList<Item> {
+                patients.forEach { add(Item("patients", it.id.toString(), patientToMap(it))) }
+                glucose.forEach { add(Item("glucose", it.id.toString(), glucoseToMap(it))) }
+                hba1cs.forEach { add(Item("hba1c", it.id.toString(), hba1cToMap(it))) }
+                meds.forEach { add(Item("medicaments", it.id.toString(), medicamentToMap(it))) }
+                rdvs.forEach { add(Item("rendezvous", it.id.toString(), rendezVousToMap(it))) }
+                journals.forEach { add(Item("journal", it.id.toString(), journalToMap(it))) }
+            }
+
+            items.chunked(BATCH_LIMIT).forEach { chunk ->
+                val batch = db.batch()
+                chunk.forEach { item ->
+                    val ref = userRef.collection(item.coll).document(item.id)
+                    batch.set(ref, item.map, SetOptions.merge())
+                }
+                batch.commit().await()
+            }
+
+            // Metadata (toujours pousse pour suivre lastBackupAt)
+            userRef.collection("metadata").document("info").set(
+                mapOf(
+                    "lastBackupAt" to LocalDateTime.now().toString(),
+                    "lastBackupKind" to "incremental",
+                    "lastIncrementalDelta" to total
+                ),
+                SetOptions.merge()
+            ).await()
+
+            Log.d(TAG, "Incremental backup: $total docs uploaded (delta since $since)")
+            Result.success(total)
+        } catch (e: Exception) {
+            Log.e(TAG, "Incremental backup failed", e)
+            Result.failure(e)
+        } finally {
+            if (syncMutex.isLocked) syncMutex.unlock()
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════
     // FULL BACKUP — uploads all local data to Firestore
     // ══════════════════════════════════════════════════════════════
 

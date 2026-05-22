@@ -51,4 +51,8 @@ interface PatientDao {
     
     @Query("SELECT * FROM patients WHERE typeDiabete = :type ORDER BY nom, prenom ASC")
     fun getPatientsByType(type: String): Flow<List<PatientEntity>>
+
+    /** v2.1.44 : sync delta. */
+    @Query("SELECT * FROM patients WHERE lastModified > :since ORDER BY lastModified ASC LIMIT :limit")
+    suspend fun getPatientsModifiedSince(since: Long, limit: Int = 2000): List<PatientEntity>
 }

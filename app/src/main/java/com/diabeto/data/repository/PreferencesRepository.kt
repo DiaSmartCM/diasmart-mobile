@@ -64,6 +64,20 @@ class PreferencesRepository @Inject constructor(
         val APP_LOCK_METHOD = stringPreferencesKey("app_lock_method")
         val APP_LOCK_CREDENTIAL = stringPreferencesKey("app_lock_credential")
         val ONBOARDING_DASHBOARD_SEEN = booleanPreferencesKey("onboarding_dashboard_seen")
+        val LAST_SYNC_AT = androidx.datastore.preferences.core.longPreferencesKey("last_sync_at")
+    }
+
+    /**
+     * v2.1.44 : timestamp (epoch ms) du dernier sync reussi vers Firestore.
+     * Utilise par BatchSyncWorker pour ne push que les docs modifies depuis.
+     * 0 = jamais sync (declenche un full backup au prochain run).
+     */
+    val lastSyncAt: Flow<Long> = context.dataStore.data.map { prefs ->
+        prefs[Keys.LAST_SYNC_AT] ?: 0L
+    }
+
+    suspend fun setLastSyncAt(timestamp: Long) {
+        context.dataStore.edit { it[Keys.LAST_SYNC_AT] = timestamp }
     }
 
     /**

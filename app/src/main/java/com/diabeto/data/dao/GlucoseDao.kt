@@ -114,4 +114,10 @@ interface GlucoseDao {
         AND date(dateHeure) = date(:date)
     """)
     suspend fun getReadingsCountForDate(patientId: Long, date: java.time.LocalDate): Int
+
+    /**
+     * v2.1.44 : sync delta — toutes les lectures modifiees depuis `since`.
+     */
+    @Query("SELECT * FROM lectures_glucose WHERE lastModified > :since ORDER BY lastModified ASC LIMIT :limit")
+    suspend fun getLecturesModifiedSince(since: Long, limit: Int = 5000): List<LectureGlucoseEntity>
 }

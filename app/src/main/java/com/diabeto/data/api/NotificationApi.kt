@@ -78,6 +78,41 @@ class NotificationApi @Inject constructor(
     }
 
     /**
+     * v2.1.44 — Suppression RGPD complete du compte courant via cascade
+     * Firestore + Supabase + FCM tokens + Auth. Operation irreversible.
+     *
+     * Le serveur exige `confirm = "DELETE_<uid>"` pour eviter les appels
+     * accidentels.
+     *
+     * Retourne le recu RGPD signe (Base64) en cas de succes, null en cas
+     * d'echec ou si non confirme par le serveur.
+     */
+    suspend fun deleteAccount(): Result<String> = withContext(Dispatchers.IO) {
+        runCatching {
+            val user = auth.currentUser ?: throw IllegalStateException("Non connecte")
+            val uid = user.uid
+            val token = user.getIdToken(false).await()?.token
+                ?: throw IllegalStateException("ID token indisponible")
+            val body = JSONObject().apply {
+                put("confirm", "DELETE_$uid")
+            }.toString()
+            val req = Request.Builder()
+                .url("$BASE/delete-account")
+                .addHeader("Authorization", "Bearer $token")
+                .post(body.toRequestBody(JSON))
+                .build()
+            http.newCall(req).execute().use { resp ->
+                val raw = resp.body?.string().orEmpty()
+                if (!resp.isSuccessful) {
+                    throw IllegalStateException("Delete HTTP ${resp.code}: ${raw.take(200)}")
+                }
+                val json = JSONObject(raw)
+                json.optString("receipt")
+            }
+        }
+    }
+
+    /**
      * Notifie le topic "community" avec un apercu du message.
      */
     suspend fun notifyCommunity(

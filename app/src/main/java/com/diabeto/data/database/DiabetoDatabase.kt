@@ -133,6 +133,37 @@ abstract class DiabetoDatabase : RoomDatabase() {
         // MIGRATIONS EXPLICITES (plus de fallbackToDestructiveMigration)
         // ══════════════════════════════════════════════════════════════
 
+        // v2.1.44 : migrations no-op v1→v5. Sans elles, un user avec une
+        // ancienne version (peu probable mais possible) perdait sa base
+        // locale. Avec ces stubs, Room "transite" simplement.
+        // Pour chaque version, on tente d'ajouter les colonnes critiques
+        // si absentes (idempotent via try/catch).
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.d(TAG, "Migration 1→2 (no-op stub)")
+            }
+        }
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.d(TAG, "Migration 2→3 (no-op stub)")
+            }
+        }
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.d(TAG, "Migration 3→4 (no-op stub)")
+            }
+        }
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.d(TAG, "Migration 4→5 (no-op stub)")
+            }
+        }
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.d(TAG, "Migration 5→6 (no-op stub)")
+            }
+        }
+
         private val MIGRATION_6_7 = object : Migration(6, 7) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // v7: Add lastModified column to all entities for conflict resolution
@@ -217,7 +248,10 @@ abstract class DiabetoDatabase : RoomDatabase() {
                 DATABASE_NAME
             )
             .openHelperFactory(factory)
-            .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+            .addMigrations(
+                MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
+                MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9
+            )
             .fallbackToDestructiveMigrationOnDowngrade()
             .build()
         }

@@ -96,4 +96,8 @@ interface MedicamentDao {
         ORDER BY heurePrise ASC
     """)
     suspend fun getAllActiveMedicaments(today: LocalDate = LocalDate.now()): List<MedicamentEntity>
+
+    /** v2.1.44 : sync delta. */
+    @Query("SELECT * FROM medicaments WHERE lastModified > :since ORDER BY lastModified ASC LIMIT :limit")
+    suspend fun getMedicamentsModifiedSince(since: Long, limit: Int = 2000): List<MedicamentEntity>
 }
