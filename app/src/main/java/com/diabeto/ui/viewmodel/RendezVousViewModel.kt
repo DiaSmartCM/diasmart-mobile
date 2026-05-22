@@ -16,7 +16,6 @@ import com.diabeto.data.repository.DataSharingRepository
 import com.diabeto.data.repository.PatientRepository
 import com.diabeto.data.repository.RendezVousRepository
 import com.diabeto.util.CalendarHelper
-import com.google.firebase.firestore.FirebaseFirestore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.*
@@ -117,7 +116,8 @@ class RendezVousViewModel @Inject constructor(
     private val patientRepository: PatientRepository,
     private val authRepository: AuthRepository,
     private val dataSharingRepository: DataSharingRepository,
-    private val appointmentRequestRepository: AppointmentRequestRepository
+    private val appointmentRequestRepository: AppointmentRequestRepository,
+    private val rdvSharedRepository: com.diabeto.data.repository.RdvSharedRepository
 ) : ViewModel() {
 
     companion object {
@@ -135,7 +135,6 @@ class RendezVousViewModel @Inject constructor(
     private val _bookState = MutableStateFlow(BookAppointmentState())
     val bookState: StateFlow<BookAppointmentState> = _bookState.asStateFlow()
 
-    private val firestore = FirebaseFirestore.getInstance()
 
     init {
         initialPatientId?.let {
@@ -232,33 +231,29 @@ class RendezVousViewModel @Inject constructor(
      */
     private suspend fun loadPatientRendezVousFromFirestore() {
         val currentUid = authRepository.currentUserId ?: return
+        // v2.1.47 : passe par RdvSharedRepository
+        val docs = rdvSharedRepository.getPatientRendezVous(currentUid)
+        val rdvList = docs.mapNotNull { (id, data) ->
+            try {
+                RendezVousPatientItem(
+                    id = id,
+                    titre = data["titre"] as? String ?: "",
+                    dateHeure = (data["dateHeure"] as? String)?.let {
+                        LocalDateTime.parse(it)
+                    } ?: LocalDateTime.now(),
+                    dureeMinutes = (data["dureeMinutes"] as? Number)?.toInt() ?: 30,
+                    type = data["type"] as? String ?: "CONSULTATION",
+                    lieu = data["lieu"] as? String ?: "",
+                    notes = data["notes"] as? String ?: "",
+                    estConfirme = data["estConfirme"] as? Boolean ?: false,
+                    medecinNom = data["medecinNom"] as? String ?: "Votre médecin"
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Error parsing RDV doc", e)
+                null
+            }
+        }.sortedBy { it.dateHeure }
         try {
-            val docs = firestore.collection("rdv_shared")
-                .document(currentUid)
-                .collection("rendezvous")
-                .get().await()
-
-            val rdvList = docs.documents.mapNotNull { doc ->
-                try {
-                    val data = doc.data ?: return@mapNotNull null
-                    RendezVousPatientItem(
-                        id = doc.id,
-                        titre = data["titre"] as? String ?: "",
-                        dateHeure = (data["dateHeure"] as? String)?.let {
-                            LocalDateTime.parse(it)
-                        } ?: LocalDateTime.now(),
-                        dureeMinutes = (data["dureeMinutes"] as? Number)?.toInt() ?: 30,
-                        type = data["type"] as? String ?: "CONSULTATION",
-                        lieu = data["lieu"] as? String ?: "",
-                        notes = data["notes"] as? String ?: "",
-                        estConfirme = data["estConfirme"] as? Boolean ?: false,
-                        medecinNom = data["medecinNom"] as? String ?: "Votre médecin"
-                    )
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error parsing RDV doc", e)
-                    null
-                }
-            }.sortedBy { it.dateHeure }
 
             _uiState.update {
                 it.copy(
@@ -380,15 +375,8 @@ class RendezVousViewModel @Inject constructor(
                         "medecinUid" to (authRepository.currentUserId ?: ""),
                         "createdAt" to LocalDateTime.now().toString()
                     )
-                    try {
-                        firestore.collection("rdv_shared")
-                            .document(patientUid)
-                            .collection("rendezvous")
-                            .document(rdvId.toString())
-                            .set(rdvData).await()
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed to sync RDV to Firestore", e)
-                    }
+                    rdvSharedRepository.setSharedRdv(patientUid, rdvId.toString(), rdvData)
+                        .onFailure { Log.e(TAG, "Failed to sync RDV to Firestore", it) }
                 }
 
                 _uiState.update { it.copy(showAddDialog = false, addSuccess = true) }
@@ -412,16 +400,11 @@ class RendezVousViewModel @Inject constructor(
                 val selectedOption = _uiState.value.patientOptions.find { it.id == rendezVous.patientId }
                 val patientUid = selectedOption?.uid
                 if (!patientUid.isNullOrBlank()) {
-                    try {
-                        firestore.collection("rdv_shared")
-                            .document(patientUid)
-                            .collection("rendezvous")
-                            .document(rendezVous.id.toString())
-                            .update("estConfirme", newStatus).await()
-                        Log.d(TAG, "RDV confirmation synced to Firestore: $newStatus")
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed to sync RDV confirmation to Firestore", e)
-                    }
+                    rdvSharedRepository.updateSharedRdvField(patientUid, rendezVous.id.toString(), "estConfirme", newStatus)
+                        .fold(
+                            onSuccess = { Log.d(TAG, "RDV confirmation synced to Firestore: $newStatus") },
+                            onFailure = { Log.e(TAG, "Failed to sync RDV confirmation to Firestore", it) }
+                        )
                 }
                 loadData()
             } catch (e: Exception) {
@@ -439,15 +422,8 @@ class RendezVousViewModel @Inject constructor(
                 val selectedOption = _uiState.value.patientOptions.find { it.id == rendezVous.patientId }
                 val patientUid = selectedOption?.uid
                 if (!patientUid.isNullOrBlank()) {
-                    try {
-                        firestore.collection("rdv_shared")
-                            .document(patientUid)
-                            .collection("rendezvous")
-                            .document(rendezVous.id.toString())
-                            .delete().await()
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed to delete RDV from Firestore", e)
-                    }
+                    rdvSharedRepository.deleteSharedRdv(patientUid, rendezVous.id.toString())
+                        .onFailure { Log.e(TAG, "Failed to delete RDV from Firestore", it) }
                 }
                 loadData()
             } catch (e: Exception) {
@@ -491,18 +467,8 @@ class RendezVousViewModel @Inject constructor(
 
     fun loadAvailableMedecins() {
         viewModelScope.launch {
-            try {
-                val snap = firestore.collection("users")
-                    .whereEqualTo("role", "MEDECIN")
-                    .get().await()
-                val medecins = snap.documents.mapNotNull { doc ->
-                    @Suppress("UNCHECKED_CAST")
-                    doc.data?.let { UserProfile.fromMap(it as Map<String, Any?>) }?.copy(uid = doc.id)
-                }
-                _uiState.update { it.copy(availableMedecins = medecins) }
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to load available medecins", e)
-            }
+            val medecins = rdvSharedRepository.getAvailableMedecins()
+            _uiState.update { it.copy(availableMedecins = medecins) }
         }
     }
 

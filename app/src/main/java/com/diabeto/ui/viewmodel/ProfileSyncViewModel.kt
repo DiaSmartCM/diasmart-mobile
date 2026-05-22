@@ -5,9 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.diabeto.data.entity.PatientEntity
 import com.diabeto.data.repository.LocationRepository
 import com.diabeto.data.repository.PatientRepository
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.SetOptions
+import com.diabeto.data.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -25,7 +23,8 @@ import javax.inject.Inject
 @HiltViewModel
 class ProfileSyncViewModel @Inject constructor(
     private val patientRepository: PatientRepository,
-    private val locationRepository: LocationRepository
+    private val locationRepository: LocationRepository,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
     /** Expose si la permission GPS est actuellement accordee (UI doit la demander sinon). */
@@ -50,25 +49,22 @@ class ProfileSyncViewModel @Inject constructor(
                     onDone(false, "Impossible d'obtenir la position (GPS desactive ?)")
                     return@launch
                 }
-                val uid = FirebaseAuth.getInstance().currentUser?.uid
-                    ?: run { onDone(false, "Utilisateur non connecte"); return@launch }
-
-                FirebaseFirestore.getInstance()
-                    .collection("users")
-                    .document(uid)
-                    .set(
-                        mapOf(
-                            "latitude" to point.latitude,
-                            "longitude" to point.longitude,
-                            "ville" to point.ville,
-                            "adresse" to point.adresse
-                        ),
-                        SetOptions.merge()
+                val result = authRepository.mergeUserFields(
+                    mapOf(
+                        "latitude" to point.latitude,
+                        "longitude" to point.longitude,
+                        "ville" to point.ville,
+                        "adresse" to point.adresse
                     )
-                    .await()
-
-                val label = point.ville.ifBlank { "Position enregistree" }
-                onDone(true, "Position mise a jour ($label)")
+                )
+                result.fold(
+                    onSuccess = {
+                        val label = point.ville.ifBlank { "Position enregistree" }
+                        onDone(true, "Position mise a jour ($label)")
+                    },
+                    onFailure = { onDone(false, "Erreur: ${it.message}") }
+                )
+                return@launch
             } catch (e: Exception) {
                 onDone(false, "Erreur: ${e.message}")
             }

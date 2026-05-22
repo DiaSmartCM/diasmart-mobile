@@ -5,14 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.diabeto.data.api.NotificationApi
 import com.diabeto.data.repository.AuthRepository
+import com.diabeto.data.repository.CommunityRepository
 import com.google.firebase.Timestamp
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 data class CommunityMessage(
@@ -36,10 +33,10 @@ data class CommunityUiState(
 @HiltViewModel
 class CommunityViewModel @Inject constructor(
     private val authRepository: AuthRepository,
+    private val communityRepository: CommunityRepository,
     private val notificationApi: NotificationApi
 ) : ViewModel() {
 
-    private val db = FirebaseFirestore.getInstance()
     private val _uiState = MutableStateFlow(CommunityUiState())
     val uiState: StateFlow<CommunityUiState> = _uiState.asStateFlow()
 
@@ -51,30 +48,7 @@ class CommunityViewModel @Inject constructor(
 
     private fun observeMessages() {
         viewModelScope.launch {
-            callbackFlow {
-                val listener = db.collection("community_messages")
-                    .orderBy("timestamp", Query.Direction.ASCENDING)
-                    .limit(200)
-                    .addSnapshotListener { snapshot, error ->
-                        if (error != null) {
-                            trySend(emptyList())
-                            return@addSnapshotListener
-                        }
-                        val messages = snapshot?.documents?.mapNotNull { doc ->
-                            try {
-                                CommunityMessage(
-                                    id = doc.id,
-                                    userId = doc.getString("userId") ?: "",
-                                    userName = doc.getString("userName") ?: "Anonyme",
-                                    content = doc.getString("content") ?: "",
-                                    timestamp = doc.getTimestamp("timestamp") ?: Timestamp.now()
-                                )
-                            } catch (_: Exception) { null }
-                        } ?: emptyList()
-                        trySend(messages)
-                    }
-                awaitClose { listener.remove() }
-            }.collect { messages ->
+            communityRepository.observeMessages().collect { messages ->
                 _uiState.update { it.copy(messages = messages, isLoading = false) }
             }
         }
@@ -82,15 +56,8 @@ class CommunityViewModel @Inject constructor(
 
     private fun countMembers() {
         viewModelScope.launch {
-            try {
-                val count = db.collection("users")
-                    .whereEqualTo("role", "PATIENT")
-                    .get().await()
-                    .size()
-                _uiState.update { it.copy(membersCount = count) }
-            } catch (e: Exception) {
-                Log.w("CommunityVM", "Failed to count members", e)
-            }
+            val count = communityRepository.countPatientMembers()
+            _uiState.update { it.copy(membersCount = count) }
         }
     }
 
@@ -108,14 +75,11 @@ class CommunityViewModel @Inject constructor(
                 val profile = authRepository.getCurrentUserProfile()
                 val userName = profile?.nomComplet?.ifBlank { profile.email } ?: "Anonyme"
 
-                db.collection("community_messages").add(
-                    mapOf(
-                        "userId" to (authRepository.currentUserId ?: ""),
-                        "userName" to userName,
-                        "content" to text,
-                        "timestamp" to Timestamp.now()
-                    )
-                ).await()
+                communityRepository.postMessage(
+                    userId = authRepository.currentUserId ?: "",
+                    userName = userName,
+                    content = text
+                ).getOrThrow()
 
                 // Push FCM topic "community" (best-effort).
                 try {

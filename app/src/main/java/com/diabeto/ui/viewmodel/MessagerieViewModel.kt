@@ -110,16 +110,8 @@ class ConversationDetailViewModel @Inject constructor(
 
     private fun loadInterlocuteurUid() {
         viewModelScope.launch {
-            try {
-                val doc = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                    .collection("conversations").document(conversationId).get().await()
-                val patientId = doc.getString("patientId") ?: ""
-                val medecinId = doc.getString("medecinId") ?: ""
-                val currentUid = authRepository.currentUserId
-                interlocuteurUid = if (currentUid == patientId) medecinId else patientId
-            } catch (e: Exception) {
-                // Non-critical, VoIP just won't work
-            }
+            // v2.1.47 : passe par MessagerieRepository au lieu de FirebaseFirestore direct.
+            interlocuteurUid = messagerieRepository.getInterlocuteurUid(conversationId).orEmpty()
         }
     }
 

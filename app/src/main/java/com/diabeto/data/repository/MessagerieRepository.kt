@@ -260,6 +260,20 @@ class MessagerieRepository @Inject constructor(
     }
 
     /**
+     * v2.1.47 : retourne l'UID de l'interlocuteur d'une conversation
+     * (le patient si je suis medecin, le medecin si je suis patient).
+     */
+    suspend fun getInterlocuteurUid(conversationId: String): String? {
+        val currentUid = authRepository.currentUserId ?: return null
+        return try {
+            val doc = firestore.collection(COL_CONVERSATIONS).document(conversationId).get().await()
+            val patientId = doc.getString("patientId") ?: ""
+            val medecinId = doc.getString("medecinId") ?: ""
+            if (currentUid == patientId) medecinId else patientId
+        } catch (e: Exception) { null }
+    }
+
+    /**
      * Nombre total de messages non lus pour l'utilisateur courant
      */
     suspend fun getTotalNonLus(): Int {

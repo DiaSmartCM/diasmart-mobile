@@ -312,21 +312,18 @@ class PatientEditViewModel @Inject constructor(
     private fun syncMorphoToFirestore(patient: PatientEntity) {
         viewModelScope.launch {
             try {
-                val uid = authRepository.currentUserId ?: return@launch
-                val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
                 val morphoData = mutableMapOf<String, Any>()
-
                 patient.poids?.let { morphoData["poids"] = it }
                 patient.taille?.let { morphoData["taille"] = it }
                 patient.tourDeTaille?.let { morphoData["tourTaille"] = it }
                 patient.masseGrasse?.let { morphoData["masseGrasse"] = it }
-
                 if (patient.nom.isNotBlank()) morphoData["name"] = "${patient.prenom} ${patient.nom}"
                 if (patient.telephone.isNotBlank()) morphoData["phone"] = patient.telephone
 
                 if (morphoData.isNotEmpty()) {
-                    db.collection("users").document(uid)
-                        .set(morphoData, com.google.firebase.firestore.SetOptions.merge())
+                    // v2.1.47 : passe par AuthRepository.mergeUserFields() au lieu
+                    // d'attaquer FirebaseFirestore directement.
+                    authRepository.mergeUserFields(morphoData)
                     android.util.Log.i("PatientEditVM", "Morpho sync -> Firestore profil OK")
                 }
             } catch (e: Exception) {

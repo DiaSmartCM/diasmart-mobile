@@ -488,4 +488,20 @@ class AuthRepository @Inject constructor(
             Result.failure(e)
         }
     }
+
+    /**
+     * v2.1.47 : merge generique de champs dans users/{uid}. Utilise par
+     * - ProfileSyncViewModel (location GPS)
+     * - PatientViewModel (morpho : poids, taille, IMC, tour taille...)
+     *
+     * Centralise pour eviter que des ViewModels accedent directement a
+     * FirebaseFirestore.
+     */
+    suspend fun mergeUserFields(fields: Map<String, Any?>): Result<Unit> = runCatching {
+        val uid = auth.currentUser?.uid
+            ?: throw IllegalStateException("Non connecte")
+        firestore.collection(COLLECTION_USERS).document(uid)
+            .set(fields, com.google.firebase.firestore.SetOptions.merge())
+            .await()
+    }
 }
