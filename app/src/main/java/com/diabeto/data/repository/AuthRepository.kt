@@ -449,22 +449,31 @@ class AuthRepository @Inject constructor(
      * sont orphelines : le doc user disparait donc l'utilisateur n'est plus
      * listable par les medecins/patients.
      */
+    /**
+     * v2.1.45 : suppression RGPD complete via endpoint Vercel
+     * /api/delete-account qui cascade tout (Firestore + FCM + Auth).
+     * Avant cette version, seuls data_sharing + users etaient supprimes,
+     * laissant glucose, repas, journal, conversations, etc. orphelins.
+     */
     suspend fun deleteAccount(): Result<Unit> {
         val user = auth.currentUser ?: return Result.failure(Exception("Non connecte"))
-        val uid = user.uid
         return try {
-            // Supprimer les consentements ou on est patient
-            val asPatient = firestore.collection("data_sharing")
-                .whereEqualTo("patientUid", uid).get().await()
-            for (d in asPatient.documents) d.reference.delete().await()
-            // Supprimer les consentements ou on est medecin
-            val asMedecin = firestore.collection("data_sharing")
-                .whereEqualTo("medecinUid", uid).get().await()
-            for (d in asMedecin.documents) d.reference.delete().await()
-            // Supprimer le profil utilisateur
-            firestore.collection(COLLECTION_USERS).document(uid).delete().await()
-            // Supprimer le compte Auth
-            user.delete().await()
+            val token = user.getIdToken(false).await()?.token
+                ?: return Result.failure(Exception("ID token indisponible"))
+            val body = """{"confirm":"DELETE_${user.uid}"}"""
+            val req = okhttp3.Request.Builder()
+                .url("https://website-omega-umber-20.vercel.app/api/delete-account")
+                .addHeader("Authorization", "Bearer $token")
+                .post(body.toRequestBody("application/json; charset=utf-8".toMediaType()))
+                .build()
+            httpClient.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) {
+                    val errBody = resp.body?.string().orEmpty()
+                    return Result.failure(Exception("Delete HTTP ${resp.code}: ${errBody.take(120)}"))
+                }
+            }
+            // Sign out locally (le token serveur est deja invalide cote Auth)
+            runCatching { auth.signOut() }
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

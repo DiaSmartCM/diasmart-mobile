@@ -92,7 +92,9 @@ fun DataSharingScreen(
         } else {
             DoctorPatientsView(
                 modifier = Modifier.padding(padding),
-                uiState = uiState
+                uiState = uiState,
+                onUnlinkPatient = viewModel::unlinkPatient,
+                onReactivateLink = viewModel::reactivateLink
             )
         }
     }
@@ -506,11 +508,68 @@ private fun PatientPendingRequestCard(
 @Composable
 private fun DoctorPatientsView(
     modifier: Modifier = Modifier,
-    uiState: DataSharingUiState
+    uiState: DataSharingUiState,
+    onUnlinkPatient: (String) -> Unit = {},
+    onReactivateLink: (String) -> Unit = {}
 ) {
-    val patients = uiState.consents.filter { it.isActive }
+    val activePatients = uiState.consents.filter { it.isActive }
+    val revokedPatients = uiState.consents.filter { !it.isActive }
 
-    if (patients.isEmpty()) {
+    var pendingUnlink by remember { mutableStateOf<DataSharingConsent?>(null) }
+    var pendingReactivate by remember { mutableStateOf<DataSharingConsent?>(null) }
+
+    // ── Dialogs de confirmation ──
+    pendingUnlink?.let { consent ->
+        AlertDialog(
+            onDismissRequest = { pendingUnlink = null },
+            icon = { Icon(Icons.Default.PersonRemove, null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text("Se desabonner ?") },
+            text = {
+                Text(
+                    "Vous ne verrez plus les donnees de ${consent.patientNom}. " +
+                        "Le patient devra reactiver le partage ou vous pourrez reactiver le lien depuis la section \"Acces revoques\". " +
+                        "Aucune donnee n'est supprimee."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onUnlinkPatient(consent.patientUid)
+                        pendingUnlink = null
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) { Text("Se desabonner") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingUnlink = null }) { Text("Annuler") }
+            }
+        )
+    }
+    pendingReactivate?.let { consent ->
+        AlertDialog(
+            onDismissRequest = { pendingReactivate = null },
+            icon = { Icon(Icons.Default.LinkOff, null, tint = StatusGreen) },
+            title = { Text("Reactiver l'acces ?") },
+            text = {
+                Text(
+                    "Reactiver le lien avec ${consent.patientNom} ? " +
+                        "Vous pourrez de nouveau consulter ses donnees. " +
+                        "Le patient peut a tout moment revoquer ce lien."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onReactivateLink(consent.patientUid)
+                    pendingReactivate = null
+                }) { Text("Reactiver") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingReactivate = null }) { Text("Annuler") }
+            }
+        )
+    }
+
+    if (activePatients.isEmpty() && revokedPatients.isEmpty()) {
         Column(
             modifier.fillMaxSize().padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -532,27 +591,86 @@ private fun DoctorPatientsView(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            items(patients, key = { it.patientUid }) { consent ->
-                Card(
-                    Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(2.dp),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Surface(shape = CircleShape, color = Primary.copy(alpha = 0.15f), modifier = Modifier.size(44.dp)) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(
-                                    consent.patientNom.take(2).uppercase(),
-                                    fontWeight = FontWeight.Bold,
-                                    color = Primary,
-                                    fontSize = 16.sp
+            if (activePatients.isNotEmpty()) {
+                item {
+                    Text(
+                        "Patients actifs (${activePatients.size})",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                }
+                items(activePatients, key = { "active-${it.patientUid}" }) { consent ->
+                    Card(
+                        Modifier.fillMaxWidth(),
+                        elevation = CardDefaults.cardElevation(2.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Surface(shape = CircleShape, color = Primary.copy(alpha = 0.15f), modifier = Modifier.size(44.dp)) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        consent.patientNom.take(2).uppercase(),
+                                        fontWeight = FontWeight.Bold,
+                                        color = Primary,
+                                        fontSize = 16.sp
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(consent.patientNom, fontWeight = FontWeight.SemiBold)
+                                Text("Acces actif", fontSize = 12.sp, color = StatusGreen)
+                            }
+                            // v2.1.45 : bouton "se desabonner"
+                            IconButton(onClick = { pendingUnlink = consent }) {
+                                Icon(
+                                    Icons.Default.PersonRemove,
+                                    contentDescription = "Se desabonner",
+                                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
                                 )
                             }
                         }
-                        Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(consent.patientNom, fontWeight = FontWeight.SemiBold)
-                            Text("Accès actif", fontSize = 12.sp, color = StatusGreen)
+                    }
+                }
+            }
+            if (revokedPatients.isNotEmpty()) {
+                item { Spacer(Modifier.height(8.dp)) }
+                item {
+                    Text(
+                        "Acces revoques (${revokedPatients.size})",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = OnSurfaceVariant
+                    )
+                }
+                items(revokedPatients, key = { "revoked-${it.patientUid}" }) { consent ->
+                    Card(
+                        Modifier.fillMaxWidth(),
+                        elevation = CardDefaults.cardElevation(0.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        )
+                    ) {
+                        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Surface(shape = CircleShape, color = OnSurfaceVariant.copy(alpha = 0.15f), modifier = Modifier.size(40.dp)) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        consent.patientNom.take(2).uppercase(),
+                                        fontWeight = FontWeight.Bold,
+                                        color = OnSurfaceVariant,
+                                        fontSize = 14.sp
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(consent.patientNom, fontSize = 14.sp, color = OnSurfaceVariant)
+                                Text("Acces revoque", fontSize = 11.sp, color = OnSurfaceVariant.copy(alpha = 0.7f))
+                            }
+                            TextButton(onClick = { pendingReactivate = consent }) {
+                                Text("Reactiver", fontSize = 12.sp)
+                            }
                         }
                     }
                 }

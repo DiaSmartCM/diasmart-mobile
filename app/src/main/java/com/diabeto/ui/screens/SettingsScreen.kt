@@ -634,11 +634,34 @@ fun SettingsScreen(
                 )
             },
             text = {
-                Text(
-                    "Cette action est definitive. Votre profil, vos consentements de partage et votre compte seront supprimes. Les medecins ne pourront plus vous trouver sur la plateforme.",
-                    fontSize = 14.sp,
-                    color = if (isDark) DarkTextSecondary else TextSecondary
-                )
+                Column {
+                    Text(
+                        "Cette action est DEFINITIVE et IRREVERSIBLE. Seront supprimes :",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (isDark) DarkTextPrimary else TextPrimary
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    val items = listOf(
+                        "Profil utilisateur",
+                        "Toutes vos lectures glycemiques + HbA1c",
+                        "Tous vos repas, medicaments, RDV, journal",
+                        "Conversations + messages (patient/medecin)",
+                        "Avis donnes ou recus",
+                        "Liens de partage (patients/medecins)",
+                        "Notifications FCM",
+                        "Backup cloud + rapports PDF",
+                        "Compte Firebase Auth"
+                    )
+                    items.forEach { Text("• $it", fontSize = 13.sp, color = if (isDark) DarkTextSecondary else TextSecondary) }
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Un recu RGPD signe vous sera fourni comme preuve legale.",
+                        fontSize = 12.sp,
+                        color = OnSurfaceVariant,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                    )
+                }
             },
             confirmButton = {
                 Button(
