@@ -100,7 +100,17 @@ fun MessagerieScreen(
             }
         }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            // v2.1.46 : tooltip contextuel Messagerie
+            val onboardingVm: com.diabeto.ui.viewmodel.OnboardingViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+            val messagerieSeen by onboardingVm.messagerieSeen.collectAsStateWithLifecycle()
+            com.diabeto.ui.components.ContextualTooltip(
+                visible = !messagerieSeen,
+                title = "Messagerie patient-medecin",
+                message = "Echange textuel ou par appel video avec ton medecin attitre. Tape sur le bouton + (en bas) pour demarrer une nouvelle conversation. Tu peux envoyer des PDF (rapports, ordonnances).",
+                onDismiss = onboardingVm::dismissMessagerie
+            )
+        Box(modifier = Modifier.fillMaxSize()) {
             if (uiState.isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else if (uiState.conversations.isEmpty()) {
@@ -149,6 +159,7 @@ fun MessagerieScreen(
                 }
             }
         }
+        }  // v2.1.46 : closes outer Column for tooltip
     }
 
     // Dialog choix médecin

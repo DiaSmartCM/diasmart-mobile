@@ -91,6 +91,15 @@ fun ReportsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // v2.1.46 : tooltip contextuel Reports
+            val onboardingVm: com.diabeto.ui.viewmodel.OnboardingViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+            val reportsSeen by onboardingVm.reportsSeen.collectAsStateWithLifecycle()
+            com.diabeto.ui.components.ContextualTooltip(
+                visible = !reportsSeen,
+                title = "Envoyer un rapport",
+                message = if (isPatient) "Selectionne ton medecin destinataire, choisis la periode, puis genere ton rapport PDF. 3 canaux d'envoi : messagerie in-app, email, WhatsApp." else "Genere une ordonnance ou un compte-rendu personnalise et envoie-le directement au patient.",
+                onDismiss = onboardingVm::dismissReports
+            )
             // Bandeau d'erreur persistant (pas un simple snackbar) pour qu'on
             // puisse lire/recopier le message complet en cas de bug.
             state.error?.let { msg ->

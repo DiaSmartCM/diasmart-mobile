@@ -176,6 +176,15 @@ fun ChatbotScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
+            // v2.1.46 : tooltip contextuel ROLLY
+            val onboardingVm: com.diabeto.ui.viewmodel.OnboardingViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+            val rollySeen by onboardingVm.rollySeen.collectAsStateWithLifecycle()
+            com.diabeto.ui.components.ContextualTooltip(
+                visible = !rollySeen,
+                title = "Ton assistant ROLLY",
+                message = "Pose tes questions en francais, pidgin, ewondo, duala, bassa, fulfulde ou arabe. En cas d'urgence (tape \"malaise\", \"vertige\"...), les numeros SAMU 119 apparaissent immediatement.",
+                onDismiss = onboardingVm::dismissRolly
+            )
             // Chips d'analyse rapide
             if (patientId != null && patientId > 0) {
                 LazyRow(

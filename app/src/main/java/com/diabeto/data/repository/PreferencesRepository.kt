@@ -64,8 +64,25 @@ class PreferencesRepository @Inject constructor(
         val APP_LOCK_METHOD = stringPreferencesKey("app_lock_method")
         val APP_LOCK_CREDENTIAL = stringPreferencesKey("app_lock_credential")
         val ONBOARDING_DASHBOARD_SEEN = booleanPreferencesKey("onboarding_dashboard_seen")
+        val ONBOARDING_GLUCOSE_SEEN = booleanPreferencesKey("onboarding_glucose_seen")
+        val ONBOARDING_ROLLY_SEEN = booleanPreferencesKey("onboarding_rolly_seen")
+        val ONBOARDING_MESSAGERIE_SEEN = booleanPreferencesKey("onboarding_messagerie_seen")
+        val ONBOARDING_REPORTS_SEEN = booleanPreferencesKey("onboarding_reports_seen")
         val LAST_SYNC_AT = androidx.datastore.preferences.core.longPreferencesKey("last_sync_at")
     }
+
+    // v2.1.46 : tutoriels contextuels par ecran. Un flag DataStore par ecran.
+    val onboardingGlucoseSeen: Flow<Boolean> = context.dataStore.data.map { it[Keys.ONBOARDING_GLUCOSE_SEEN] ?: false }
+    suspend fun markOnboardingGlucoseSeen() { context.dataStore.edit { it[Keys.ONBOARDING_GLUCOSE_SEEN] = true } }
+
+    val onboardingRollySeen: Flow<Boolean> = context.dataStore.data.map { it[Keys.ONBOARDING_ROLLY_SEEN] ?: false }
+    suspend fun markOnboardingRollySeen() { context.dataStore.edit { it[Keys.ONBOARDING_ROLLY_SEEN] = true } }
+
+    val onboardingMessagerieSeen: Flow<Boolean> = context.dataStore.data.map { it[Keys.ONBOARDING_MESSAGERIE_SEEN] ?: false }
+    suspend fun markOnboardingMessagerieSeen() { context.dataStore.edit { it[Keys.ONBOARDING_MESSAGERIE_SEEN] = true } }
+
+    val onboardingReportsSeen: Flow<Boolean> = context.dataStore.data.map { it[Keys.ONBOARDING_REPORTS_SEEN] ?: false }
+    suspend fun markOnboardingReportsSeen() { context.dataStore.edit { it[Keys.ONBOARDING_REPORTS_SEEN] = true } }
 
     /**
      * v2.1.44 : timestamp (epoch ms) du dernier sync reussi vers Firestore.

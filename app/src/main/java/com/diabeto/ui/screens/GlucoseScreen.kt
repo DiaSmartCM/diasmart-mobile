@@ -104,7 +104,17 @@ fun GlucoseTrackingScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp)) {
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            // v2.1.46 : tooltip contextuel a la 1ere ouverture
+            val onboardingVm: com.diabeto.ui.viewmodel.OnboardingViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+            val glucoseSeen by onboardingVm.glucoseSeen.collectAsStateWithLifecycle()
+            com.diabeto.ui.components.ContextualTooltip(
+                visible = !glucoseSeen,
+                title = "Suivi de glycemie",
+                message = "Tap sur le bouton + en bas a droite pour saisir une nouvelle lecture. Onglet HbA1c pour ton historique trimestriel. Tu peux exporter en CSV depuis Reglages.",
+                onDismiss = onboardingVm::dismissGlucose
+            )
+            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
             // Onglets : Glycémie | HbA1c | Suivi
             TabRow(
                 selectedTabIndex = when (uiState.activeTab) {
@@ -148,6 +158,7 @@ fun GlucoseTrackingScreen(
                 GlucoseTab.SUIVI -> SuiviContent(uiState, viewModel)
             }
         }
+        }  // v2.1.46 : closes outer Column wrapping the tooltip
     }
 
     DropdownMenu(expanded = showContexteMenu, onDismissRequest = { showContexteMenu = false }) {
