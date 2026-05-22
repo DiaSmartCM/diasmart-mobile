@@ -9,6 +9,11 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -447,6 +452,56 @@ class ReportRepository @Inject constructor(
         val consents = runCatching { dataSharingRepository.getSharedPatients() }
             .getOrDefault(emptyList())
         return consents.mapNotNull { authRepository.getUserProfile(it.patientUid) }
+    }
+
+    /**
+     * v2.1.41 — Flow temps reel des medecins lies (cote patient).
+     * Ecoute data_sharing/{patientUid==me, isActive==true}. La liste se met
+     * a jour automatiquement quand un nouveau medecin est autorise sans avoir
+     * a fermer/rouvrir l'ecran.
+     */
+    fun getLinkedDoctorsFlow(): Flow<List<com.diabeto.data.model.UserProfile>> = callbackFlow {
+        val uid = auth.currentUser?.uid
+        if (uid.isNullOrBlank()) {
+            trySend(emptyList()); close(); return@callbackFlow
+        }
+        val listener = firestore.collection("data_sharing")
+            .whereEqualTo("patientUid", uid)
+            .whereEqualTo("isActive", true)
+            .addSnapshotListener { snap, err ->
+                if (err != null) { trySend(emptyList()); return@addSnapshotListener }
+                val medecinUids = snap?.documents?.mapNotNull { it.getString("medecinUid") } ?: emptyList()
+                CoroutineScope(Dispatchers.IO).launch {
+                    val profiles = medecinUids.mapNotNull {
+                        runCatching { authRepository.getUserProfile(it) }.getOrNull()
+                    }
+                    trySend(profiles)
+                }
+            }
+        awaitClose { listener.remove() }
+    }
+
+    /**
+     * v2.1.41 — Flow temps reel des patients lies (cote medecin).
+     */
+    fun getLinkedPatientsFlow(): Flow<List<com.diabeto.data.model.UserProfile>> = callbackFlow {
+        val uid = auth.currentUser?.uid
+        if (uid.isNullOrBlank()) {
+            trySend(emptyList()); close(); return@callbackFlow
+        }
+        val listener = firestore.collection("data_sharing")
+            .whereEqualTo("medecinUid", uid)
+            .addSnapshotListener { snap, err ->
+                if (err != null) { trySend(emptyList()); return@addSnapshotListener }
+                val patientUids = snap?.documents?.mapNotNull { it.getString("patientUid") } ?: emptyList()
+                CoroutineScope(Dispatchers.IO).launch {
+                    val profiles = patientUids.mapNotNull {
+                        runCatching { authRepository.getUserProfile(it) }.getOrNull()
+                    }
+                    trySend(profiles)
+                }
+            }
+        awaitClose { listener.remove() }
     }
 
     /**

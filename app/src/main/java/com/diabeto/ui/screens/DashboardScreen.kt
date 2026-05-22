@@ -249,6 +249,17 @@ fun DashboardScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = screenBg
     ) { padding ->
+        // v2.1.41 : eviter le flash du dashboard PATIENT chez un MEDECIN.
+        // Tant que le role n'est pas charge depuis Firestore, on affiche un loader.
+        if (!uiState.roleLoaded) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+            return@Scaffold
+        }
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()

@@ -455,7 +455,10 @@ fun DiabetoNavigation(
 
         // ── Rapports PDF (export patient ↔ medecin) ──────────────────────────
         composable(Routes.REPORTS) {
-            ReportsScreen(onBack = { navController.popBackStack() })
+            ReportsScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToDataSharing = { navController.navigate(Routes.dataSharing(1)) }
+            )
         }
 
         // ── Profil utilisateur ──────────────────────────────────────────────

@@ -31,6 +31,12 @@ data class DashboardUiState(
     val pendingSyncCount: Int = 0,
     val error: String? = null,
     val userRole: UserRole = UserRole.PATIENT,
+    /**
+     * v2.1.41 : indique si le role a ete charge depuis Firestore. Tant que false,
+     * le Dashboard affiche un loading state au lieu du dashboard PATIENT par
+     * defaut (qui apparaissait brievement chez un medecin a chaque ouverture).
+     */
+    val roleLoaded: Boolean = false,
     val glucoseUnit: com.diabeto.data.repository.GlucoseUnit = com.diabeto.data.repository.GlucoseUnit.MG_DL
 )
 
@@ -100,11 +106,11 @@ class DashboardViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val profile = authRepository.getCurrentUserProfile()
-                profile?.let {
-                    _uiState.update { state -> state.copy(userRole = it.role) }
-                }
+                val role = profile?.role ?: UserRole.PATIENT
+                _uiState.update { state -> state.copy(userRole = role, roleLoaded = true) }
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to load user role, defaulting to PATIENT", e)
+                _uiState.update { state -> state.copy(roleLoaded = true) }
             }
         }
     }

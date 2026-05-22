@@ -3,6 +3,7 @@ package com.diabeto.ui.screens
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -36,6 +37,7 @@ import java.util.Locale
 @Composable
 fun ReportsScreen(
     onBack: () -> Unit,
+    onNavigateToDataSharing: () -> Unit = {},
     authViewModel: AuthViewModel = hiltViewModel(),
     viewModel: ReportViewModel = hiltViewModel()
 ) {
@@ -118,7 +120,7 @@ fun ReportsScreen(
             }
 
             // Destinataire + canaux (commun)
-            RecipientSection(state, viewModel, isPatient)
+            RecipientSection(state, viewModel, isPatient, onGoToDataSharing = onNavigateToDataSharing)
 
             // Partage d'un fichier local (PDF, image, Word, Excel...) deja
             // present sur le telephone — alternative au PDF auto-genere.
@@ -224,7 +226,8 @@ private fun DoctorReportSection(state: com.diabeto.ui.viewmodel.ReportUiState, v
 private fun RecipientSection(
     state: com.diabeto.ui.viewmodel.ReportUiState,
     vm: ReportViewModel,
-    isPatient: Boolean
+    isPatient: Boolean,
+    onGoToDataSharing: () -> Unit = {}
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -233,36 +236,122 @@ private fun RecipientSection(
                 fontWeight = FontWeight.SemiBold
             )
             if (state.recipients.isEmpty()) {
-                Text(
-                    if (isPatient)
-                        "Aucun medecin lie. Utilisez l'onglet 'Medecin' pour autoriser un medecin a vous suivre."
-                    else
-                        "Aucun patient lie pour le moment.",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.error
-                )
-            } else {
-                var expanded by remember { mutableStateOf(false) }
-                ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
-                    OutlinedTextField(
-                        readOnly = true,
-                        value = state.selectedRecipient?.nomComplet ?: "Selectionner...",
-                        onValueChange = {},
-                        label = { Text(if (isPatient) "Medecin destinataire" else "Patient destinataire") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor()
-                    )
-                    ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                        state.recipients.forEach { r ->
-                            DropdownMenuItem(
-                                text = {
-                                    Column {
-                                        Text(r.nomComplet, fontWeight = FontWeight.Medium)
-                                        Text(r.email, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                },
-                                onClick = { vm.selectRecipient(r); expanded = false }
+                // v2.1.41 — empty state actionnable avec CTA explicite
+                Surface(
+                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.PersonOff,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(20.dp)
                             )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                if (isPatient) "Aucun medecin lie" else "Aucun patient lie",
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                        Text(
+                            if (isPatient)
+                                "Pour envoyer un rapport, autorise d'abord un medecin a acceder a tes donnees."
+                            else
+                                "Aucun patient n'a partage ses donnees avec toi. Demande-leur d'activer le partage depuis leur app.",
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        if (isPatient) {
+                            Button(
+                                onClick = onGoToDataSharing,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Lier un medecin")
+                            }
+                        }
+                    }
+                }
+            } else {
+                // v2.1.41 — destinataire selectionne MIS EN AVANT (Card prominent)
+                val sel = state.selectedRecipient
+                if (sel != null) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            Modifier.padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .background(MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    sel.nomComplet.take(1).uppercase().ifBlank { "?" },
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp
+                                )
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    sel.nomComplet.ifBlank { "(sans nom)" },
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                if (sel.email.isNotBlank()) {
+                                    Text(
+                                        sel.email,
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
+                                    )
+                                }
+                                Text(
+                                    if (isPatient) "Medecin destinataire" else "Patient destinataire",
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f),
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+                }
+                // Selecteur (si plusieurs destinataires)
+                if (state.recipients.size > 1) {
+                    var expanded by remember { mutableStateOf(false) }
+                    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
+                        OutlinedTextField(
+                            readOnly = true,
+                            value = "Changer (${state.recipients.size} disponibles)",
+                            onValueChange = {},
+                            label = { Text("Selectionner un autre destinataire") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                            modifier = Modifier.fillMaxWidth().menuAnchor()
+                        )
+                        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                            state.recipients.forEach { r ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Column {
+                                            Text(r.nomComplet, fontWeight = FontWeight.Medium)
+                                            Text(r.email, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                    },
+                                    onClick = { vm.selectRecipient(r); expanded = false }
+                                )
+                            }
                         }
                     }
                 }

@@ -91,30 +91,36 @@ class ReportViewModel @Inject constructor(
 
     fun loadAsPatient() {
         viewModelScope.launch {
-            val recipients = runCatching { reportRepository.getLinkedDoctors() }.getOrDefault(emptyList())
-            _uiState.update {
-                it.copy(
-                    recipients = recipients,
-                    selectedRecipient = recipients.firstOrNull(),
-                    emailOverride = recipients.firstOrNull()?.email ?: ""
-                )
+            // v2.1.41 : Flow temps reel — la liste se met a jour quand un nouveau
+            // medecin est lie sans avoir a fermer/rouvrir l'ecran.
+            reportRepository.getLinkedDoctorsFlow().collect { recipients ->
+                _uiState.update { st ->
+                    val keep = st.selectedRecipient?.takeIf { sel -> recipients.any { it.uid == sel.uid } }
+                    st.copy(
+                        recipients = recipients,
+                        selectedRecipient = keep ?: recipients.firstOrNull(),
+                        emailOverride = keep?.email ?: recipients.firstOrNull()?.email ?: st.emailOverride
+                    )
+                }
             }
-            loadHistory()
         }
+        viewModelScope.launch { loadHistory() }
     }
 
     fun loadAsDoctor() {
         viewModelScope.launch {
-            val recipients = runCatching { reportRepository.getLinkedPatients() }.getOrDefault(emptyList())
-            _uiState.update {
-                it.copy(
-                    recipients = recipients,
-                    selectedRecipient = recipients.firstOrNull(),
-                    emailOverride = recipients.firstOrNull()?.email ?: ""
-                )
+            reportRepository.getLinkedPatientsFlow().collect { recipients ->
+                _uiState.update { st ->
+                    val keep = st.selectedRecipient?.takeIf { sel -> recipients.any { it.uid == sel.uid } }
+                    st.copy(
+                        recipients = recipients,
+                        selectedRecipient = keep ?: recipients.firstOrNull(),
+                        emailOverride = keep?.email ?: recipients.firstOrNull()?.email ?: st.emailOverride
+                    )
+                }
             }
-            loadHistory()
         }
+        viewModelScope.launch { loadHistory() }
     }
 
     fun loadHistory() {

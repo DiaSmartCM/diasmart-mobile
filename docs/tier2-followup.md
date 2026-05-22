@@ -1,119 +1,183 @@
-# Tier 2 — Travaux reportes (audit complet du 16 mai 2026)
+# Tier 2 — Backlog technique DiaSmart (mise a jour 2026-05-22)
 
-Ces chantiers sortent du scope « patch securite express ». A planifier comme sprints dedies.
+Travaux qui demandent un sprint dedie (1-2 semaines chacun). A planifier dans l'ordre de priorite ci-dessous.
 
-## Securite
+> v2.1.37 (proxy ROLLY), v2.1.38 (notifs FCM), v2.1.39 (deep-link + Mes avis), v2.1.40 (PWA parite + index Firestore), v2.1.41 (UX dashboard race + recipient visibility + real-time recipients) sont shipped.
 
-### 1. Proxy Gemini complet (`/api/rolly-chat`)
-**Status** : reporte — la restriction SHA-1 + package dans Google Cloud Console couvre 80 % du risque sans toucher au code.
+---
 
-**Si vraiment necessaire** :
-- Nouveau endpoint Vercel `/api/rolly-chat.js` qui prend `{ message, context, history }`, verifie le Firebase ID token, appelle Gemini avec la cle server-side, retourne la reponse.
-- Streaming via SSE (`text/event-stream`) — attention timeout Vercel 30s (Hobby) / 60s (Pro).
-- `ChatbotRepository.kt` : remplacer `geminiModel.startChat()` par OkHttp + parser SSE.
-- Retirer `BuildConfig.GEMINI_API_KEY` de `app/build.gradle.kts`.
-- Le `systemInstruction` (200+ lignes dans `FirebaseModule.kt`) migre cote serveur ou en Remote Config.
+## A. Tests unitaires logique medicale (PRIORITE 1)
 
-**Effort estime** : 2-3 jours.
+**Pourquoi** : aucune couverture de tests sur les calculs medicaux critiques. Une regression silencieuse peut :
+- Mal evaluer une HbA1c estimee → mauvais conseil au patient
+- Rater une urgence (UrgencyDetector) → patient non alerte
+- Calculer un IMC errone → mauvaise stratification du risque
+- Mal categoriser une glycemie → couleur/alerte fausses
 
-### 2. Activer App Check Play Integrity
-Console only — voir release notes v2.1.35.
-
-## Architecture (priorite haute)
-
-### 3. Tests unitaires logique medicale
-**Effort** : 1 semaine pour 30 % coverage.
-
-Cibles prioritaires (logique pure, sans Firebase) :
-- `GlucoseRepository.estimateHbA1c()` (formule ADAG)
-- `GlucoseRepository.getGlucoseStatus()` + `getGlucoseColor()`
+**Cibles** :
+- `GlucoseRepository.estimateHbA1c()` — formule ADAG : `eAG = 28.7 × HbA1c − 46.7`
+- `GlucoseRepository.getGlucoseStatus()` + `getGlucoseColor()` — seuils 70/130/180/250/300/54
 - `PatientEntity.imc`, `categorieImc`, `risqueTourDeTaille`
-- `CloudBackupRepository` converters `mapToGlucose`/`mapToRepas`
-- `UrgencyDetector.detectUrgency()`
+- `CloudBackupRepository.mapToGlucose` / `mapToRepas` — converters Firestore ↔ Room
+- `UrgencyDetector.detectUrgency()` + `detectWarning()` — keywords + heuristiques
 
-Outils : JUnit5 + MockK + Turbine pour Flow.
+**Outils** :
+- JUnit 5 (`testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")`)
+- MockK (`testImplementation("io.mockk:mockk:1.13.7")`)
+- Turbine pour les Flow (`testImplementation("app.cash.turbine:turbine:1.0.0")`)
+- Robolectric pour Android-bound logic
 
-### 4. Decoupage ChatbotRepository (871 lignes)
-Casser en :
-- `AiClient` (interface, impl Gemini / proxy)
-- `AiCache` (HMAC + Room cache, dedie)
-- `PromptBuilder` (avec prompts externalises en assets ou Remote Config)
-- `MealAnalyzer` / `GlucoseAnalyzer` / `UrgencyDetector` (deja existant)
+**Setup** : creer `app/src/test/java/com/diabeto/` + classes par repository.
 
-**Effort** : 1-2 semaines.
+**Cible coverage** : 60% sur la logique medicale.
 
-### 5. Migrations Room v1→v6 manquantes
-Actuellement seules `6→7`, `7→8`, `8→9` sont definies. Toute upgrade depuis v1-v5 → catch global qui wipe la base + clear passphrase = PERTE DE DONNEES PATIENT.
+**Effort** : 1 semaine pour 30%, 2 semaines pour 60%.
 
-Action :
-- Ajouter migrations no-op pour v1-v5 (meme vides).
-- Supprimer `fallbackToDestructiveMigrationOnDowngrade()`.
-- Tests `MigrationTestHelper` pour chaque chemin.
-- Avant destruction : tentative d'export Firestore.
+---
 
-**Effort** : 3-5 jours.
+## B. BatchSyncWorker incremental (PRIORITE 2)
 
-### 6. BatchSyncWorker incremental
-Actuellement O(P × N) sequentiel avec resync complet toutes les heures = explosion couts Firestore.
+**Probleme actuel** : `BatchSyncWorker` est en O(P × N) — pour chaque patient (P), il itere sur toutes ses lectures (N). Toutes les 4h, full resync :
+- 1000 patients × 100 lectures = 100k reads + 100k writes
+- A 10 000 patients : 10M operations / sync = explose le quota Spark (50k reads/jour)
+- Cout estime Blaze : ~30 $/mois a 10k patients
 
-Action :
-- `WriteBatch` par paquets de 500.
-- Filtre delta : `lastModified > lastSyncAt` (DataStore).
-- Aligner periodicite a 4h (vs 1h actuel).
+**Solution delta-only** :
+- Stocker `lastSyncAt` par utilisateur dans DataStore
+- Filtrer en SQL : `WHERE lastModified > lastSyncAt`
+- WriteBatch Firestore par paquets de 500 (limite API)
+- Aligner periode a 6h (vs 4h actuel)
 
-**Effort** : 1 semaine.
+**Code a modifier** : `app/src/main/java/com/diabeto/sync/BatchSyncWorker.kt`
 
-### 7. 5 ViewModels qui accedent direct a Firestore
-`RendezVousViewModel`, `ProfileSyncViewModel`, `CommunityViewModel`, `MessagerieViewModel`, `PatientViewModel` court-circuitent leurs repositories. Refactor : creer `RdvSharedRepository`, faire passer tous les acces par les repos.
+**Effort** : 5-7 jours.
+
+---
+
+## C. Monitoring en production (PRIORITE 3)
+
+**Probleme** : on ne sait pas si l'app crashe chez les utilisateurs. Crashlytics est configure mais peu exploite.
+
+**Actions** :
+1. **Crashlytics custom keys** sur chaque ecran critique
+2. **Logs non-fatals** sur les chemins critiques (`recordException(e)`)
+3. **Firebase Performance Monitoring** : activer le SDK + traces sur cold start, dashboard, generation PDF, stream ROLLY
+4. **Alerting Crashlytics** : configurer dans la console pour ping Slack/email quand crash > 0.5%
+5. **Logs structures Vercel** : JSON-formatted dans `/api/*`
 
 **Effort** : 3-4 jours.
 
-## UX
+---
 
-### 8. i18n complete (218 strings hardcodees)
-- Extraction → `values/strings.xml` (FR par defaut).
-- Traduction → `values-en/strings.xml`, `values-ar/strings.xml`, `values-pcm/strings.xml` (pidgin camerounais).
-- Locale switcher dans Settings.
+## D. Tests E2E (PRIORITE 4)
 
-**Effort** : 2-3 semaines (traduction inclus).
+**Options** :
+- **Maestro** (recommande) : YAML-based, multi-plateforme, gratuit
+- **Espresso** : natif Android, plus verbeux
 
-### 9. Empty states actionnables + skeletons shimmer + erreur sticky
-Quand une liste est vide, afficher une CTA pertinente ("Ajouter votre premier RDV"). Pendant chargement : skeleton shimmer (pas spinner). En erreur : banniere persistante en haut + bouton "Reessayer".
+**Scenarios prioritaires** :
+1. Login email + OTP → Dashboard charge
+2. Ajout d'une glycemie → apparait + chart
+3. Chat ROLLY → reponse recue
+4. Generation + envoi d'un rapport PDF → arrive cote medecin
+5. Mode hors-ligne → saisie locale → re-sync
 
-**Effort** : 1 semaine.
+**Effort** : 1 semaine pour 5 scenarios.
 
-### 10. Suppression compte RGPD-compliant
-Actuellement `DELETE_ACCOUNT` efface Firebase Auth mais laisse Firestore (`/users/{uid}`, `/patients`, `/glucose`, etc.) et Supabase intacts.
+---
 
-Action : Cloud Function (ou endpoint Vercel) qui supprime cascade :
+## E. i18n complet FR/EN/AR/PCM (PRIORITE 5)
+
+**Etat actuel** :
+- `values/strings.xml` : 206 strings (FR)
+- `values-en/strings.xml` : **95 strings (incomplet)**
+- `values-ar/strings.xml` : **95 strings (incomplet)**
+- Pidgin Camerounais (PCM) : **non commence**
+
+**Probleme utilisateur** : bascule EN ou AR → ~50% de l'app reste en FR. Frustrant.
+
+**Actions** :
+1. Auditer les 218 strings hardcodees encore en dur
+2. Extraire vers `values/strings.xml`
+3. Traduire EN/AR/PCM
+4. Selecteur de langue dans Settings
+5. Tester la bascule a chaud
+
+**Effort** : 2-3 semaines (traduction incluse).
+
+---
+
+## F. RGPD-compliant account deletion (PRIORITE 6)
+
+**Probleme** : `DELETE_ACCOUNT` actuel efface Firebase Auth mais laisse Firestore + Supabase + FCM tokens intacts.
+
+**Solution** : endpoint Vercel `/api/delete-account` qui supprime en cascade :
 - Toutes les collections Firestore ou `userId == uid`
-- Tous les blobs Supabase ou `path` commence par `reports/{uid}/`, `profile_photos/{uid}/`
+- Tous les blobs Supabase ou `path` commence par `reports/{uid}/` ou `profile_photos/{uid}/`
 - FCM tokens
-- Auth account (en dernier)
+- Auth account (en DERNIER)
 
 **Effort** : 3-5 jours.
 
-## Couplage
+---
 
-### 11. Interface RemoteDataSource par domaine
-Pour permettre migration Firebase → Supabase ou hybride sans toucher tous les repos.
+## G. Migrations Room v1→v5 manquantes (PRIORITE 7)
 
-```kotlin
-interface UserRemoteDataSource {
-    suspend fun get(uid: String): UserProfile?
-    suspend fun update(uid: String, fields: Map<String, Any?>)
-    fun observe(uid: String): Flow<UserProfile?>
-}
+**Probleme** : seules migrations `6→7`, `7→8`, `8→9` definies. Upgrade depuis v1-v5 = perte de donnees patient.
 
-class FirestoreUserRemoteDataSource @Inject constructor(
-    private val firestore: FirebaseFirestore
-) : UserRemoteDataSource { /* ... */ }
-```
+**Action** : migrations no-op pour v1-v5 + suppression `fallbackToDestructiveMigrationOnDowngrade()` + tests `MigrationTestHelper`.
 
-**Effort** : XL (refactor fondamental, 4-6 semaines).
+**Effort** : 3-5 jours.
+
+---
+
+## H. Refactor 5 ViewModels qui bypassent les Repositories
+
+`RendezVousViewModel`, `ProfileSyncViewModel`, `CommunityViewModel`, `MessagerieViewModel`, `PatientViewModel` accedent directement a Firestore.
+
+**Action** : creer repos partages, faire passer tous les acces via les repos.
+
+**Effort** : 3-4 jours.
+
+---
+
+## I. Onboarding contextuel + mode Famille (PRIORITE — UX v2.1.42)
+
+- Onboarding bulles contextuelles au 1er usage de chaque ecran principal (Dashboard, Glucose, ROLLY, Messagerie, Reports)
+- Library : `com.takusemba:spotlight` ou custom Compose overlay
+- Mode famille V1 :
+  - 1 patient + 1 aidant (conjoint / enfant / proche)
+  - L'aidant voit les glycemies + recoit alertes urgence
+  - Modele freemium : 1 aidant gratuit, 3+ aidants = premium
+
+**Effort** : 1 semaine pour onboarding, 1 semaine pour mode famille.
+
+---
+
+## J. Empty states + CTAs (PRIORITE — UX)
+
+Quand une liste est vide, afficher une CTA pertinente ("Ajouter votre premier RDV"). Pendant chargement : skeleton shimmer. En erreur : banniere persistante + bouton "Reessayer".
+
+**Effort** : 1 semaine.
+
+> v2.1.41 a fixe le 1er cas critique (recipient section dans ReportsScreen). Reste a propager le pattern aux autres ecrans (RDV, Medicaments, Journal, Repas, Messages).
+
+---
+
+## Hors code
+
+### CNPDCP Cameroun (declaration donnees de sante)
+
+Voir `docs/cnpdcp-guide.md`. Obligatoire legal pour stocker les donnees de sante de patients camerounais. Non bloquant pour la R&D mais obligatoire avant V1 grand public payant.
+
+### Comite scientifique medical
+
+Voir investment_review_2026_05.md (memoire). 2-3 endocrinos + 1 nutritionniste, charte signee, revue prompts ROLLY trimestrielle. Obligatoire avant V1 payant.
+
+---
 
 ## Verdict scaling
 
-- **1 000 patients** : v2.1.35 + Tier 1 quick wins (v2.1.36) + restriction Gemini + App Check = OK
-- **5 000 patients** : ajouter #3, #5, #6, #10 (tests, migrations Room, sync incremental, suppression RGPD)
-- **10 000 patients** : tout le Tier 2 + monitoring (Firebase Performance, alerts cout Firestore)
+- **1 000 patients** : OK avec v2.1.41+
+- **5 000 patients** : ajouter A, B, C, F (tests, sync, monitoring, RGPD delete)
+- **10 000 patients** : tout le Tier 2 + alerting cout Firestore
