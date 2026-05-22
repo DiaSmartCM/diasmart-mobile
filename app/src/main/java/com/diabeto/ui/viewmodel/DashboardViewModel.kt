@@ -37,7 +37,9 @@ data class DashboardUiState(
      * defaut (qui apparaissait brievement chez un medecin a chaque ouverture).
      */
     val roleLoaded: Boolean = false,
-    val glucoseUnit: com.diabeto.data.repository.GlucoseUnit = com.diabeto.data.repository.GlucoseUnit.MG_DL
+    val glucoseUnit: com.diabeto.data.repository.GlucoseUnit = com.diabeto.data.repository.GlucoseUnit.MG_DL,
+    /** v2.1.42 : true tant que l'utilisateur n'a pas encore vu l'onboarding (1ere ouverture). */
+    val showOnboarding: Boolean = false
 )
 
 @HiltViewModel
@@ -68,6 +70,22 @@ class DashboardViewModel @Inject constructor(
         observeConnectivity()
         observeGlucoseUnit()
         loadPendingSyncCount()
+        observeOnboardingState()
+    }
+
+    /** v2.1.42 : ecoute l'etat onboarding pour declencher l'overlay. */
+    private fun observeOnboardingState() {
+        viewModelScope.launch {
+            preferencesRepository.onboardingDashboardSeen.collect { seen ->
+                _uiState.update { it.copy(showOnboarding = !seen) }
+            }
+        }
+    }
+
+    fun markOnboardingSeen() {
+        viewModelScope.launch {
+            preferencesRepository.markOnboardingDashboardSeen()
+        }
     }
 
     private fun observeGlucoseUnit() {

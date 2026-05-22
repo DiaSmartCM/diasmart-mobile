@@ -232,6 +232,16 @@ fun DashboardScreen(
     val outlineCol = if (isDark) DarkOutline else OutlineVariant
     val primaryContainerCol = if (isDark) DarkPrimaryContainer else PrimaryContainer
 
+    // v2.1.42 : overlay d'onboarding affiche au-dessus du Scaffold a la 1ere
+    // ouverture (apres login). Une fois skipped/fini, ne reapparait plus.
+    if (uiState.roleLoaded && uiState.showOnboarding) {
+        com.diabeto.ui.components.OnboardingDashboardOverlay(
+            role = uiState.userRole,
+            onFinish = { viewModel.markOnboardingSeen() }
+        )
+        return
+    }
+
     Scaffold(
         bottomBar = {
             DiaSmartBottomBar(

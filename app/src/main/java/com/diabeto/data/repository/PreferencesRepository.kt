@@ -63,6 +63,19 @@ class PreferencesRepository @Inject constructor(
         val APP_LOCK_ENABLED = booleanPreferencesKey("app_lock_enabled")
         val APP_LOCK_METHOD = stringPreferencesKey("app_lock_method")
         val APP_LOCK_CREDENTIAL = stringPreferencesKey("app_lock_credential")
+        val ONBOARDING_DASHBOARD_SEEN = booleanPreferencesKey("onboarding_dashboard_seen")
+    }
+
+    /**
+     * v2.1.42 : true des que l'utilisateur a vu (ou skipped) l'onboarding du
+     * dashboard. Empeche de re-afficher le tutoriel a chaque ouverture.
+     */
+    val onboardingDashboardSeen: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[Keys.ONBOARDING_DASHBOARD_SEEN] ?: false
+    }
+
+    suspend fun markOnboardingDashboardSeen() {
+        context.dataStore.edit { it[Keys.ONBOARDING_DASHBOARD_SEEN] = true }
     }
 
     /**

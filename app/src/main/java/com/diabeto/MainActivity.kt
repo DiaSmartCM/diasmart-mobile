@@ -18,6 +18,7 @@ import androidx.lifecycle.lifecycleScope
 import com.diabeto.data.repository.CloudBackupRepository
 import com.diabeto.data.repository.PreferencesRepository
 import com.diabeto.data.repository.ThemeMode
+import com.diabeto.monitoring.CrashlyticsLogger
 import com.diabeto.notifications.DeepLinkBus
 import com.diabeto.notifications.DeepLinkEvent
 import com.diabeto.notifications.DiaSmartFCMService
@@ -68,6 +69,14 @@ class MainActivity : FragmentActivity() {
 
         // Deep-link issu du tap sur une notification (app froide)
         handleNotificationIntent(intent)
+
+        // v2.1.42 : Crashlytics user identity + breadcrumb
+        FirebaseAuth.getInstance().currentUser?.let { user ->
+            CrashlyticsLogger.setUserId(user.uid)
+            CrashlyticsLogger.log("app_start uid=${user.uid.takeLast(6)}")
+        }
+        CrashlyticsLogger.setCustomKey("app_version", BuildConfig.VERSION_NAME)
+        CrashlyticsLogger.setCustomKey("app_versionCode", BuildConfig.VERSION_CODE)
 
         // Initialize VoIP CallManager when user is authenticated
         FirebaseAuth.getInstance().currentUser?.let { user ->
