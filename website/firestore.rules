@@ -2,158 +2,308 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ============================================
-    // PROFILS UTILISATEURS + SOUS-COLLECTIONS
-    // ============================================
+    // ════════════════════════════════════════════════════════════════
+    //  HELPERS
+    // ════════════════════════════════════════════════════════════════
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+    function isResourceOwner() {
+      return isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+    function isCreatingAsSelf() {
+      return isSignedIn() && request.resource.data.userId == request.auth.uid;
+    }
+    // v2.1.43 : verifie qu'un consent actif existe entre le patient (proprietaire
+    // de la donnee) et le medecin authentifie. Doc ID : {patientUid}_{medecinUid}.
+    // 1 read supplementaire par requete, accepte pour la securite.
+    function isLinkedDoctorOf(patientUid) {
+      let docId = patientUid + "_" + request.auth.uid;
+      return isSignedIn() &&
+             exists(/databases/$(database)/documents/data_sharing/$(docId)) &&
+             get(/databases/$(database)/documents/data_sharing/$(docId)).data.isActive == true;
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    //  PROFILS UTILISATEURS
+    //  - lecture : tout authentifie (necessaire pour qu'un patient voie le
+    //    profil de son medecin et inversement)
+    //  - ecriture : SEULEMENT le proprietaire du compte
+    // ════════════════════════════════════════════════════════════════
     match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read: if isSignedIn();
+      allow create, update, delete: if isOwner(userId);
 
-      // Sous-collection repas (analyse de repas par patient)
       match /repas/{repasId} {
-        allow read, write: if request.auth != null;
+        allow read: if isOwner(userId) || isLinkedDoctorOf(userId);
+        allow write: if isOwner(userId);
       }
-
-      // Catch-all pour toute sous-collection future sous users
       match /{subcollection=**} {
-        allow read, write: if request.auth != null;
+        allow read: if isOwner(userId) || isLinkedDoctorOf(userId);
+        allow write: if isOwner(userId);
       }
     }
 
-    // ============================================
-    // GLYCEMIE / GLUCOSE
-    // ============================================
+    // ════════════════════════════════════════════════════════════════
+    //  DONNEES MEDICALES PATIENT (top-level)
+    //  Pattern : chaque doc porte un champ `userId` qui identifie le
+    //  proprietaire. Seul lui peut ECRIRE. Lui-meme + son medecin lie
+    //  peuvent LIRE.
+    // ════════════════════════════════════════════════════════════════
     match /glucose/{docId} {
-      allow read, write: if request.auth != null;
+      allow read: if isResourceOwner() || isLinkedDoctorOf(resource.data.userId);
+      allow create: if isCreatingAsSelf();
+      allow update, delete: if isResourceOwner();
     }
-
-    // ============================================
-    // CONVERSATIONS (MESSAGERIE PATIENT-MEDECIN)
-    // ============================================
-    match /conversations/{conversationId} {
-      allow read, write: if request.auth != null;
-
-      match /messages/{messageId} {
-        allow read, write: if request.auth != null;
-      }
-
-      // Catch-all sous-collections conversations
-      match /{subcollection=**} {
-        allow read, write: if request.auth != null;
-      }
-    }
-
-    // ============================================
-    // HISTORIQUE CHATBOT ROLLY (multi-sessions)
-    // ============================================
-    match /rolly_history/{userId} {
-      allow read, write: if request.auth != null;
-
-      match /messages/{messageId} {
-        allow read, write: if request.auth != null;
-      }
-
-      match /conversations/{convId} {
-        allow read, write: if request.auth != null;
-
-        match /messages/{messageId} {
-          allow read, write: if request.auth != null;
-        }
-      }
-
-      // Catch-all sous-collections rolly_history
-      match /{subcollection=**} {
-        allow read, write: if request.auth != null;
-      }
-    }
-
-    // ============================================
-    // VALIDATIONS ROLLY (MEDECIN-PATIENT-IA)
-    // ============================================
-    match /validations/{validationId} {
-      allow read, write: if request.auth != null;
-    }
-
-    // ============================================
-    // MEDICAMENTS
-    // ============================================
-    match /medicaments/{medId} {
-      allow read, write: if request.auth != null;
-    }
-
-    // ============================================
-    // RENDEZ-VOUS
-    // ============================================
-    match /rendezvous/{rdvId} {
-      allow read, write: if request.auth != null;
-    }
-
-    // ============================================
-    // JOURNAL DE BORD
-    // ============================================
-    match /journal/{entryId} {
-      allow read, write: if request.auth != null;
-    }
-
-    // ============================================
-    // REPAS (top-level collection)
-    // ============================================
     match /repas/{repasId} {
-      allow read, write: if request.auth != null;
+      allow read: if isResourceOwner() || isLinkedDoctorOf(resource.data.userId);
+      allow create: if isCreatingAsSelf();
+      allow update, delete: if isResourceOwner();
+    }
+    match /medicaments/{medId} {
+      allow read: if isResourceOwner() || isLinkedDoctorOf(resource.data.userId);
+      allow create: if isCreatingAsSelf();
+      allow update, delete: if isResourceOwner();
+    }
+    match /rendezvous/{rdvId} {
+      // RDV peuvent etre crees par le patient OU son medecin lie (le medecin
+      // valide un RDV). Mais MODIFICATION seulement par le createur.
+      allow read: if isResourceOwner() ||
+                     (isSignedIn() && resource.data.medecinUid == request.auth.uid) ||
+                     isLinkedDoctorOf(resource.data.userId);
+      allow create: if isSignedIn();  // patient ou medecin
+      allow update: if isResourceOwner() ||
+                       (isSignedIn() && resource.data.medecinUid == request.auth.uid);
+      allow delete: if isResourceOwner();
+    }
+    match /journal/{entryId} {
+      allow read: if isResourceOwner() || isLinkedDoctorOf(resource.data.userId);
+      allow create: if isCreatingAsSelf();
+      allow update, delete: if isResourceOwner();
+    }
+    match /hba1c_lectures/{docId} {
+      allow read: if isResourceOwner() || isLinkedDoctorOf(resource.data.userId);
+      allow create: if isCreatingAsSelf();
+      allow update, delete: if isResourceOwner();
+    }
+    match /patients/{patientId} {
+      allow read: if isResourceOwner() || isLinkedDoctorOf(resource.data.userId);
+      allow create: if isCreatingAsSelf();
+      allow update, delete: if isResourceOwner();
     }
 
-    // ============================================
-    // CONSENTEMENTS / DATA SHARING
-    // ============================================
-    match /consents/{consentId} {
-      allow read, write: if request.auth != null;
+    // ════════════════════════════════════════════════════════════════
+    //  MESSAGERIE PATIENT-MEDECIN
+    //  - Lecture : participants (patient + medecin) listes dans le doc
+    //  - Ecriture des messages : un participant seulement
+    // ════════════════════════════════════════════════════════════════
+    match /conversations/{conversationId} {
+      allow read: if isSignedIn() && (
+                     resource.data.patientId == request.auth.uid ||
+                     resource.data.medecinId == request.auth.uid
+                   );
+      allow create: if isSignedIn() && (
+                       request.resource.data.patientId == request.auth.uid ||
+                       request.resource.data.medecinId == request.auth.uid
+                     );
+      allow update: if isSignedIn() && (
+                       resource.data.patientId == request.auth.uid ||
+                       resource.data.medecinId == request.auth.uid
+                     );
+      allow delete: if false;  // pas de suppression
+
+      match /messages/{messageId} {
+        // Pour lire les messages, on doit etre dans la conv parente
+        function inConversation() {
+          let conv = get(/databases/$(database)/documents/conversations/$(conversationId)).data;
+          return isSignedIn() && (conv.patientId == request.auth.uid || conv.medecinId == request.auth.uid);
+        }
+        allow read: if inConversation();
+        allow create: if inConversation() &&
+                         request.resource.data.envoyeurId == request.auth.uid;
+        allow update, delete: if false;
+      }
     }
 
-    // ============================================
-    // DATA SHARING (patient-medecin consent)
-    // ============================================
+    // ════════════════════════════════════════════════════════════════
+    //  HISTORIQUE CHATBOT ROLLY
+    //  Chaque sous-collection rolly_history/{userId} appartient a son uid.
+    // ════════════════════════════════════════════════════════════════
+    match /rolly_history/{userId} {
+      allow read, write: if isOwner(userId);
+
+      match /{subcollection=**} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    //  VALIDATIONS ROLLY (medecin valide une recommandation IA)
+    // ════════════════════════════════════════════════════════════════
+    match /validations/{validationId} {
+      allow read: if isSignedIn() && (
+                     resource.data.medecinUid == request.auth.uid ||
+                     resource.data.patientUid == request.auth.uid
+                   );
+      allow create: if isSignedIn() &&
+                       request.resource.data.medecinUid == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.medecinUid == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    //  CONSENTEMENTS / DATA SHARING
+    //  Doc ID : {patientUid}_{medecinUid}
+    //  - lecture : les 2 parties impliquees
+    //  - creation : par le medecin (demande) ou le patient (auto-link)
+    //  - update/delete : par les 2 parties (patient peut revoquer, medecin
+    //    peut se desabonner)
+    // ════════════════════════════════════════════════════════════════
     match /data_sharing/{docId} {
-      allow read, write: if request.auth != null;
+      function isParty() {
+        return isSignedIn() && (
+          resource.data.patientUid == request.auth.uid ||
+          resource.data.medecinUid == request.auth.uid
+        );
+      }
+      function isPartyOnCreate() {
+        return isSignedIn() && (
+          request.resource.data.patientUid == request.auth.uid ||
+          request.resource.data.medecinUid == request.auth.uid
+        );
+      }
+      allow read: if isParty();
+      allow create: if isPartyOnCreate();
+      allow update: if isParty();
+      allow delete: if isParty();
     }
 
-    // ============================================
-    // QUOTA (REQUETES IA PAR JOUR)
-    // ============================================
+    // Ancien collection (compat)
+    match /consents/{consentId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    //  COMMUNAUTE PATIENTS
+    //  Tout user lit. Ecriture : auteur seul.
+    // ════════════════════════════════════════════════════════════════
+    match /community_messages/{messageId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() &&
+                       request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isSignedIn() &&
+                               resource.data.userId == request.auth.uid;
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    //  AVIS PATIENT SUR MEDECIN
+    //  Doc ID : {doctorUid}_{patientUid}
+    //  - lecture : tout authentifie (les avis sont publics par design)
+    //  - creation/maj : par le patient auteur uniquement
+    //  - suppression : par le patient auteur ou par le medecin (au cas ou)
+    // ════════════════════════════════════════════════════════════════
+    match /doctor_reviews/{reviewId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() &&
+                       request.resource.data.patientUid == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.patientUid == request.auth.uid;
+      allow delete: if isSignedIn() && (
+                       resource.data.patientUid == request.auth.uid ||
+                       resource.data.doctorUid == request.auth.uid
+                     );
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    //  APPELS VoIP / WebRTC SIGNALING
+    // ════════════════════════════════════════════════════════════════
+    match /calls/{callId} {
+      function isInCall() {
+        return isSignedIn() && (
+          resource.data.callerUid == request.auth.uid ||
+          resource.data.calleeUid == request.auth.uid
+        );
+      }
+      function isInCallOnCreate() {
+        return isSignedIn() &&
+          request.resource.data.callerUid == request.auth.uid;
+      }
+      allow read: if isInCall();
+      allow create: if isInCallOnCreate();
+      allow update: if isInCall();
+      allow delete: if isInCall();
+
+      match /{subcollection=**} {
+        allow read, write: if isSignedIn();
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    //  FCM TOKENS (private)
+    // ════════════════════════════════════════════════════════════════
+    match /fcm_tokens/{tokenId} {
+      allow read: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow create: if isSignedIn() &&
+                       request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    //  RATE LIMITS (lus + ecrits cote serveur Vercel uniquement,
+    //  mais on autorise read par owner pour debug)
+    // ════════════════════════════════════════════════════════════════
+    match /rate_limits/{docId} {
+      allow read: if isSignedIn();
+      allow write: if false;  // ecriture serveur uniquement (Admin SDK)
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    //  QUOTA (IA par jour, par user)
+    // ════════════════════════════════════════════════════════════════
     match /quota/{userId} {
-      allow read, write: if request.auth != null;
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId);
     }
 
-    // ============================================
-    // CONFIG APP (mise a jour, versioning)
-    // ============================================
+    // ════════════════════════════════════════════════════════════════
+    //  CONFIG APP (mise a jour, versioning) — lecture publique
+    // ════════════════════════════════════════════════════════════════
     match /app_config/{docId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if false;  // ecriture manuelle via console firebase
     }
 
-    // ============================================
-    // COMMUNAUTE PATIENTS
-    // ============================================
-    match /community_messages/{messageId} {
-      allow read, write: if request.auth != null;
+    // ════════════════════════════════════════════════════════════════
+    //  BACKUPS PATIENT
+    // ════════════════════════════════════════════════════════════════
+    match /backups/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId) && request.resource.size() < 100000;
     }
 
-    // ============================================
-    // FCM TOKENS
-    // ============================================
-    match /fcm_tokens/{tokenId} {
-      allow read, write: if request.auth != null;
+    // ════════════════════════════════════════════════════════════════
+    //  RAPPORTS PDF
+    // ════════════════════════════════════════════════════════════════
+    match /reports/{ownerUid} {
+      allow read: if isOwner(ownerUid);
+      allow write: if isOwner(ownerUid);
+
+      match /items/{reportId} {
+        allow read: if isOwner(ownerUid);
+        allow create: if isOwner(ownerUid);
+        allow update, delete: if isOwner(ownerUid);
+      }
     }
 
-    // ============================================
-    // CATCH-ALL : toute collection/sous-collection
-    // non listee ci-dessus est autorisee pour les
-    // utilisateurs authentifies. Cela garantit que
-    // AUCUNE erreur "missing or insufficient
-    // permissions" ne se produira pour un user connecte.
-    // ============================================
+    // ════════════════════════════════════════════════════════════════
+    //  PAR DEFAUT : tout le reste est refuse
+    //  (Si une fonctionnalite a besoin d'acces, l'ajouter explicitement
+    //  ci-dessus.)
+    // ════════════════════════════════════════════════════════════════
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if false;
     }
   }
 }

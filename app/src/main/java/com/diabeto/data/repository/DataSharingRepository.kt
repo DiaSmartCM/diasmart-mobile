@@ -149,6 +149,54 @@ class DataSharingRepository @Inject constructor(
         }
     }
 
+    /**
+     * v2.1.43 : medecin se desabonne d'un patient (cote medecin). Met
+     * isActive=false. Le doc reste pour traçabilite + reactivation future.
+     */
+    suspend fun unlinkAsDoctor(patientUid: String): Result<Unit> {
+        val medecinUid = authRepository.currentUserId ?: return Result.failure(Exception("Non connecté"))
+        val docId = "${patientUid}_${medecinUid}"
+        return try {
+            firestore.collection(COLLECTION_SHARING).document(docId)
+                .update(mapOf(
+                    "isActive" to false,
+                    "status" to ConsentStatus.REJECTED.name,
+                    "revokedAt" to Timestamp.now(),
+                    "revokedBy" to "medecin"
+                )).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * v2.1.43 : reactive un lien apres revocation. Le proprietaire du doc
+     * (patient OU medecin) peut le faire selon qui veut relancer.
+     * Si le doc n'existe pas, recreer via requestAccess(...) puis accepter.
+     */
+    suspend fun reactivateConsent(otherUid: String): Result<Unit> {
+        val myUid = authRepository.currentUserId ?: return Result.failure(Exception("Non connecté"))
+        // On cherche les 2 IDs possibles : moi=patient OU moi=medecin
+        return try {
+            val asPatient = "${myUid}_${otherUid}"
+            val asDoctor = "${otherUid}_${myUid}"
+            val docRef = listOf(asPatient, asDoctor).firstNotNullOfOrNull { id ->
+                val snap = firestore.collection(COLLECTION_SHARING).document(id).get().await()
+                if (snap.exists()) firestore.collection(COLLECTION_SHARING).document(id) else null
+            } ?: return Result.failure(Exception("Aucun lien existant. Demande d'abord l'acces."))
+            docRef.update(mapOf(
+                "isActive" to true,
+                "status" to ConsentStatus.ACCEPTED.name,
+                "grantedAt" to Timestamp.now(),
+                "reactivatedAt" to Timestamp.now()
+            )).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     // ── Patient : lister ses consentements ──
     suspend fun getMyConsents(): List<DataSharingConsent> {
         val patientUid = authRepository.currentUserId ?: return emptyList()
