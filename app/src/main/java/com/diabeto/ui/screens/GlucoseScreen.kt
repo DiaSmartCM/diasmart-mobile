@@ -104,6 +104,8 @@ fun GlucoseTrackingScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
+        // v2.1.58 : breadcrumb Crashlytics
+        LaunchedEffect(Unit) { com.diabeto.monitoring.CrashlyticsLogger.setScreen("GlucoseScreen") }
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             // v2.1.46 : tooltip contextuel a la 1ere ouverture
             val onboardingVm: com.diabeto.ui.viewmodel.OnboardingViewModel = androidx.hilt.navigation.compose.hiltViewModel()

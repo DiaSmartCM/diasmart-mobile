@@ -78,6 +78,8 @@ fun FamilyScreen(
             )
         }
     ) { padding ->
+        // v2.1.58 : breadcrumb Crashlytics
+        LaunchedEffect(Unit) { com.diabeto.monitoring.CrashlyticsLogger.setScreen("FamilyScreen") }
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(16.dp),

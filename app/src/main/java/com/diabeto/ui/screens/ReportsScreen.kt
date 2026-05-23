@@ -83,6 +83,8 @@ fun ReportsScreen(
         },
         snackbarHost = { SnackbarHost(snackbar) }
     ) { padding ->
+        // v2.1.58 : breadcrumb Crashlytics
+        LaunchedEffect(Unit) { com.diabeto.monitoring.CrashlyticsLogger.setScreen("ReportsScreen") }
         Column(
             modifier = Modifier
                 .padding(padding)

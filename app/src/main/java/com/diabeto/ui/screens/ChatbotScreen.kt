@@ -173,6 +173,8 @@ fun ChatbotScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = chatBg
     ) { padding ->
+        // v2.1.58 : breadcrumb Crashlytics
+        LaunchedEffect(Unit) { com.diabeto.monitoring.CrashlyticsLogger.setScreen("ChatbotScreen") }
         Column(
             modifier = Modifier
                 .fillMaxSize()

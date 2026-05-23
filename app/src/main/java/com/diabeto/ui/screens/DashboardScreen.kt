@@ -259,6 +259,8 @@ fun DashboardScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = screenBg
     ) { padding ->
+        // v2.1.58 : breadcrumb Crashlytics
+        LaunchedEffect(Unit) { com.diabeto.monitoring.CrashlyticsLogger.setScreen("DashboardScreen") }
         // v2.1.41 : eviter le flash du dashboard PATIENT chez un MEDECIN.
         // Tant que le role n'est pas charge depuis Firestore, on affiche un loader.
         if (!uiState.roleLoaded) {
