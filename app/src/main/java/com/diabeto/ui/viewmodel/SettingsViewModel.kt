@@ -187,6 +187,7 @@ class SettingsViewModel @Inject constructor(
                 AppLanguage.DUALA -> "dua"
                 AppLanguage.BASSA -> "bas"
                 AppLanguage.FULFULDE -> "ful"
+                AppLanguage.DII -> "dii"
             }
             androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(
                 androidx.core.os.LocaleListCompat.forLanguageTags(tag)

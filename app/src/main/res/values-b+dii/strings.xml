@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Dii / Dourou (DII) — v2.1.56
+  Couverture minimale ~15 strings. Reste -> fallback FR.
+
+  Source : Dictionnaire Dii de 2014 (PDF 328 pages, notation linguistique
+  academique avec diacritiques unicode complexes).
+
+  Region : Adamaoua, Nord Cameroun. ~52 000 locuteurs.
+  Famille : Niger-Congo, Adamawa-Ubangi.
+
+  ⚠️ EXTRACTION DIFFICILE : le dico utilise une orthographe scientifique
+  avec tons et diacritiques unicode escapes (uni0327, uni02BC, etc.)
+  qui rend le parsing automatique tres limite. Cette V1 propose les
+  strings basiques extractibles + l'identite de l'app. Le reste tombe
+  en fallback FR.
+
+  Pour une couverture complete, requiert :
+  - Un native speaker Dii
+  - OU une version texte simplifiee du dico (sans notation IPA)
+
+  ALPHABET : tons (haut/bas), implosives 6/0, eng (n velar), etc.
+-->
+<resources>
+    <!-- Identite -->
+    <string name="app_name">DiaSmart</string>
+    <string name="app_description">Toko dèg de wéé</string>  <!-- approximatif : gestion du sucre -->
+
+    <!-- Navigation -->
+    <string name="nav_dashboard">Hîn nâ</string>             <!-- vue principale (approx) -->
+    <string name="nav_patients">Yîd wèè</string>             <!-- les malades (approx) -->
+    <string name="nav_medicaments">Daa</string>              <!-- medicament (approx) -->
+    <string name="nav_glucose">Wéé fôô-fôô</string>          <!-- sucre dans le corps -->
+
+    <!-- Actions (extraites du dico avec prudence) -->
+    <string name="action_save">Pèè</string>                  <!-- conserver -->
+    <string name="action_cancel">Tîn</string>                <!-- arreter -->
+    <!-- "Lèè" (revenir) reservé pour futur usage si "action_back" est ajoute aux strings communs -->
+    <string name="ok">Eè</string>                            <!-- oui/bien -->
+
+    <!-- Corps (mots extraits) -->
+    <string name="patient_body_data">Fôô zàg</string>        <!-- choses du corps : fóóó = corps -->
+
+    <!-- Auth -->
+    <string name="auth_hello">Wèèl</string>                  <!-- salutation -->
+    <string name="auth_email">Email</string>
+    <string name="auth_phone">Telefon</string>
+
+    <!-- Chatbot -->
+    <string name="chatbot_back">Lèè</string>
+
+    <!-- Tout le reste : fallback automatique sur values/ (FR) -->
+</resources>

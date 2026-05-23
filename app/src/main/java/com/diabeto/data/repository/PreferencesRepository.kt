@@ -24,7 +24,8 @@ enum class AppLanguage(val code: String, val displayName: String) {
     PIDGIN("pcm", "Pidgin Camerounais"),
     DUALA("dua", "Duala"),
     BASSA("bas", "Bassa"),
-    FULFULDE("ful", "Fulfulde")
+    FULFULDE("ful", "Fulfulde"),
+    DII("dii", "Dii / Dourou")
 }
 enum class GlucoseUnit(val label: String, val shortLabel: String) {
     MG_DL("mg/dL", "mg/dL"),

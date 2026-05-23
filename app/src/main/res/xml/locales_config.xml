@@ -11,4 +11,5 @@
     <locale android:name="dua"/>
     <locale android:name="bas"/>
     <locale android:name="ful"/>
+    <locale android:name="dii"/>
 </locale-config>
