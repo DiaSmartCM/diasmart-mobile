@@ -1,0 +1,60 @@
+# DiaSmart E2E — Test 4/5
+#
+# Generation + envoi d'un rapport PDF.
+# Pre-requis :
+#   - Utilisateur PATIENT connecte
+#   - Au moins 1 medecin lie (data_sharing isActive=true)
+
+appId: com.diabeto
+name: "Generation rapport PDF"
+tags:
+  - reports
+  - pdf
+---
+- launchApp:
+    clearState: false
+
+# Aller au menu Reports
+- tapOn:
+    text: "Compte-rendu|Reports|Rapports"
+    optional: true
+
+- runFlow:
+    when:
+      notVisible: "Envoyer un rapport"
+    commands:
+      # Si on n'a pas tape directement sur "Compte-rendu", chercher via menu
+      - tapOn:
+          text: "Menu|Reports|Rapports"
+          optional: true
+
+# Verifier que la section destinataire est visible
+- assertVisible:
+    text: "destinataire|recipient|Médecin destinataire"
+    timeout: 5000
+
+# Verifier que le destinataire est selectionne (carte avec nom)
+- assertVisible:
+    text: "Médecin destinataire|Patient destinataire"
+
+# Selectionner une periode
+- tapOn:
+    text: "30 jours|30 days"
+    optional: true
+
+# Cocher messagerie comme canal (deja par defaut normalement)
+- assertVisible:
+    text: "messagerie|messaging|Messages"
+
+# Generer + envoyer
+- tapOn:
+    text: "Générer|Generate|Envoyer|Send|Faire"
+
+# Attendre la generation + l'upload (peut prendre 10-30s)
+- waitForAnimationToEnd:
+    timeout: 60000
+
+# Verifier message de succes
+- assertVisible:
+    text: "Rapport envoyé|Report sent|envoye|sent"
+    timeout: 60000

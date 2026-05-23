@@ -1,0 +1,59 @@
+# DiaSmart E2E — Test 2/5
+#
+# Ajout d'une glycemie -> apparait sur la liste + chart se met a jour.
+# Pre-requis : utilisateur connecte (rouler 01_login_dashboard.yaml avant).
+
+appId: com.diabeto
+name: "Ajout glycemie"
+tags:
+  - glucose
+  - smoke
+---
+- launchApp:
+    clearState: false   # garde la session connectee
+
+# Naviguer vers Glycemie (depuis Dashboard ou via bottom nav)
+- tapOn:
+    text: "Glycémie|Blood Sugar|Sugar for blood|Sukre i makia|Sukoli o makila|Sukkar y'iy'am|سكر الدم"
+
+# Onglet Glycemie selectionne
+- assertVisible:
+    text: "Glycémie|Blood Sugar"
+
+# Ouvrir le dialog d'ajout (bouton +)
+- tapOn:
+    id: "addGlucoseFab"
+    optional: true
+- runFlow:
+    when:
+      notVisible:
+        text: "Valeur|Number|Ngônde|Limrere|القيمة"
+    commands:
+      - tapOn:
+          text: "+|Ajouter|Add"
+
+# Le dialog doit etre visible
+- assertVisible:
+    text: "Valeur|Number|Ngônde|Limrere|القيمة"
+    timeout: 5000
+
+# Saisir une glycemie test (120 mg/dL = normal)
+- tapOn:
+    text: "Valeur|Number|القيمة"
+- inputText: "120"
+
+# Confirmer
+- tapOn:
+    text: "Ajouter|Add|Put|Sauvegarder|Save"
+
+- waitForAnimationToEnd
+
+# Verifier que la lecture apparait (cherche "120" dans la liste)
+- assertVisible:
+    text: "120"
+    timeout: 5000
+
+# Verifier le toast/message de succes
+- assertVisible:
+    text: "Ajouté|Added|don put|I don|tema|esdaama|تمت الإضافة"
+    optional: true

@@ -1,0 +1,69 @@
+# DiaSmart E2E — Test 1/5
+#
+# Login (email + OTP) -> verifie que le Dashboard charge.
+#
+# Pre-requis :
+#   - APK v2.1.49+ installe (avec i18n + 7 langues)
+#   - Compte test : MAESTRO_EMAIL / MAESTRO_OTP en variables d'env Maestro
+#   - Reseau internet pour la verification OTP
+#
+# Usage : maestro test --env MAESTRO_EMAIL=test@example.com maestro/tests/01_login_dashboard.yaml
+
+appId: com.diabeto
+name: "Login OTP + Dashboard"
+tags:
+  - login
+  - smoke
+---
+- launchApp:
+    clearState: true
+
+# Splash → Onboarding ou Login direct
+- runFlow:
+    when:
+      visible: "Suivant"
+    commands:
+      # Si on passe par l'onboarding, on skip directement
+      - tapOn:
+          text: "Passer|Skip|Pass"
+          enabled: true
+
+# Ecran Login
+- assertVisible:
+    text: "Connexion|Sign in|Enter|Naasta|Jubu|تسجيل الدخول"
+
+# Saisie email
+- tapOn:
+    text: "Email"
+- inputText: "${MAESTRO_EMAIL}"
+
+# Demander OTP (le bouton libelle change selon langue)
+- tapOn:
+    text: "Envoyer le code|Send SMS code|Envoyer SMS"
+
+# Attendre que l'OTP soit envoye
+- waitForAnimationToEnd
+- assertVisible:
+    text: "code|Code"
+    enabled: true
+
+# Saisir l'OTP (variable d'env)
+- tapOn:
+    text: "Code de vérification|Verification code|Code for check|Code"
+- inputText: "${MAESTRO_OTP}"
+
+# Verifier le code
+- tapOn:
+    text: "Vérifier le code|Verify code|Check di code"
+
+# Wait for navigation
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# Verifier qu'on arrive sur le Dashboard
+- assertVisible:
+    text: "Tableau de bord|Dashboard|Main page|Bombo bi nyé|Mwa kala|Dingiral hesere|لوحة القيادة"
+    timeout: 8000
+
+- assertVisible:
+    text: "Bonjour|Hello|How na|Sannu|مرحبا"

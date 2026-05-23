@@ -1,0 +1,54 @@
+name: E2E Tests (Maestro Cloud)
+
+# Lance les 5 scenarios Maestro sur chaque PR + manuellement.
+# Necessite un compte Maestro Cloud (gratuit jusqu'a 100 runs/mois)
+# + secret MAESTRO_CLOUD_API_KEY dans GitHub repo settings.
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - 'app/src/**'
+      - 'maestro/**'
+      - '.github/workflows/maestro.yml'
+  workflow_dispatch:  # bouton "Run workflow" manuel
+
+jobs:
+  e2e-maestro:
+    name: Maestro Cloud E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build release APK (unsigned for Maestro Cloud)
+        run: |
+          ./gradlew :app:assembleDebug --no-daemon
+
+      - name: Run Maestro Cloud tests
+        # Skip si pas de cle Maestro configuree (eviter de bloquer les PRs
+        # pour les contributeurs externes sans acces secrets)
+        if: ${{ secrets.MAESTRO_CLOUD_API_KEY != '' }}
+        uses: mobile-dev-inc/action-maestro-cloud@v1
+        with:
+          api-key: ${{ secrets.MAESTRO_CLOUD_API_KEY }}
+          app-file: app/build/outputs/apk/debug/app-debug.apk
+          android-api-level: 33
+          workspace: maestro/tests
+          env: |
+            MAESTRO_EMAIL=${{ secrets.MAESTRO_EMAIL }}
+            MAESTRO_OTP=${{ secrets.MAESTRO_OTP }}
+
+      - name: Notify if Maestro key missing
+        if: ${{ secrets.MAESTRO_CLOUD_API_KEY == '' }}
+        run: |
+          echo "::warning::MAESTRO_CLOUD_API_KEY secret not configured. Skipping E2E tests."
+          echo "To enable E2E tests, sign up at https://cloud.mobile.dev/"
+          echo "Then add MAESTRO_CLOUD_API_KEY in repo Settings > Secrets > Actions"

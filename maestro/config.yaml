@@ -1,0 +1,5 @@
+# Maestro project-level config — partage par tous les flows
+appId: com.diabeto
+---
+- launchApp:
+    clearState: false  # set true depuis CLI si tu veux toujours partir d'un etat propre

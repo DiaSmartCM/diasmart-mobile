@@ -1,0 +1,63 @@
+# DiaSmart E2E — Test 3/5
+#
+# ROLLY chat : pose une question, recoit une reponse non vide.
+# Verifie le proxy Vercel /api/rolly-chat + l'auth Firebase ID token.
+
+appId: com.diabeto
+name: "ROLLY chat reponse"
+tags:
+  - rolly
+  - ai
+---
+- launchApp:
+    clearState: false
+
+# Naviguer vers ROLLY (depuis Dashboard)
+- tapOn:
+    text: "ROLLY|Chatbot|Assistant"
+
+# Attendre que l'ecran soit pret
+- assertVisible:
+    text: "ROLLY"
+    timeout: 5000
+
+# Dismiss tooltip s'il est present (1ere ouverture)
+- runFlow:
+    when:
+      visible: "Ton assistant ROLLY"
+    commands:
+      - tapOn:
+          text: "Fermer"
+          optional: true
+
+# Saisir une question simple
+- tapOn:
+    text: "Demandez|Ask|Pose|اطرح"
+- inputText: "Quels sont les symptomes de l'hypoglycemie ?"
+
+# Envoyer
+- tapOn:
+    id: "sendButton"
+    optional: true
+- runFlow:
+    when:
+      notVisible: "ROLLY analyse"
+    commands:
+      - tapOn:
+          text: "Envoyer|Send"
+          optional: true
+
+# Attendre la reponse streaming (max 30s)
+- waitForAnimationToEnd:
+    timeout: 30000
+
+# Verifier qu'on a une reponse non vide (ROLLY parle d'hypo)
+- assertVisible:
+    text: "hypoglycemie|hypo|sucre|sugar|glycemie|glucose"
+    timeout: 30000
+
+# Verifier qu'on a le disclaimer medical
+- assertVisible:
+    text: "consultez votre médecin|Avis informatif|consultation"
+    optional: true
+    timeout: 5000

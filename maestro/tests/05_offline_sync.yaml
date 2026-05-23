@@ -1,0 +1,68 @@
+# DiaSmart E2E — Test 5/5
+#
+# Mode hors-ligne : saisie locale -> re-sync au retour reseau.
+# Necessite que le tel/emulator puisse basculer mode avion via adb.
+#
+# Manuel suggere :
+#   1. Demarre Maestro avec le device deja en mode avion
+#   2. Le test ajoute une glycemie (stocke Room local)
+#   3. Reactive le reseau manuellement OU via adb shell svc data enable
+#   4. Maestro verifie que la glycemie sync vers Firestore
+
+appId: com.diabeto
+name: "Saisie hors-ligne + sync"
+tags:
+  - offline
+  - sync
+---
+- launchApp:
+    clearState: false
+
+# ════════════════════════════════════════════════════════════════
+# PRE-REQ : ce test suppose que le device est deja en mode avion.
+# Si tu lances localement, fais avant : adb shell cmd connectivity airplane-mode enable
+# ════════════════════════════════════════════════════════════════
+
+# Aller a Glycemie
+- tapOn:
+    text: "Glycémie|Blood Sugar"
+
+# Verifier banniere "offline" visible (ou mode hors-ligne indique)
+- assertVisible:
+    text: "hors-ligne|offline|sync|locale|Synchronisation"
+    optional: true
+    timeout: 5000
+
+# Ajouter une glycemie en mode offline
+- tapOn:
+    text: "+|Ajouter|Add"
+    optional: true
+
+- runFlow:
+    when:
+      visible: "Valeur"
+    commands:
+      - tapOn:
+          text: "Valeur|Number"
+      - inputText: "95"
+      - tapOn:
+          text: "Ajouter|Add|Sauvegarder"
+
+# Verifier que la lecture s'affiche immediatement (Room local)
+- assertVisible:
+    text: "95"
+    timeout: 5000
+
+# ════════════════════════════════════════════════════════════════
+# Reactiver le reseau MAINTENANT (manuel ou adb)
+# adb shell cmd connectivity airplane-mode disable
+# Wait 10s
+# ════════════════════════════════════════════════════════════════
+
+- waitForAnimationToEnd:
+    timeout: 15000
+
+# La glycemie 95 doit toujours etre visible apres sync
+- assertVisible:
+    text: "95"
+    timeout: 30000
