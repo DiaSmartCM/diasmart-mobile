@@ -1,6 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  English translations — v2.1.50 (full coverage of all 206 strings).
+  Maintained alongside values/ (French source).
+-->
 <resources>
     <string name="app_name">DiaSmart</string>
     <string name="app_description">Diabetes management</string>
+    <string name="app_developer">NGOS THEODORE</string>
+    <string name="app_contact_email">ngostheo30@gmail.com</string>
+    <string name="app_website">https://project-d-r1997t.web.app</string>
+    <string name="app_privacy_policy">https://project-d-r1997t.web.app/privacy.html</string>
 
     <!-- Navigation -->
     <string name="nav_dashboard">Dashboard</string>
@@ -18,12 +27,149 @@
     <string name="action_confirm">Confirm</string>
     <string name="action_search">Search</string>
     <string name="action_filter">Filter</string>
+    <string name="ok">OK</string>
+    <string name="error_generic">Error: %1$s</string>
+    <string name="export_error">Export error: %1$s</string>
+    <string name="loading_analysis">Analysing data…</string>
 
     <!-- Patient -->
     <string name="patient_nom">Last name</string>
     <string name="patient_prenom">First name</string>
     <string name="patient_date_naissance">Date of birth</string>
-    <string name="patient_sexe">Gender</string>
+    <string name="patient_sexe">Sex</string>
+    <string name="patient_edit_title">Edit Patient</string>
+    <string name="patient_nom_required">Last name *</string>
+    <string name="patient_prenom_required">First name *</string>
+    <string name="patient_dob_required">Date of birth *</string>
+    <string name="patient_choose_date">Choose date</string>
+    <string name="patient_sexe_required">Sex *</string>
+    <string name="patient_type_required">Diabetes type *</string>
+    <string name="patient_body_data">Body data</string>
+    <string name="patient_weight">Weight (kg)</string>
+    <string name="patient_height">Height (cm)</string>
+    <string name="patient_waist">Waist (cm)</string>
+    <string name="patient_body_fat">Body fat (%%)</string>
+
+    <!-- Auth -->
+    <string name="auth_welcome">Welcome!</string>
+    <string name="auth_hello">Hello!</string>
+    <string name="auth_create_account_subtitle">Create your DiaSmart account</string>
+    <string name="auth_login_subtitle">Sign in to DiaSmart</string>
+    <string name="auth_inscription">Sign up</string>
+    <string name="auth_connexion">Sign in</string>
+    <string name="auth_phone">Phone</string>
+    <string name="auth_prenom">First name</string>
+    <string name="auth_nom">Last name</string>
+    <string name="auth_i_am">I am:</string>
+    <string name="auth_phone_number">Phone number</string>
+    <string name="auth_sms_sent">An SMS code has been sent</string>
+    <string name="auth_verification_code">Verification code</string>
+    <string name="auth_create_my_account">Create my account</string>
+    <string name="auth_verify_code">Verify code</string>
+    <string name="auth_send_sms">Send SMS code</string>
+    <string name="auth_sign_in">Sign in</string>
+    <string name="auth_or">or</string>
+    <string name="auth_google">Google</string>
+    <string name="auth_already_account">I already have an account</string>
+    <string name="auth_no_account">Create an account</string>
+    <string name="auth_tagline">DiaSmart — Smart diabetes management</string>
+    <string name="auth_reset_email_sent">Password reset email sent!</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_title_1">Smart tracking</string>
+    <string name="onboarding_desc_1">Manage your diabetes every day</string>
+    <string name="onboarding_title_2">ROLLY, your AI assistant</string>
+    <string name="onboarding_desc_2">A medical chatbot available 24/7</string>
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_start">Start</string>
+    <string name="onboarding_login_link">Already have an account? Sign in</string>
+
+    <!-- Widget -->
+    <string name="widget_description">Shows current blood sugar and trend</string>
+
+    <!-- Predictive -->
+    <string name="predictive_title">Predictive curves</string>
+    <string name="predictive_subtitle">ROLLY glycemic prediction</string>
+
+    <!-- Pedometer -->
+    <string name="pedometer_subtitle">Step counter</string>
+    <string name="pedometer_permission_denied">Permission denied</string>
+    <string name="pedometer_retry">Retry</string>
+    <string name="pedometer_glycemic_impact">Glycemic impact</string>
+
+    <!-- Dashboard -->
+    <string name="dashboard_glucose_avg">Average blood sugar</string>
+    <string name="dashboard_offline_mode">Offline mode</string>
+    <string name="dashboard_offline_data">Local data available</string>
+    <string name="dashboard_update_available">Update available</string>
+    <string name="dashboard_new_features">What\'s new:</string>
+    <string name="dashboard_update_mandatory">This update is mandatory.</string>
+    <string name="dashboard_authorize">Authorize</string>
+    <string name="dashboard_via_browser">Via browser</string>
+    <string name="dashboard_install">Install</string>
+    <string name="dashboard_later">Later</string>
+    <string name="dashboard_install_permission">Allow installation from this source.</string>
+    <string name="dashboard_version">Version %1$s</string>
+    <string name="dashboard_pending_sync">%1$d operations pending sync</string>
+
+    <!-- Glucose -->
+    <string name="glucose_added_success">Added successfully</string>
+    <string name="glucose_report_title">DiaSmart - Glucose report</string>
+    <string name="glucose_share_report">Share report</string>
+    <string name="glucose_tracking">Glucose tracking</string>
+    <string name="glucose_export">Export</string>
+    <string name="glucose_tab_glycemie">Blood sugar</string>
+    <string name="glucose_tab_hba1c">HbA1c</string>
+    <string name="glucose_tab_suivi">Follow-up</string>
+    <string name="glucose_add_hba1c">Add an HbA1c result</string>
+    <string name="glucose_invalid_value">Invalid value</string>
+    <string name="glucose_value_too_high">Value too high</string>
+    <string name="glucose_hba1c_invalid">Invalid HbA1c (3%% to 20%%)</string>
+    <string name="glucose_hypo_severe">Severe hypoglycemia</string>
+    <string name="glucose_hypo">Hypoglycemia</string>
+    <string name="glucose_in_target">In target</string>
+    <string name="glucose_hyper">Hyperglycemia</string>
+    <string name="glucose_hyper_severe">Severe hyperglycemia</string>
+    <string name="glucose_min_readings">Minimum 10 readings to estimate HbA1c</string>
+
+    <!-- Messagerie -->
+    <string name="messagerie_contact_doctor">Contact a doctor</string>
+    <string name="messagerie_empty_patient_hint">Contact your doctor with the + button</string>
+    <string name="messagerie_empty_doctor_hint">Your patients will reach you here</string>
+    <string name="messagerie_back">Back</string>
+
+    <!-- Chatbot -->
+    <string name="chatbot_discussions">Discussions</string>
+    <string name="chatbot_new_discussion">New discussion</string>
+    <string name="chatbot_clear_history">Clear all history</string>
+    <string name="chatbot_back">Back</string>
+
+    <!-- Repas -->
+    <string name="repas_new_analysis">New analysis</string>
+
+    <!-- Data sharing -->
+    <string name="data_sharing_title">Data sharing</string>
+    <string name="data_sharing_control">Control of your data</string>
+    <string name="data_sharing_share_with_doctor">Share with a doctor</string>
+    <string name="data_sharing_choose_doctor">Choose a doctor</string>
+    <string name="data_sharing_no_doctor">No doctor available right now.</string>
+
+    <!-- Validations -->
+    <string name="validations_title">ROLLY validations</string>
+    <string name="validations_subtitle">AI–Doctor collaboration</string>
+    <string name="validations_none_pending">No validation pending</string>
+
+    <!-- Profile -->
+    <string name="profile_image_read_error">Unable to read image</string>
+    <string name="profile_photo_updated">Photo updated</string>
+    <string name="profile_change_phone">Change phone number</string>
+
+    <!-- Medicament -->
+    <string name="medicament_added_success">Medication added successfully</string>
+    <string name="medicament_new">New medication</string>
+
+    <!-- Patient (cont.) -->
     <string name="patient_telephone">Phone</string>
     <string name="patient_email">Email</string>
     <string name="patient_adresse">Address</string>
@@ -31,7 +177,7 @@
     <string name="patient_date_diagnostic">Diagnosis date</string>
     <string name="patient_notes">Notes</string>
 
-    <!-- Glucose -->
+    <!-- Glucose (cont.) -->
     <string name="glucose_valeur">Value (mg/dL)</string>
     <string name="glucose_contexte">Context</string>
     <string name="glucose_date">Date and time</string>
@@ -40,16 +186,16 @@
     <string name="glucose_time_in_range">Time in range</string>
     <string name="glucose_target_range">Target: 70-180 mg/dL</string>
 
-    <!-- Medication -->
+    <!-- Medicament (cont.) -->
     <string name="medicament_nom">Name</string>
     <string name="medicament_dosage">Dosage</string>
     <string name="medicament_frequence">Frequency</string>
-    <string name="medicament_heure">Dosing time</string>
+    <string name="medicament_heure">Time of intake</string>
     <string name="medicament_date_debut">Start date</string>
     <string name="medicament_date_fin">End date</string>
     <string name="medicament_rappel">Enable reminders</string>
 
-    <!-- Appointments -->
+    <!-- Rendez-vous -->
     <string name="rdv_titre">Title</string>
     <string name="rdv_date">Date</string>
     <string name="rdv_heure">Time</string>
@@ -65,28 +211,27 @@
     <string name="msg_glucose_added">Reading added</string>
     <string name="msg_medicament_added">Medication added</string>
     <string name="msg_rdv_added">Appointment added</string>
-    <string name="msg_confirm_delete">Do you really want to delete?</string>
+    <string name="msg_confirm_delete">Are you sure you want to delete?</string>
     <string name="msg_no_data">No data</string>
 
-    <!-- AI Chatbot -->
+    <!-- Chatbot (cont.) -->
     <string name="chatbot_title">ROLLY</string>
-    <string name="chatbot_subtitle">DiaSmart AI Assistant</string>
+    <string name="chatbot_subtitle">DiaSmart AI assistant</string>
     <string name="chatbot_placeholder">Ask your question…</string>
     <string name="chatbot_reset">Reset conversation</string>
-    <string name="chatbot_analyse_glycemie">Analyze blood sugar</string>
-    <string name="chatbot_prevision_risques">Risk prediction</string>
-    <string name="chatbot_conseils_nutrition">Nutrition tips</string>
+    <string name="chatbot_analyse_glycemie">Analyse blood sugar</string>
+    <string name="chatbot_prevision_risques">Risk forecast</string>
+    <string name="chatbot_conseils_nutrition">Nutrition advice</string>
 
-    <!-- Messaging -->
+    <!-- Messagerie (cont.) -->
     <string name="messagerie_title">Messages</string>
-    <string name="messagerie_empty">No conversations</string>
+    <string name="messagerie_empty">No conversation</string>
     <string name="messagerie_new_conversation">New conversation</string>
     <string name="messagerie_choisir_medecin">Choose a doctor</string>
     <string name="messagerie_saisir_message">Type a message…</string>
-    <string name="notif_channel_messages">DiaSmart Messages</string>
 
-    <!-- Auth -->
-    <string name="auth_login">Login</string>
+    <!-- Auth (cont.) -->
+    <string name="auth_login">Sign in</string>
     <string name="auth_register">Create account</string>
     <string name="auth_email">Email</string>
     <string name="auth_password">Password</string>
@@ -95,9 +240,10 @@
     <string name="auth_role_medecin">Doctor</string>
 
     <!-- Notifications -->
+    <string name="notif_channel_messages">DiaSmart Messages</string>
     <string name="notif_channel_medicaments">Medication reminders</string>
     <string name="notif_channel_rdv">Appointment reminders</string>
-    <string name="notif_medicament_title">Medication reminder</string>
+    <string name="notif_medicament_title">Medication intake</string>
     <string name="notif_medicament_text">Time to take %1$s</string>
     <string name="notif_rdv_title">Upcoming appointment</string>
     <string name="notif_rdv_text">%1$s at %2$s</string>
@@ -109,8 +255,8 @@
     <string name="settings_notifications">Notifications</string>
 
     <!-- Journal -->
-    <string name="journal_title">Logbook</string>
-    <string name="journal_subtitle">Daily journal</string>
+    <string name="journal_title">Journal</string>
+    <string name="journal_subtitle">Daily log</string>
     <string name="journal_mood">How are you feeling?</string>
     <string name="journal_stress">Stress level</string>
     <string name="journal_sleep">Sleep quality</string>
@@ -119,7 +265,7 @@
     <!-- Pedometer -->
     <string name="pedometer_title">Pedometer</string>
     <string name="pedometer_steps">steps</string>
-    <string name="pedometer_goal">of goal</string>
+    <string name="pedometer_goal">of the goal</string>
     <string name="pedometer_start">Start tracking</string>
     <string name="pedometer_stop">Stop</string>
 </resources>
