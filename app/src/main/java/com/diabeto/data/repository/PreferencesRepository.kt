@@ -19,7 +19,12 @@ enum class ThemeMode { SYSTEM, LIGHT, DARK }
 enum class AppLanguage(val code: String, val displayName: String) {
     FRENCH("fr", "Français"),
     ENGLISH("en", "English"),
-    ARABIC("ar", "العربية")
+    ARABIC("ar", "العربية"),
+    // v2.1.49 : langues camerounaises (stubs initiaux, traduction enrichie via dicos)
+    PIDGIN("pcm", "Pidgin Camerounais"),
+    DUALA("dua", "Duala"),
+    BASSA("bas", "Bassa"),
+    FULFULDE("ful", "Fulfulde")
 }
 enum class GlucoseUnit(val label: String, val shortLabel: String) {
     MG_DL("mg/dL", "mg/dL"),

@@ -15,6 +15,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.res.stringResource
 import com.diabeto.R
@@ -630,6 +632,47 @@ private fun RollyMessageBubble(message: ChatbotMessage) {
                         text = message.contenu,
                         textColor = if (isDark) Color.White.copy(alpha = 0.9f) else TextPrimary
                     )
+                    // v2.1.49 : bouton TTS pour ecouter ROLLY a voix haute.
+                    // Utilise Android TextToSpeech natif (gratuit, 100% local
+                    // pour FR/EN/AR si voix installee).
+                    if (message.contenu.isNotBlank()) {
+                        val ctx = LocalContext.current
+                        var speaking by remember(message) { mutableStateOf(false) }
+                        LaunchedEffect(Unit) {
+                            com.diabeto.util.VoiceManager.initTts(ctx)
+                        }
+                        TextButton(
+                            onClick = {
+                                if (speaking) {
+                                    com.diabeto.util.VoiceManager.stop()
+                                    speaking = false
+                                } else {
+                                    speaking = true
+                                    com.diabeto.util.VoiceManager.speak(
+                                        text = message.contenu,
+                                        languageTag = "fr",
+                                        onDone = { speaking = false },
+                                        onError = { speaking = false }
+                                    )
+                                }
+                            },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                            modifier = Modifier.padding(top = 2.dp)
+                        ) {
+                            Icon(
+                                if (speaking) Icons.Default.Stop else Icons.AutoMirrored.Filled.VolumeUp,
+                                contentDescription = if (speaking) "Stop" else "Lire a voix haute",
+                                modifier = Modifier.size(14.dp),
+                                tint = Primary.copy(alpha = 0.7f)
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                if (speaking) "Stop" else "Ecouter",
+                                fontSize = 11.sp,
+                                color = Primary.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
                 }
             }
         }

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Fulfulde Camerounais / Adamawa (FUL / FUB) — regions Adamaoua,
+  Nord, Extreme-Nord.
+  v2.1.49 : stub initial. A enrichir avec dictionnaire Fulfulde
+  (v2.1.50+). Strings manquantes -> fallback values/ (FR).
+-->
+<resources>
+    <string name="app_name">DiaSmart</string>
+    <string name="app_description">Toppitagol nyaw\'el ngarwol</string>  <!-- gestion du diabete -->
+
+    <!-- Navigation -->
+    <string name="nav_dashboard">Dingiral hesere</string>                 <!-- tableau principal -->
+    <string name="nav_patients">Nyawɓe</string>                           <!-- les malades -->
+    <string name="nav_rendezvous">Yontere fottoyaagu</string>             <!-- rendez-vous -->
+    <string name="nav_medicaments">Lekki</string>                         <!-- medicament -->
+    <string name="nav_glucose">Suukre ƴiiƴam</string>                     <!-- sucre du sang -->
+
+    <!-- Actions -->
+    <string name="action_save">Mooftu</string>                            <!-- conserver -->
+    <string name="action_cancel">Joppu</string>                           <!-- arreter -->
+    <string name="action_confirm">Eey</string>                            <!-- oui -->
+
+    <!-- Urgency -->
+    <string name="urgency_call_samu">Noddu SAMU 119 jaha</string>          <!-- appelle vite -->
+</resources>

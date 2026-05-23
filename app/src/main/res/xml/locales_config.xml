@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  v2.1.49 : declaration des locales supportees (per-app language Android 13+).
+  Reference par AndroidManifest android:localeConfig.
+-->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="fr"/>
+    <locale android:name="en"/>
+    <locale android:name="ar"/>
+    <locale android:name="pcm"/>
+    <locale android:name="dua"/>
+    <locale android:name="bas"/>
+    <locale android:name="ful"/>
+</locale-config>

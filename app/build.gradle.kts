@@ -28,8 +28,8 @@ android {
         applicationId = "com.diabeto"
         minSdk = 26
         targetSdk = 34
-        versionCode = 64
-        versionName = "2.1.48"
+        versionCode = 65
+        versionName = "2.1.49"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -108,6 +108,8 @@ dependencies {
 
     // Core Android
     implementation("androidx.core:core-ktx:1.15.0")
+    // v2.1.49 : pour AppCompatDelegate.setApplicationLocales() (per-app language).
+    implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.activity:activity-compose:1.10.0")
     implementation("androidx.core:core-splashscreen:1.0.1")

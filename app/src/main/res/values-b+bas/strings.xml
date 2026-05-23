@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Bassa (BAS) — region du Littoral/Centre.
+  v2.1.49 : stub initial. A enrichir avec dictionnaire + grammaire Bassa
+  (v2.1.50+). Strings manquantes -> fallback values/ (FR).
+-->
+<resources>
+    <string name="app_name">DiaSmart</string>
+    <string name="app_description">Likalo li sukre</string>      <!-- gestion du sucre -->
+
+    <!-- Navigation -->
+    <string name="nav_dashboard">Bombo bi nyé</string>           <!-- vue d'ensemble -->
+    <string name="nav_patients">Bot ba bika</string>             <!-- les malades -->
+    <string name="nav_rendezvous">Nyân i ngwie</string>          <!-- rendez-vous -->
+    <string name="nav_medicaments">Mauti</string>                <!-- medicaments -->
+    <string name="nav_glucose">Sukre i makia</string>            <!-- sucre dans le sang -->
+
+    <!-- Actions -->
+    <string name="action_save">Tisa</string>                     <!-- garder -->
+    <string name="action_cancel">Tika</string>                   <!-- arreter -->
+    <string name="action_confirm">Nya</string>                   <!-- oui / confirmer -->
+
+    <!-- Urgency -->
+    <string name="urgency_call_samu">Bela SAMU 119 ngangan</string>  <!-- appelle vite -->
+</resources>

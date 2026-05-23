@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Pidgin English Camerounais (PCM / WES / Kamtok)
+  v2.1.49 : stub initial. Premieres traductions courantes UI.
+  Reste a completer via le dictionnaire (v2.1.50+).
+  Les strings non traduites tombent automatiquement sur values/ (FR).
+-->
+<resources>
+    <string name="app_name">DiaSmart</string>
+    <string name="app_description">Sugar sickness app</string>
+
+    <!-- Navigation -->
+    <string name="nav_dashboard">Main page</string>
+    <string name="nav_patients">Sick pipo</string>
+    <string name="nav_rendezvous">Meeting time</string>
+    <string name="nav_medicaments">Medicine</string>
+    <string name="nav_glucose">Sugar level</string>
+
+    <!-- Actions -->
+    <string name="action_add">Put</string>
+    <string name="action_edit">Change</string>
+    <string name="action_delete">Comot</string>
+    <string name="action_save">Keep</string>
+    <string name="action_cancel">Stop</string>
+    <string name="action_confirm">Yes na so</string>
+    <string name="action_search">Look</string>
+    <string name="action_filter">Sort</string>
+
+    <!-- Glucose -->
+    <string name="glucose_too_high">Sugar high too much</string>
+    <string name="glucose_too_low">Sugar small too much</string>
+    <string name="glucose_normal">Sugar dey fine</string>
+
+    <!-- Urgency -->
+    <string name="urgency_call_samu">Call SAMU 119 sharp sharp</string>
+</resources>

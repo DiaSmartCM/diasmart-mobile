@@ -174,7 +174,24 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun setLanguage(language: AppLanguage) {
-        viewModelScope.launch { preferencesRepository.setLanguage(language) }
+        viewModelScope.launch {
+            preferencesRepository.setLanguage(language)
+            // v2.1.49 : applique le changement au runtime via AppCompatDelegate
+            // (per-app language, Android 13+ propre, fallback compat sur Android 12-).
+            // Ca recree automatiquement les Activity pour appliquer la nouvelle locale.
+            val tag = when (language) {
+                AppLanguage.FRENCH -> "fr"
+                AppLanguage.ENGLISH -> "en"
+                AppLanguage.ARABIC -> "ar"
+                AppLanguage.PIDGIN -> "pcm"
+                AppLanguage.DUALA -> "dua"
+                AppLanguage.BASSA -> "bas"
+                AppLanguage.FULFULDE -> "ful"
+            }
+            androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(
+                androidx.core.os.LocaleListCompat.forLanguageTags(tag)
+            )
+        }
     }
 
     fun setNotificationsEnabled(enabled: Boolean) {
