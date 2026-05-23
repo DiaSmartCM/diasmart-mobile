@@ -53,6 +53,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToFamily: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -376,6 +377,34 @@ fun SettingsScreen(
                         }
                     )
                 }
+            }
+
+            // ── Mode famille (v2.1.48+) ─────────────────────
+            if (!uiState.isMedecin) {
+                item {
+                    DayLifeSectionHeader(
+                        title = "Mode famille",
+                        color = sectionTextColor,
+                        isDark = isDark
+                    )
+                }
+                item {
+                    DayLifeSettingsCard(cardBg = cardBg) {
+                        DayLifeSettingsItem(
+                            icon = Icons.Default.Group,
+                            iconBg = Color(0xFFEC4899),
+                            title = "Mes aidants",
+                            subtitle = "Inviter un proche en lecture seule (1 gratuit)",
+                            titleColor = titleColor,
+                            subtitleColor = subtitleColor,
+                            onClick = onNavigateToFamily
+                        )
+                    }
+                }
+            } else {
+                // Cote medecin : ne montre pas la section. Le medecin peut
+                // toujours etre aidant d'un proche s'il a un compte perso,
+                // mais ce n'est pas surface principale.
             }
 
             // ── (Section "Partage avec un patient" deplacee vers l'ecran

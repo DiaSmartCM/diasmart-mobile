@@ -42,6 +42,7 @@ object Routes {
     const val PREDICTIVE       = "predictive?patientId={patientId}"
     const val VALIDATIONS      = "validations"
     const val COMMUNITY        = "community"
+    const val FAMILY           = "family"
     const val MES_AVIS         = "mes_avis"
     const val VIDEO_CALL       = "videocall/{roomName}?interlocuteur={interlocuteur}&audioOnly={audioOnly}"
     const val VOIP_CALL        = "voip_call"
@@ -449,7 +450,8 @@ fun DiabetoNavigation(
         // ── Parametres ─────────────────────────────────────────────────────
         composable(Routes.SETTINGS) {
             SettingsScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToFamily = { navController.navigate(Routes.FAMILY) }
             )
         }
 
@@ -509,6 +511,13 @@ fun DiabetoNavigation(
         // ── Mes avis (cote medecin) — lecture seule ────────────────────
         composable(Routes.MES_AVIS) {
             MesAvisScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // ── Mode famille (v2.1.48) — aidants + owners pour qui je suis aidant ─
+        composable(Routes.FAMILY) {
+            FamilyScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }

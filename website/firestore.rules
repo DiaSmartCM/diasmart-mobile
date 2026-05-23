@@ -26,6 +26,20 @@ service cloud.firestore {
              exists(/databases/$(database)/documents/data_sharing/$(docId)) &&
              get(/databases/$(database)/documents/data_sharing/$(docId)).data.isActive == true;
     }
+    // v2.1.48 : verifie qu'un lien familial actif existe entre l'owner
+    // (proprietaire des donnees) et l'aidant authentifie. Doc ID :
+    // {ownerUid}_{aidantUid}. L'aidant peut LIRE les donnees medicales,
+    // jamais les modifier.
+    function isFamilyAidantOf(ownerUid) {
+      let docId = ownerUid + "_" + request.auth.uid;
+      return isSignedIn() &&
+             exists(/databases/$(database)/documents/family_links/$(docId)) &&
+             get(/databases/$(database)/documents/family_links/$(docId)).data.isActive == true;
+    }
+    // Helper combine : owner OU medecin lie OU aidant familial.
+    function canReadPatientData(ownerUid) {
+      return isOwner(ownerUid) || isLinkedDoctorOf(ownerUid) || isFamilyAidantOf(ownerUid);
+    }
 
     // ════════════════════════════════════════════════════════════════
     //  PROFILS UTILISATEURS
@@ -54,17 +68,17 @@ service cloud.firestore {
     //  peuvent LIRE.
     // ════════════════════════════════════════════════════════════════
     match /glucose/{docId} {
-      allow read: if isResourceOwner() || isLinkedDoctorOf(resource.data.userId);
+      allow read: if isResourceOwner() || isLinkedDoctorOf(resource.data.userId) || isFamilyAidantOf(resource.data.userId);
       allow create: if isCreatingAsSelf();
       allow update, delete: if isResourceOwner();
     }
     match /repas/{repasId} {
-      allow read: if isResourceOwner() || isLinkedDoctorOf(resource.data.userId);
+      allow read: if isResourceOwner() || isLinkedDoctorOf(resource.data.userId) || isFamilyAidantOf(resource.data.userId);
       allow create: if isCreatingAsSelf();
       allow update, delete: if isResourceOwner();
     }
     match /medicaments/{medId} {
-      allow read: if isResourceOwner() || isLinkedDoctorOf(resource.data.userId);
+      allow read: if isResourceOwner() || isLinkedDoctorOf(resource.data.userId) || isFamilyAidantOf(resource.data.userId);
       allow create: if isCreatingAsSelf();
       allow update, delete: if isResourceOwner();
     }
@@ -80,17 +94,17 @@ service cloud.firestore {
       allow delete: if isResourceOwner();
     }
     match /journal/{entryId} {
-      allow read: if isResourceOwner() || isLinkedDoctorOf(resource.data.userId);
+      allow read: if isResourceOwner() || isLinkedDoctorOf(resource.data.userId) || isFamilyAidantOf(resource.data.userId);
       allow create: if isCreatingAsSelf();
       allow update, delete: if isResourceOwner();
     }
     match /hba1c_lectures/{docId} {
-      allow read: if isResourceOwner() || isLinkedDoctorOf(resource.data.userId);
+      allow read: if isResourceOwner() || isLinkedDoctorOf(resource.data.userId) || isFamilyAidantOf(resource.data.userId);
       allow create: if isCreatingAsSelf();
       allow update, delete: if isResourceOwner();
     }
     match /patients/{patientId} {
-      allow read: if isResourceOwner() || isLinkedDoctorOf(resource.data.userId);
+      allow read: if isResourceOwner() || isLinkedDoctorOf(resource.data.userId) || isFamilyAidantOf(resource.data.userId);
       allow create: if isCreatingAsSelf();
       allow update, delete: if isResourceOwner();
     }
@@ -184,6 +198,28 @@ service cloud.firestore {
     // Ancien collection (compat)
     match /consents/{consentId} {
       allow read, write: if isSignedIn();
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    //  FAMILY LINKS (v2.1.48 — Mode famille)
+    //  Doc ID : {ownerUid}_{aidantUid}
+    //  - lecture : les 2 parties (owner + aidant)
+    //  - create : owner cree l'invitation (ownerUid == auth.uid)
+    //  - update : les 2 parties (accept/reject/revoke/reactivate)
+    //  - delete : interdit (on garde la tracabilite)
+    // ════════════════════════════════════════════════════════════════
+    match /family_links/{docId} {
+      function isFamilyParty() {
+        return isSignedIn() && (
+          resource.data.ownerUid == request.auth.uid ||
+          resource.data.aidantUid == request.auth.uid
+        );
+      }
+      allow read: if isFamilyParty();
+      allow create: if isSignedIn() &&
+                       request.resource.data.ownerUid == request.auth.uid;
+      allow update: if isFamilyParty();
+      allow delete: if false;
     }
 
     // ════════════════════════════════════════════════════════════════
