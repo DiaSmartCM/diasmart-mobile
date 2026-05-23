@@ -1,36 +1,290 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Pidgin English Camerounais (PCM / WES / Kamtok)
-  v2.1.49 : stub initial. Premieres traductions courantes UI.
-  Reste a completer via le dictionnaire (v2.1.50+).
-  Les strings non traduites tombent automatiquement sur values/ (FR).
+  Pidgin English Camerounais (Kamtok / PCM / WES) — v2.1.52
+  Couverture complete 206/206.
+
+  Source : connaissances Kamtok (creole anglais simplifie tres parle au Cameroun,
+  surtout regions Nord-Ouest, Sud-Ouest, et urbain Douala/Yaounde).
+  + Wikipedia "Cameroonian Pidgin English" pour la grammaire de base.
+
+  Notes Kamtok :
+  - "di" = progressive aspect (-ing)
+  - "don/dong" = perfect aspect (have done)
+  - "go" = future
+  - "fit" = can/be able to
+  - "wan/wanti" = want
+  - "sabi" = know
+  - "tchop" = eat
+  - "waka" = walk/function
+  - "no" = not (negation)
+  - "dem" = plural marker / they
+  - "sef" = self/emphasis
+  - "sharp sharp" = quickly, urgently
+  - "small small" = slowly, little by little
+
+  Marqueurs medicaux Kamtok :
+  - "sugar sickness" = diabete
+  - "sugar level" = glycemie
+  - "white pesin" = medecin (lit. "personne blanche", historique)
+  - "hospital" = hopital (anglais conserve)
+  - "doctor" = medecin
+  - "medicine" = medicament
+  - "i di pain me" = j'ai mal
+  - "ma body weak" = je suis faible
+  - "ma belly di pain" = j'ai mal au ventre
+
+  AVERTISSEMENT : traductions de mes meilleurs efforts. Avant production
+  grande echelle, demander une review a un native speaker camerounais.
 -->
 <resources>
     <string name="app_name">DiaSmart</string>
-    <string name="app_description">Sugar sickness app</string>
+    <string name="app_description">Sugar sickness manage</string>
+    <string name="app_developer">NGOS THEODORE</string>
+    <string name="app_contact_email">ngostheo30@gmail.com</string>
+    <string name="app_website">https://project-d-r1997t.web.app</string>
+    <string name="app_privacy_policy">https://project-d-r1997t.web.app/privacy.html</string>
 
     <!-- Navigation -->
     <string name="nav_dashboard">Main page</string>
     <string name="nav_patients">Sick pipo</string>
     <string name="nav_rendezvous">Meeting time</string>
     <string name="nav_medicaments">Medicine</string>
-    <string name="nav_glucose">Sugar level</string>
+    <string name="nav_glucose">Sugar for blood</string>
 
     <!-- Actions -->
     <string name="action_add">Put</string>
     <string name="action_edit">Change</string>
     <string name="action_delete">Comot</string>
     <string name="action_save">Keep</string>
-    <string name="action_cancel">Stop</string>
-    <string name="action_confirm">Yes na so</string>
-    <string name="action_search">Look</string>
+    <string name="action_cancel">No do</string>
+    <string name="action_confirm">Na so</string>
+    <string name="action_search">Find</string>
     <string name="action_filter">Sort</string>
+    <string name="ok">OK</string>
+    <string name="error_generic">Wahala: %1$s</string>
+    <string name="export_error">Send go out fail: %1$s</string>
+    <string name="loading_analysis">Look data small…</string>
+
+    <!-- Patient -->
+    <string name="patient_nom">Family name</string>
+    <string name="patient_prenom">First name</string>
+    <string name="patient_date_naissance">Day weh dem born you</string>
+    <string name="patient_sexe">Man or woman</string>
+    <string name="patient_telephone">Phone</string>
+    <string name="patient_email">Email</string>
+    <string name="patient_adresse">Place weh you dey</string>
+    <string name="patient_type_diabete">Type for sugar sickness</string>
+    <string name="patient_date_diagnostic">Day dem find sickness</string>
+    <string name="patient_notes">Things for write</string>
+    <string name="patient_edit_title">Change sick pesin info</string>
+    <string name="patient_nom_required">Family name *</string>
+    <string name="patient_prenom_required">First name *</string>
+    <string name="patient_dob_required">Day weh dem born you *</string>
+    <string name="patient_choose_date">Pick day</string>
+    <string name="patient_sexe_required">Man or woman *</string>
+    <string name="patient_type_required">Type for sickness *</string>
+    <string name="patient_body_data">Body things</string>
+    <string name="patient_weight">Weight (kg)</string>
+    <string name="patient_height">Height (cm)</string>
+    <string name="patient_waist">Belly round (cm)</string>
+    <string name="patient_body_fat">Body fat (%%)</string>
 
     <!-- Glucose -->
-    <string name="glucose_too_high">Sugar high too much</string>
-    <string name="glucose_too_low">Sugar small too much</string>
-    <string name="glucose_normal">Sugar dey fine</string>
+    <string name="glucose_valeur">Number (mg/dL)</string>
+    <string name="glucose_contexte">Time</string>
+    <string name="glucose_date">Day and time</string>
+    <string name="glucose_moyenne">Middle number</string>
+    <string name="glucose_min_max">Small-Big</string>
+    <string name="glucose_time_in_range">Time weh sugar dey good place</string>
+    <string name="glucose_target_range">Good place: 70-180 mg/dL</string>
+    <string name="glucose_added_success">I don put am fine</string>
+    <string name="glucose_report_title">DiaSmart - Sugar paper</string>
+    <string name="glucose_share_report">Share di paper</string>
+    <string name="glucose_tracking">Sugar follow up</string>
+    <string name="glucose_export">Send go out</string>
+    <string name="glucose_tab_glycemie">Sugar</string>
+    <string name="glucose_tab_hba1c">HbA1c</string>
+    <string name="glucose_tab_suivi">Follow</string>
+    <string name="glucose_add_hba1c">Put HbA1c result</string>
+    <string name="glucose_invalid_value">Number no good</string>
+    <string name="glucose_value_too_high">Number too plenty</string>
+    <string name="glucose_hba1c_invalid">HbA1c no good (3%% reach 20%%)</string>
+    <string name="glucose_hypo_severe">Sugar low too much, palava</string>
+    <string name="glucose_hypo">Sugar low</string>
+    <string name="glucose_in_target">For good place</string>
+    <string name="glucose_hyper">Sugar high</string>
+    <string name="glucose_hyper_severe">Sugar high too much, palava</string>
+    <string name="glucose_min_readings">Need 10 readings for know HbA1c</string>
 
-    <!-- Urgency -->
-    <string name="urgency_call_samu">Call SAMU 119 sharp sharp</string>
+    <!-- Medicament -->
+    <string name="medicament_nom">Name</string>
+    <string name="medicament_dosage">How much</string>
+    <string name="medicament_frequence">How many time</string>
+    <string name="medicament_heure">Time for tchop am</string>
+    <string name="medicament_date_debut">Start day</string>
+    <string name="medicament_date_fin">End day</string>
+    <string name="medicament_rappel">Make phone helep you remember</string>
+    <string name="medicament_added_success">I don put medicine fine</string>
+    <string name="medicament_new">New medicine</string>
+
+    <!-- Rendez-vous -->
+    <string name="rdv_titre">Name for meeting</string>
+    <string name="rdv_date">Day</string>
+    <string name="rdv_heure">Time</string>
+    <string name="rdv_duree">How long (minutes)</string>
+    <string name="rdv_type">Type</string>
+    <string name="rdv_lieu">Place</string>
+    <string name="rdv_confirme">I don confirm</string>
+
+    <!-- Messages -->
+    <string name="msg_required_field">Need for fill</string>
+    <string name="msg_patient_saved">Sick pesin info don keep fine</string>
+    <string name="msg_patient_deleted">Sick pesin don comot</string>
+    <string name="msg_glucose_added">Sugar reading don put</string>
+    <string name="msg_medicament_added">Medicine don put</string>
+    <string name="msg_rdv_added">Meeting don put</string>
+    <string name="msg_confirm_delete">You really wanti comot?</string>
+    <string name="msg_no_data">No data dey</string>
+
+    <!-- Auth -->
+    <string name="auth_welcome">Welcome!</string>
+    <string name="auth_hello">How na!</string>
+    <string name="auth_create_account_subtitle">Make your DiaSmart account</string>
+    <string name="auth_login_subtitle">Enter DiaSmart</string>
+    <string name="auth_inscription">Make account</string>
+    <string name="auth_connexion">Enter</string>
+    <string name="auth_phone">Phone</string>
+    <string name="auth_prenom">First name</string>
+    <string name="auth_nom">Family name</string>
+    <string name="auth_i_am">I be:</string>
+    <string name="auth_phone_number">Phone number</string>
+    <string name="auth_sms_sent">Dem don send SMS code</string>
+    <string name="auth_verification_code">Code for check</string>
+    <string name="auth_create_my_account">Make ma account</string>
+    <string name="auth_verify_code">Check di code</string>
+    <string name="auth_send_sms">Send SMS code</string>
+    <string name="auth_sign_in">Enter</string>
+    <string name="auth_or">or</string>
+    <string name="auth_google">Google</string>
+    <string name="auth_already_account">I get account already</string>
+    <string name="auth_no_account">Make account</string>
+    <string name="auth_tagline">DiaSmart — Manage sugar sickness fine</string>
+    <string name="auth_reset_email_sent">Email for change password don go!</string>
+    <string name="auth_login">Enter</string>
+    <string name="auth_register">Make account</string>
+    <string name="auth_email">Email</string>
+    <string name="auth_password">Password</string>
+    <string name="auth_forgot_password">You don forget password?</string>
+    <string name="auth_role_patient">Sick pesin</string>
+    <string name="auth_role_medecin">Doctor</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_title_1">Smart follow up</string>
+    <string name="onboarding_desc_1">Manage sugar sickness every day</string>
+    <string name="onboarding_title_2">ROLLY, ya AI helper</string>
+    <string name="onboarding_desc_2">Medical chatbot dey 24h/24</string>
+    <string name="onboarding_skip">Pass</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_start">Start</string>
+    <string name="onboarding_login_link">You get account? Enter</string>
+
+    <!-- Widget -->
+    <string name="widget_description">Show ya sugar now and which side i di go</string>
+
+    <!-- Predictive -->
+    <string name="predictive_title">Future sugar lines</string>
+    <string name="predictive_subtitle">ROLLY see what fit happen</string>
+
+    <!-- Pedometer -->
+    <string name="pedometer_title">Step counter</string>
+    <string name="pedometer_subtitle">Count ya steps</string>
+    <string name="pedometer_permission_denied">Permission no go</string>
+    <string name="pedometer_retry">Try again</string>
+    <string name="pedometer_glycemic_impact">How i di change ya sugar</string>
+    <string name="pedometer_steps">steps</string>
+    <string name="pedometer_goal">for goal</string>
+    <string name="pedometer_start">Start follow up</string>
+    <string name="pedometer_stop">Stop</string>
+
+    <!-- Dashboard -->
+    <string name="dashboard_glucose_avg">Middle sugar</string>
+    <string name="dashboard_offline_mode">No network mode</string>
+    <string name="dashboard_offline_data">Data weh dey for phone</string>
+    <string name="dashboard_update_available">New version dey</string>
+    <string name="dashboard_new_features">New things:</string>
+    <string name="dashboard_update_mandatory">You must update.</string>
+    <string name="dashboard_authorize">Allow</string>
+    <string name="dashboard_via_browser">Via browser</string>
+    <string name="dashboard_install">Install</string>
+    <string name="dashboard_later">Later</string>
+    <string name="dashboard_install_permission">Allow install from this place.</string>
+    <string name="dashboard_version">Version %1$s</string>
+    <string name="dashboard_pending_sync">%1$d things di wait for sync</string>
+
+    <!-- Messagerie -->
+    <string name="messagerie_title">Messages</string>
+    <string name="messagerie_empty">No chat dey</string>
+    <string name="messagerie_new_conversation">New chat</string>
+    <string name="messagerie_choisir_medecin">Choose doctor</string>
+    <string name="messagerie_saisir_message">Type message…</string>
+    <string name="messagerie_contact_doctor">Call doctor</string>
+    <string name="messagerie_empty_patient_hint">Talk to ya doctor with di + button</string>
+    <string name="messagerie_empty_doctor_hint">Ya sick pipo go reach you here</string>
+    <string name="messagerie_back">Go back</string>
+
+    <!-- Chatbot -->
+    <string name="chatbot_title">ROLLY</string>
+    <string name="chatbot_subtitle">DiaSmart AI helper</string>
+    <string name="chatbot_placeholder">Ask ya question…</string>
+    <string name="chatbot_reset">Start chat again</string>
+    <string name="chatbot_analyse_glycemie">Check sugar</string>
+    <string name="chatbot_prevision_risques">See wahala wey fit come</string>
+    <string name="chatbot_conseils_nutrition">Food advice</string>
+    <string name="chatbot_discussions">Chats</string>
+    <string name="chatbot_new_discussion">New chat</string>
+    <string name="chatbot_clear_history">Comot all history</string>
+    <string name="chatbot_back">Go back</string>
+
+    <!-- Repas -->
+    <string name="repas_new_analysis">New check</string>
+
+    <!-- Data sharing -->
+    <string name="data_sharing_title">Share data</string>
+    <string name="data_sharing_control">Control ya data</string>
+    <string name="data_sharing_share_with_doctor">Share with doctor</string>
+    <string name="data_sharing_choose_doctor">Choose doctor</string>
+    <string name="data_sharing_no_doctor">No doctor dey now.</string>
+
+    <!-- Validations -->
+    <string name="validations_title">ROLLY validations</string>
+    <string name="validations_subtitle">AI and Doctor work together</string>
+    <string name="validations_none_pending">No validation di wait</string>
+
+    <!-- Profile -->
+    <string name="profile_image_read_error">I no fit read di picture</string>
+    <string name="profile_photo_updated">Picture don change</string>
+    <string name="profile_change_phone">Change phone number</string>
+
+    <!-- Notifications -->
+    <string name="notif_channel_messages">DiaSmart Messages</string>
+    <string name="notif_channel_medicaments">Medicine remind</string>
+    <string name="notif_channel_rdv">Meeting remind</string>
+    <string name="notif_medicament_title">Time for medicine</string>
+    <string name="notif_medicament_text">Time for tchop %1$s</string>
+    <string name="notif_rdv_title">Meeting di come</string>
+    <string name="notif_rdv_text">%1$s for %2$s</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_notifications">Notifications</string>
+
+    <!-- Journal -->
+    <string name="journal_title">Day book</string>
+    <string name="journal_subtitle">Write every day</string>
+    <string name="journal_mood">How you di feel?</string>
+    <string name="journal_stress">Stress level</string>
+    <string name="journal_sleep">How you sleep</string>
+    <string name="journal_activity">Body movement</string>
 </resources>
