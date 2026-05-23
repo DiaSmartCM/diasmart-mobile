@@ -1,26 +1,141 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Fulfulde Camerounais / Adamawa (FUL / FUB) — regions Adamaoua,
-  Nord, Extreme-Nord.
-  v2.1.49 : stub initial. A enrichir avec dictionnaire Fulfulde
-  (v2.1.50+). Strings manquantes -> fallback values/ (FR).
+  Fulfulde Camerounais / Adamawa (FUB / FUL) — v2.1.55
+  Couverture ~90 strings sur 206. Le reste -> fallback FR.
+
+  Source : "Dictionnaire Peul du Corps et de la Santé" — corpus
+  specifiquement MEDICAL avec citations d'infirmiers et accoucheuses
+  de Maroua, Meskine, Pitoaré, Petté, Gazawa (Cameroun Nord).
+  PDF : dico peuls.pdf (616 pages, L'Harmattan).
+
+  Region : Adamaoua, Nord, Extreme-Nord Cameroun. ~3M locuteurs au total
+  dans la sous-region. Langue Niger-Congo (Atlantique).
+
+  ⚠️ Traductions extraites du dico mais NON CERTIFIEES par un native.
+  Avant production grande echelle, faire reviewer un locuteur Adamawa
+  Fulfulde. Les keys non listees ici tombent automatiquement sur FR.
+
+  ALPHABET specifique : 6 (b implosif), 0 (d implosif), j (variations),
+  Y" (n cedille glottal), tons hauts/bas non marques (traditionnel).
 -->
 <resources>
+    <!-- Identite -->
     <string name="app_name">DiaSmart</string>
-    <string name="app_description">Toppitagol nyaw\'el ngarwol</string>  <!-- gestion du diabete -->
+    <string name="app_description">Toppitagol nyawu sukkar</string>  <!-- gestion de la maladie du sucre = diabete -->
 
     <!-- Navigation -->
-    <string name="nav_dashboard">Dingiral hesere</string>                 <!-- tableau principal -->
-    <string name="nav_patients">Nyawɓe</string>                           <!-- les malades -->
-    <string name="nav_rendezvous">Yontere fottoyaagu</string>             <!-- rendez-vous -->
-    <string name="nav_medicaments">Lekki</string>                         <!-- medicament -->
-    <string name="nav_glucose">Suukre ƴiiƴam</string>                     <!-- sucre du sang -->
+    <string name="nav_dashboard">Dingiral hesere</string>
+    <string name="nav_patients">Nyaw6e</string>           <!-- les malades -->
+    <string name="nav_rendezvous">Yontere</string>         <!-- moment/rendez-vous -->
+    <string name="nav_medicaments">Lekki</string>          <!-- medicament/remede -->
+    <string name="nav_glucose">Sukkar y\'iy\'am</string>   <!-- sucre du sang -->
 
-    <!-- Actions -->
-    <string name="action_save">Mooftu</string>                            <!-- conserver -->
-    <string name="action_cancel">Joppu</string>                           <!-- arreter -->
-    <string name="action_confirm">Eey</string>                            <!-- oui -->
+    <!-- Actions courantes (depuis dico verifie) -->
+    <string name="action_add">Esda</string>                <!-- ajouter, augmenter (6esdugo) -->
+    <string name="action_edit">Yiltu</string>              <!-- changer -->
+    <string name="action_delete">Lutta</string>            <!-- enlever -->
+    <string name="action_save">Mooftu</string>             <!-- conserver -->
+    <string name="action_cancel">Joppu</string>            <!-- arreter -->
+    <string name="action_confirm">Eey</string>             <!-- oui -->
+    <string name="action_search">Yiilo</string>            <!-- chercher -->
+    <string name="action_filter">Suban</string>            <!-- choisir, trier -->
+    <string name="ok">Eey</string>
 
-    <!-- Urgency -->
-    <string name="urgency_call_samu">Noddu SAMU 119 jaha</string>          <!-- appelle vite -->
+    <!-- Auth -->
+    <string name="auth_welcome">Jaarama!</string>          <!-- bienvenue / merci -->
+    <string name="auth_hello">Sannu!</string>              <!-- salut (emprunt Hausa) -->
+    <string name="auth_or">Walaa</string>                  <!-- ou bien -->
+    <string name="auth_email">Email</string>
+    <string name="auth_password">Maandi</string>           <!-- secret, signe -->
+    <string name="auth_phone">Telefon</string>
+    <string name="auth_login">Naasta</string>              <!-- entrer -->
+    <string name="auth_register">Wadu konngol</string>     <!-- creer un compte (litt. faire le mot) -->
+    <string name="auth_sign_in">Naasta</string>
+    <string name="auth_role_patient">Nyaw\'oo</string>     <!-- le malade -->
+    <string name="auth_role_medecin">Doftor</string>       <!-- emprunt -->
+    <string name="auth_no_account">Wadu konngol kesol</string>
+    <string name="auth_already_account">Mi mari konngol</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_skip">Yawtu</string>          <!-- passer -->
+    <string name="onboarding_next">Aroowel</string>        <!-- suivant -->
+    <string name="onboarding_start">Fuddo</string>         <!-- commencer -->
+
+    <!-- Patient -->
+    <string name="patient_nom">Innde</string>              <!-- nom -->
+    <string name="patient_prenom">Innde aranere</string>   <!-- premier nom -->
+    <string name="patient_date_naissance">Nyalaande danyu</string>  <!-- jour de naissance -->
+    <string name="patient_sexe">Tagudi</string>            <!-- genre/sexe -->
+    <string name="patient_telephone">Telefon</string>
+    <string name="patient_email">Email</string>
+    <string name="patient_adresse">Suudu</string>          <!-- maison -->
+    <string name="patient_type_diabete">Soobaaji nyawu sukkar</string> <!-- types de diabete -->
+    <string name="patient_notes">Wiiti</string>            <!-- notes/inscriptions -->
+    <string name="patient_body_data">Tabaaki 6anndu</string>  <!-- choses du corps -->
+    <string name="patient_weight">Teddungal (kg)</string>  <!-- poids/pesanteur -->
+    <string name="patient_height">Juutol (cm)</string>     <!-- longueur/hauteur -->
+    <string name="patient_waist">Mu\'\'ankoy reedu (cm)</string>  <!-- circonference du ventre -->
+    <string name="patient_body_fat">Bellol 6anndu (%%)</string>  <!-- graisse du corps -->
+
+    <!-- Glucose -->
+    <string name="glucose_valeur">Limrere (mg/dL)</string> <!-- chiffre/quantite -->
+    <string name="glucose_contexte">Saa\'a</string>        <!-- moment -->
+    <string name="glucose_date">Nyalaande e saa\'a</string>
+    <string name="glucose_moyenne">Hakkunde</string>       <!-- milieu / moyen -->
+    <string name="glucose_min_max">Tokoso-Mawngo</string>  <!-- petit-grand -->
+    <string name="glucose_target_range">Hakkundo: 70-180 mg/dL</string>
+    <string name="glucose_tracking">Reendaago sukkar y\'iy\'am</string> <!-- surveillance du sucre -->
+    <string name="glucose_added_success">Esdaama no moy\'\'i</string>  <!-- ajoute bien -->
+
+    <!-- Glucose alertes (CRITIQUES) -->
+    <string name="glucose_hypo_severe">Sukkar usti haa danki - sago!</string>  <!-- sucre tres bas - urgence -->
+    <string name="glucose_hypo">Sukkar usti</string>       <!-- sucre descendu -->
+    <string name="glucose_in_target">Sukkar e hakkundo moy\'\'o</string> <!-- bon milieu -->
+    <string name="glucose_hyper">Sukkar 6esdi</string>     <!-- sucre augmente -->
+    <string name="glucose_hyper_severe">Sukkar 6esdi haa danki - sago!</string>
+
+    <!-- Medicament -->
+    <string name="medicament_nom">Innde lekki</string>     <!-- nom du medicament -->
+    <string name="medicament_dosage">Hewa</string>         <!-- combien -->
+    <string name="medicament_heure">Saa\'a</string>
+    <string name="medicament_rappel">Anditin kam</string>  <!-- rappelle-moi -->
+    <string name="medicament_added_success">Lekki esdaama</string>
+    <string name="medicament_new">Lekki kesi</string>      <!-- nouveau medicament -->
+
+    <!-- Rendez-vous -->
+    <string name="rdv_titre">Innde</string>
+    <string name="rdv_date">Nyalaande</string>             <!-- jour -->
+    <string name="rdv_heure">Saa\'a</string>
+    <string name="rdv_lieu">Nokku</string>                 <!-- lieu -->
+    <string name="rdv_confirme">Tabitiima</string>         <!-- confirme -->
+
+    <!-- Messages -->
+    <string name="msg_required_field">Ko foti yenaade</string>  <!-- doit etre rempli -->
+    <string name="msg_no_data">Alaa ko woni</string>             <!-- il n'y a rien -->
+    <string name="msg_confirm_delete">A yi\'\'i tigi yo a lutta?</string>
+    <string name="msg_patient_saved">Nyaw\'oo mooftaama</string>
+    <string name="msg_glucose_added">Limrere esdaama</string>
+
+    <!-- Chatbot ROLLY -->
+    <string name="chatbot_title">ROLLY</string>
+    <string name="chatbot_placeholder">Lannditin am…</string>  <!-- demande-moi -->
+    <string name="chatbot_back">Wartu</string>                 <!-- revenir -->
+    <string name="chatbot_subtitle">Ballal DiaSmart</string>   <!-- aide DiaSmart -->
+    <string name="chatbot_reset">Fuddinangol</string>          <!-- recommencer -->
+
+    <!-- Messagerie -->
+    <string name="messagerie_title">Konnguɗi</string>          <!-- les messages -->
+    <string name="messagerie_empty">Alaa konngol</string>      <!-- pas de message -->
+    <string name="messagerie_back">Wartu</string>
+    <string name="messagerie_contact_doctor">Noddu doftor</string>  <!-- appeler le medecin -->
+
+    <!-- Settings -->
+    <string name="settings_title">Suba\'ɗi</string>            <!-- choix -->
+    <string name="settings_language">Demngal</string>          <!-- langue -->
+
+    <!-- Notifications -->
+    <string name="notif_medicament_title">Saa\'a lekki</string>  <!-- heure du medicament -->
+    <string name="notif_medicament_text">Saa\'a yara %1$s</string>  <!-- temps de prendre -->
+
+    <!-- Tout le reste : fallback automatique sur values/ (FR) -->
 </resources>
