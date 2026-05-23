@@ -14,8 +14,32 @@ on:
   workflow_dispatch:  # bouton "Run workflow" manuel
 
 jobs:
+  # Pre-check : promouvoir le secret en output. GitHub Actions interdit
+  # ${{ secrets.X }} directement dans un `if:` de step (cf. doc officielle),
+  # donc on passe par un job qui evalue la presence et expose un boolean.
+  check-secrets:
+    name: Check Maestro secrets
+    runs-on: ubuntu-latest
+    outputs:
+      has_key: ${{ steps.probe.outputs.has_key }}
+    steps:
+      - id: probe
+        env:
+          MAESTRO_KEY: ${{ secrets.MAESTRO_CLOUD_API_KEY }}
+        run: |
+          if [ -n "$MAESTRO_KEY" ]; then
+            echo "has_key=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_key=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::MAESTRO_CLOUD_API_KEY secret not configured. E2E job will be skipped."
+            echo "To enable E2E tests, sign up at https://cloud.mobile.dev/"
+            echo "Then add MAESTRO_CLOUD_API_KEY in repo Settings > Secrets > Actions"
+          fi
+
   e2e-maestro:
     name: Maestro Cloud E2E
+    needs: check-secrets
+    if: needs.check-secrets.outputs.has_key == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -28,14 +52,12 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Build release APK (unsigned for Maestro Cloud)
+      - name: Build debug APK (unsigned for Maestro Cloud)
         run: |
+          chmod +x gradlew
           ./gradlew :app:assembleDebug --no-daemon
 
       - name: Run Maestro Cloud tests
-        # Skip si pas de cle Maestro configuree (eviter de bloquer les PRs
-        # pour les contributeurs externes sans acces secrets)
-        if: ${{ secrets.MAESTRO_CLOUD_API_KEY != '' }}
         uses: mobile-dev-inc/action-maestro-cloud@v1
         with:
           api-key: ${{ secrets.MAESTRO_CLOUD_API_KEY }}
@@ -45,10 +67,3 @@ jobs:
           env: |
             MAESTRO_EMAIL=${{ secrets.MAESTRO_EMAIL }}
             MAESTRO_OTP=${{ secrets.MAESTRO_OTP }}
-
-      - name: Notify if Maestro key missing
-        if: ${{ secrets.MAESTRO_CLOUD_API_KEY == '' }}
-        run: |
-          echo "::warning::MAESTRO_CLOUD_API_KEY secret not configured. Skipping E2E tests."
-          echo "To enable E2E tests, sign up at https://cloud.mobile.dev/"
-          echo "Then add MAESTRO_CLOUD_API_KEY in repo Settings > Secrets > Actions"
