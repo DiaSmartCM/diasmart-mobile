@@ -1,26 +1,121 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Duala (DUA) — region du Littoral, Douala.
-  v2.1.49 : stub initial avec quelques mots cles medicaux.
-  A completer via le dictionnaire Duala (v2.1.50+).
-  Strings manquantes -> fallback values/ (FR).
+  Duala (DUA) — v2.1.54
+  Couverture partielle ~80 strings sur 206. Reste -> fallback FR.
+
+  Source verifiee : Paul Helmlinger, "Dictionnaire duala-français suivi
+  d'un lexique français-duala" (Klincksieck, Paris, 1972).
+  URL : https://archive.org/stream/duala/duala_djvu.txt
+
+  Region : Littoral / Douala et environs (~300 000 locuteurs).
+  Famille : Bantu A.24.
+
+  ⚠️ TRADUCTIONS NON CERTIFIEES (extraites d'un dico de 1972).
+  Avant production grande echelle, review par un native speaker Duala.
+  Les keys non listees tombent automatiquement en fallback FR.
 -->
 <resources>
+    <!-- Identite -->
     <string name="app_name">DiaSmart</string>
-    <string name="app_description">Bolouom ba sukoli</string>  <!-- gestion du diabete -->
+    <string name="app_description">Bolouom ba sukoli</string>
 
     <!-- Navigation -->
-    <string name="nav_dashboard">Mwa kala</string>           <!-- tableau de bord -->
-    <string name="nav_patients">Bato ba bekale</string>      <!-- patients -->
-    <string name="nav_rendezvous">Tongo a mwende</string>    <!-- rendez-vous -->
-    <string name="nav_medicaments">Mauti</string>            <!-- medicaments -->
-    <string name="nav_glucose">Sukoli o makila</string>      <!-- sucre dans le sang -->
+    <string name="nav_dashboard">Mwa kala</string>
+    <string name="nav_patients">Babôedi</string>          <!-- les malades, pluriel de mubôedi -->
+    <string name="nav_rendezvous">Tongo</string>           <!-- temps/moment -->
+    <string name="nav_medicaments">Bowanjo</string>        <!-- remede -->
+    <string name="nav_glucose">Sukoli o makila</string>    <!-- sucre dans le sang -->
 
     <!-- Actions -->
-    <string name="action_save">Baisa</string>                <!-- sauvegarder -->
-    <string name="action_cancel">Tika</string>               <!-- annuler -->
-    <string name="action_confirm">Doluwa</string>            <!-- confirmer -->
+    <string name="action_add">Bake</string>                <!-- approcher / ajouter -->
+    <string name="action_edit">Kwana</string>              <!-- devenir / changer -->
+    <string name="action_delete">Kêle</string>             <!-- refuser / enlever -->
+    <string name="action_save">Tise</string>               <!-- conserver -->
+    <string name="action_cancel">Tika</string>             <!-- laisser -->
+    <string name="action_confirm">Kusa</string>            <!-- accepter -->
+    <string name="action_search">Pula</string>             <!-- chercher -->
+    <string name="ok">Bwam</string>                        <!-- bon -->
 
-    <!-- Urgency (critique en cas d'hypo/hyper) -->
-    <string name="urgency_call_samu">Bela SAMU 119 nde-nde</string>  <!-- appelle SAMU vite -->
+    <!-- Auth -->
+    <string name="auth_welcome">Wa o ja!</string>          <!-- viens! / bienvenue -->
+    <string name="auth_hello">Mboa!</string>               <!-- jour / salut -->
+    <string name="auth_or">Tô</string>                     <!-- ou -->
+    <string name="auth_login">Jubu</string>                <!-- entrer -->
+    <string name="auth_email">Email</string>
+    <string name="auth_password">Bobesa</string>           <!-- secret (approx) -->
+    <string name="auth_phone">Telefon</string>
+    <string name="auth_sign_in">Jubu</string>
+    <string name="auth_role_patient">Mubôedi</string>
+    <string name="auth_role_medecin">Doftôl</string>       <!-- emprunt -->
+
+    <!-- Onboarding -->
+    <string name="onboarding_skip">Wala</string>           <!-- s'en aller / passer -->
+    <string name="onboarding_next">Niyaane</string>
+    <string name="onboarding_start">Bebotedi</string>      <!-- commencement -->
+
+    <!-- Patient -->
+    <string name="patient_nom">Djina</string>              <!-- nom -->
+    <string name="patient_prenom">Djina la bebotedi</string> <!-- nom du début -->
+    <string name="patient_telephone">Telefon</string>
+    <string name="patient_email">Email</string>
+    <string name="patient_adresse">Ndâbo</string>          <!-- maison/adresse -->
+    <string name="patient_type_diabete">Mboa ma dibôa</string> <!-- type de maladie -->
+    <string name="patient_notes">Mam</string>              <!-- choses / notes -->
+    <string name="patient_weight">Bwende (kg)</string>
+    <string name="patient_height">Bolai (cm)</string>      <!-- longueur/hauteur -->
+
+    <!-- Glucose -->
+    <string name="glucose_valeur">Bâninga (mg/dL)</string> <!-- nombre/combien -->
+    <string name="glucose_date">Mboa ni tongo</string>     <!-- jour et heure -->
+    <string name="glucose_moyenne">Lobalo</string>         <!-- milieu (approx) -->
+    <string name="glucose_target_range">Tongo bwam: 70-180 mg/dL</string>
+    <string name="glucose_tracking">Diele sukoli</string>  <!-- conduire/suivre -->
+    <string name="glucose_added_success">A bake bwam</string> <!-- ajoute bien -->
+
+    <!-- Glucose alertes (CRITIQUES medicales) -->
+    <string name="glucose_hypo_severe">Sukoli e nikinikí - ndutu!</string>
+    <string name="glucose_hypo">Sukoli e súlú</string>     <!-- sucre bas -->
+    <string name="glucose_in_target">Sukoli e bwam</string> <!-- sucre bon -->
+    <string name="glucose_hyper">Sukoli e mukola</string>  <!-- sucre haut -->
+    <string name="glucose_hyper_severe">Sukoli e mukola too - ndutu!</string>
+
+    <!-- Medicament -->
+    <string name="medicament_nom">Djina la bowanjo</string>
+    <string name="medicament_dosage">Bâninga</string>      <!-- combien -->
+    <string name="medicament_heure">Tongo</string>
+    <string name="medicament_rappel">Bêle mba</string>     <!-- appelle moi (rappel) -->
+    <string name="medicament_added_success">Bowanjo bo bake</string>
+
+    <!-- Rendez-vous -->
+    <string name="rdv_titre">Djina</string>
+    <string name="rdv_date">Mboa</string>
+    <string name="rdv_heure">Tongo</string>
+    <string name="rdv_lieu">Mundi</string>                 <!-- village/lieu -->
+    <string name="rdv_confirme">A kusi</string>            <!-- a accepte -->
+
+    <!-- Messages -->
+    <string name="msg_required_field">Sômbô o bake</string>
+    <string name="msg_no_data">Mam ma siyî</string>        <!-- pas de choses -->
+    <string name="msg_confirm_delete">O wala kêle?</string>
+
+    <!-- Chatbot ROLLY -->
+    <string name="chatbot_title">ROLLY</string>
+    <string name="chatbot_placeholder">Ama na mba…</string> <!-- parle a moi -->
+    <string name="chatbot_back">Wala buse</string>          <!-- retourner -->
+    <string name="chatbot_subtitle">Mwèdi ma DiaSmart</string> <!-- assistant -->
+
+    <!-- Messagerie -->
+    <string name="messagerie_title">Bwambo</string>         <!-- affaires/messages -->
+    <string name="messagerie_empty">Bwambo bo siyî</string>
+    <string name="messagerie_back">Wala buse</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Bipula</string>           <!-- choix -->
+    <string name="settings_language">Eyala</string>        <!-- langue/parole -->
+    <string name="settings_theme">Mendongo</string>        <!-- style/apparence (approx) -->
+
+    <!-- (Note : dikôm = ami/compagnon en Duala, peut servir si on ajoute
+         "aidant" comme cle dans values/ pour le mode famille v2.1.48+) -->
+
+    <!-- Tout le reste : fallback automatique sur values/ (FR) -->
 </resources>
