@@ -1,25 +1,115 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Bassa (BAS) — region du Littoral/Centre.
-  v2.1.49 : stub initial. A enrichir avec dictionnaire + grammaire Bassa
-  (v2.1.50+). Strings manquantes -> fallback values/ (FR).
+  Basaá (BAS / BASA / Bassa) — v2.1.53
+  Couverture partielle ~70 strings sur 206. Le reste tombe en fallback
+  values/ (FR).
+
+  Sources :
+  - Bellnoun Momha, "Dictionnaire Français-Bassa" (L'Harmattan, 2007)
+    (PDF dico bassa'a.pdf parse via pypdf)
+  - "Grammaire Bassa'a" (PDF correspondant)
+  - Bantu A.43 — phonologie : Ɓ, Ɗ, Ɛ, Ŋ, Ɲ, Ɔ tons hauts/bas
+
+  Region : Littoral / Centre Cameroun, environ 300 000 locuteurs.
+
+  ⚠️ TRADUCTIONS NON CERTIFIEES. Avant production grande echelle,
+  faire reviewer par un native speaker Bassa. Les keys non listees ici
+  s'affichent automatiquement en francais (mecanisme Android fallback).
 -->
 <resources>
+    <!-- Identite -->
     <string name="app_name">DiaSmart</string>
-    <string name="app_description">Likalo li sukre</string>      <!-- gestion du sucre -->
+    <string name="app_description">Likalo li sukre</string>
+    <string name="app_developer">NGOS THEODORE</string>
 
     <!-- Navigation -->
-    <string name="nav_dashboard">Bombo bi nyé</string>           <!-- vue d'ensemble -->
-    <string name="nav_patients">Bot ba bika</string>             <!-- les malades -->
-    <string name="nav_rendezvous">Nyân i ngwie</string>          <!-- rendez-vous -->
-    <string name="nav_medicaments">Mauti</string>                <!-- medicaments -->
-    <string name="nav_glucose">Sukre i makia</string>            <!-- sucre dans le sang -->
+    <string name="nav_dashboard">Bombo bi nyé</string>
+    <string name="nav_patients">Bot ba bika</string>
+    <string name="nav_rendezvous">Nyân i ngwie</string>
+    <string name="nav_medicaments">Mauti</string>
+    <string name="nav_glucose">Sukre i makia</string>
 
-    <!-- Actions -->
-    <string name="action_save">Tisa</string>                     <!-- garder -->
-    <string name="action_cancel">Tika</string>                   <!-- arreter -->
-    <string name="action_confirm">Nya</string>                   <!-- oui / confirmer -->
+    <!-- Actions courantes (verifiees dans le dico) -->
+    <string name="action_add">Tina</string>            <!-- mettre, poser -->
+    <string name="action_edit">Yiilha</string>          <!-- changer -->
+    <string name="action_delete">Hômôs</string>         <!-- enlever -->
+    <string name="action_save">Tisa</string>            <!-- garder -->
+    <string name="action_cancel">Tika</string>          <!-- arreter -->
+    <string name="action_confirm">Nya</string>          <!-- oui, accepter (ineebe) -->
+    <string name="action_search">Soup</string>          <!-- chercher -->
+    <string name="action_filter">Pôs</string>           <!-- trier, choisir -->
+    <string name="ok">Hala</string>
 
-    <!-- Urgency -->
-    <string name="urgency_call_samu">Bela SAMU 119 ngangan</string>  <!-- appelle vite -->
+    <!-- (action_back et urgency_call_samu retires : non presents dans values/) -->
+
+    <!-- Auth -->
+    <string name="auth_welcome">Ngey o yé!</string>     <!-- bienvenue (approx) -->
+    <string name="auth_hello">M\'ngum!</string>         <!-- bonjour Bassa courant -->
+    <string name="auth_or">Tole</string>                <!-- ou -->
+    <string name="auth_email">Email</string>
+    <string name="auth_password">Nyibé</string>         <!-- secret -->
+    <string name="auth_phone">Telefon</string>
+    <string name="auth_login">Jubul</string>            <!-- entrer / lijubul -->
+    <string name="auth_register">Tina lon</string>      <!-- mettre le nom -->
+    <string name="auth_sign_in">Jubul</string>
+    <string name="auth_role_patient">Mut\'bika</string>
+    <string name="auth_role_medecin">Doftôl</string>    <!-- emprunt -->
+
+    <!-- Onboarding -->
+    <string name="onboarding_skip">Lehe</string>        <!-- passer -->
+    <string name="onboarding_next">Niyaane</string>     <!-- suivant -->
+    <string name="onboarding_start">Bôdôl</string>      <!-- commencer (ibôdôl) -->
+
+    <!-- Patient -->
+    <string name="patient_nom">Lon</string>             <!-- nom -->
+    <string name="patient_prenom">Lon li bisu</string>  <!-- nom du début / premier -->
+    <string name="patient_telephone">Telefon</string>
+    <string name="patient_email">Email</string>
+
+    <!-- Glucose -->
+    <string name="glucose_valeur">Ngônde (mg/dL)</string> <!-- nombre -->
+    <string name="glucose_date">Hilémb ni ngéda</string>  <!-- jour et heure -->
+    <string name="glucose_moyenne">Lonnge</string>        <!-- milieu (approx) -->
+    <string name="glucose_tracking">Niigil sukre</string> <!-- suivre / observer -->
+
+    <!-- Glucose alertes (critiques medicales) -->
+    <string name="glucose_hypo_severe">Sukre i bi too kepek - palaba</string>
+    <string name="glucose_hypo">Sukre i bi kepek</string>
+    <string name="glucose_in_target">Sukre i yé bobwam</string>
+    <string name="glucose_hyper">Sukre i bi ngandak</string>
+    <string name="glucose_hyper_severe">Sukre i bi too ngandak - palaba</string>
+
+    <!-- Medicament -->
+    <string name="medicament_nom">Lon li mauti</string>
+    <string name="medicament_dosage">Bafien</string>      <!-- combien -->
+    <string name="medicament_heure">Ngéda</string>        <!-- heure -->
+    <string name="medicament_rappel">Yém me</string>      <!-- rappelle-moi -->
+
+    <!-- Rendez-vous -->
+    <string name="rdv_titre">Lon</string>
+    <string name="rdv_date">Hilémb</string>               <!-- jour -->
+    <string name="rdv_heure">Ngéda</string>
+    <string name="rdv_lieu">Homa</string>                 <!-- lieu (ihoma) -->
+    <string name="rdv_confirme">I bi nya</string>         <!-- a accepte -->
+
+    <!-- Messages courants -->
+    <string name="msg_required_field">Sômbla u tina</string> <!-- il faut mettre -->
+    <string name="msg_no_data">Mam ma yé bé</string>      <!-- les choses ne sont pas -->
+    <string name="msg_confirm_delete">U sômbôl ndik i hômôs?</string>
+
+    <!-- Chatbot ROLLY -->
+    <string name="chatbot_title">ROLLY</string>
+    <string name="chatbot_placeholder">Hôp wem…</string>    <!-- parle moi -->
+    <string name="chatbot_back">Bigi</string>
+
+    <!-- Messagerie -->
+    <string name="messagerie_title">Maman</string>          <!-- choses / messages (approx) -->
+    <string name="messagerie_empty">Maman ma yé bé</string>
+    <string name="messagerie_back">Bigi</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Bipôs</string>            <!-- choix / parametres -->
+    <string name="settings_language">Hop</string>           <!-- langue -->
+
+    <!-- Tout le reste : fallback automatique sur values/ (FR) -->
 </resources>
