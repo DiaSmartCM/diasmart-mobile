@@ -233,15 +233,16 @@ class SettingsViewModel @Inject constructor(
     /**
      * Supprime definitivement le compte de l'utilisateur :
      * profil Firestore + consentements + compte Firebase Auth.
-     * onResult(true)  -> deconnexion a effectuer cote UI
-     * onResult(false) -> afficher message d'erreur
+     * v2.1.60 : retourne le recu RGPD (Base64 HMAC) pour conservation legale.
+     * onResult(true, receipt, null) -> deconnexion + afficher dialog recu
+     * onResult(false, null, errMsg) -> afficher message d'erreur
      */
-    fun deleteMyAccount(onResult: (Boolean, String?) -> Unit) {
+    fun deleteMyAccount(onResult: (Boolean, String?, String?) -> Unit) {
         viewModelScope.launch {
             val result = authRepository.deleteAccount()
             result.fold(
-                onSuccess = { onResult(true, null) },
-                onFailure = { e -> onResult(false, e.message) }
+                onSuccess = { receipt -> onResult(true, receipt, null) },
+                onFailure = { e -> onResult(false, null, e.message) }
             )
         }
     }

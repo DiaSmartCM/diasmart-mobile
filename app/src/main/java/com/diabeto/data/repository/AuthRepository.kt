@@ -455,7 +455,13 @@ class AuthRepository @Inject constructor(
      * Avant cette version, seuls data_sharing + users etaient supprimes,
      * laissant glucose, repas, journal, conversations, etc. orphelins.
      */
-    suspend fun deleteAccount(): Result<Unit> {
+    /**
+     * v2.1.60 : retourne le recu RGPD Base64 signe HMAC genere par le serveur.
+     * Le recu contient { uid, deletedAt, counts, hmac } — preuve legale a conserver
+     * par l'utilisateur (article 17 GDPR / loi camerounaise 2024 sur les donnees
+     * personnelles).
+     */
+    suspend fun deleteAccount(): Result<String> {
         val user = auth.currentUser ?: return Result.failure(Exception("Non connecte"))
         return try {
             val token = user.getIdToken(false).await()?.token
@@ -466,15 +472,18 @@ class AuthRepository @Inject constructor(
                 .addHeader("Authorization", "Bearer $token")
                 .post(body.toRequestBody("application/json; charset=utf-8".toMediaType()))
                 .build()
-            httpClient.newCall(req).execute().use { resp ->
+            val receipt: String = httpClient.newCall(req).execute().use { resp ->
+                val respBody = resp.body?.string().orEmpty()
                 if (!resp.isSuccessful) {
-                    val errBody = resp.body?.string().orEmpty()
-                    return Result.failure(Exception("Delete HTTP ${resp.code}: ${errBody.take(120)}"))
+                    return Result.failure(Exception("Delete HTTP ${resp.code}: ${respBody.take(120)}"))
                 }
+                // Parse minimal JSON pour extraire receipt (evite d'ajouter une dependance)
+                val match = Regex("\"receipt\"\\s*:\\s*\"([^\"]+)\"").find(respBody)
+                match?.groupValues?.get(1).orEmpty()
             }
             // Sign out locally (le token serveur est deja invalide cote Auth)
             runCatching { auth.signOut() }
-            Result.success(Unit)
+            Result.success(receipt)
         } catch (e: Exception) {
             Result.failure(e)
         }

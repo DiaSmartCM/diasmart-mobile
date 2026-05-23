@@ -151,6 +151,94 @@ async function deleteCalls(db, uid) {
   return deleted;
 }
 
+/**
+ * v2.1.60 : cascade Supabase Storage. Supprime tous les blobs sous les prefixes
+ * appartenant a l'utilisateur (rapports PDF, photos profil, pieces jointes chat).
+ *
+ * Env requis (a setter sur Vercel) :
+ *   - SUPABASE_URL                 (ex: https://avcskcqzxwbkiskvlvxx.supabase.co)
+ *   - SUPABASE_SERVICE_ROLE_KEY    (cle service_role, JAMAIS exposee cote client)
+ *   - SUPABASE_BUCKET              (ex: diasmart-files — defaut "diasmart-files")
+ *
+ * Si une variable manque, on warn et on retourne 0 (deploiement continue mais
+ * la cascade Supabase est skip — a noter dans les logs Vercel).
+ */
+async function deleteSupabaseUserBlobs(uid) {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const bucket = process.env.SUPABASE_BUCKET || "diasmart-files";
+  if (!url || !key) {
+    console.warn("SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY absent — skip cascade Storage");
+    return 0;
+  }
+
+  // Les prefixes que DiaSmart utilise. Garder synchro avec le code mobile.
+  const prefixes = [`reports/${uid}`, `profile_photos/${uid}`, `chat_attachments/${uid}`];
+  let total = 0;
+  for (const prefix of prefixes) {
+    try {
+      // 1) Lister les objets sous le prefixe (1000 max par requete — boucle si necessaire)
+      let offset = 0;
+      const paths = [];
+      while (true) {
+        const listResp = await fetch(
+          `${url}/storage/v1/object/list/${bucket}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: key,
+              Authorization: `Bearer ${key}`,
+            },
+            body: JSON.stringify({
+              prefix,
+              limit: 1000,
+              offset,
+              sortBy: { column: "name", order: "asc" },
+            }),
+          }
+        );
+        if (!listResp.ok) {
+          console.warn(`supabase list ${prefix} -> HTTP ${listResp.status}`);
+          break;
+        }
+        const items = await listResp.json();
+        if (!Array.isArray(items) || items.length === 0) break;
+        for (const it of items) {
+          if (it && it.name) paths.push(`${prefix}/${it.name}`);
+        }
+        if (items.length < 1000) break;
+        offset += items.length;
+      }
+
+      // 2) Suppression batch (API Supabase Storage : DELETE /object/{bucket}
+      //    avec body { prefixes: [...] })
+      if (paths.length > 0) {
+        const delResp = await fetch(
+          `${url}/storage/v1/object/${bucket}`,
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: key,
+              Authorization: `Bearer ${key}`,
+            },
+            body: JSON.stringify({ prefixes: paths }),
+          }
+        );
+        if (delResp.ok) {
+          total += paths.length;
+        } else {
+          console.warn(`supabase delete ${prefix} -> HTTP ${delResp.status}`);
+        }
+      }
+    } catch (e) {
+      console.warn(`supabase cascade ${prefix} failed:`, e.message);
+    }
+  }
+  return total;
+}
+
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -174,7 +262,7 @@ module.exports = async (req, res) => {
   const db = adm.firestore();
   const auth = adm.auth();
 
-  const deletedCounts = { firestore: 0, fcm: 0, conversations: 0, sharing: 0, reviews: 0, validations: 0, calls: 0, auth: false };
+  const deletedCounts = { firestore: 0, fcm: 0, conversations: 0, sharing: 0, reviews: 0, validations: 0, calls: 0, supabase: 0, auth: false };
 
   try {
     // 1. Top-level user data by userId
@@ -223,10 +311,13 @@ module.exports = async (req, res) => {
       } catch (_) {}
     }
 
-    // 10. Supabase storage : reports/{uid}/* + profile_photos/{uid}/*
-    // (TODO : appeler l'API Supabase Admin pour supprimer les blobs.
-    //  Pour V1 on ne le fait pas — necessite cle service_role Supabase
-    //  cote serveur. A faire au prochain ship si necessaire.)
+    // 10. Supabase storage : reports/{uid}/* + profile_photos/{uid}/* + chat_attachments/{uid}/*
+    // v2.1.60 : cascade RGPD complete. Si SUPABASE_SERVICE_ROLE_KEY absent,
+    // on log et on skip (deployment ne casse pas, mais conformite reduite).
+    deletedCounts.supabase = await deleteSupabaseUserBlobs(uid).catch((e) => {
+      console.warn("supabase cascade failed:", e.message);
+      return 0;
+    });
 
     // 11. Firebase Auth (en DERNIER — apres ca le token ne marche plus)
     try {

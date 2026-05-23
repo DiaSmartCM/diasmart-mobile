@@ -72,6 +72,9 @@ fun SettingsScreen(
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var isBackingUp by remember { mutableStateOf(false) }
     var isDeletingAccount by remember { mutableStateOf(false) }
+    // v2.1.60 : recu RGPD genere a la suppression. Affiche dans un dialog avant
+    // redirection vers Login pour que l'utilisateur puisse le sauvegarder.
+    var deletionReceipt by remember { mutableStateOf<String?>(null) }
 
     // (Partage de fichier deplace dans l'ecran "Compte-rendu / Ordonnance".)
 
@@ -697,15 +700,12 @@ fun SettingsScreen(
                     onClick = {
                         showDeleteAccountDialog = false
                         isDeletingAccount = true
-                        viewModel.deleteMyAccount { ok, err ->
+                        viewModel.deleteMyAccount { ok, receipt, err ->
                             isDeletingAccount = false
                             if (ok) {
-                                Toast.makeText(context, "Compte supprime", Toast.LENGTH_LONG).show()
-                                // Redemarrage : relancer l'activite pour retomber sur Login
-                                val pm = context.packageManager
-                                val intent = pm.getLaunchIntentForPackage(context.packageName)
-                                intent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK)
-                                context.startActivity(intent)
+                                // v2.1.60 : affiche le recu RGPD avant logout pour que
+                                // l'utilisateur le copie / le partage en preuve legale.
+                                deletionReceipt = receipt
                             } else {
                                 Toast.makeText(context, "Erreur : ${err ?: "inconnue"}", Toast.LENGTH_LONG).show()
                             }
@@ -719,6 +719,85 @@ fun SettingsScreen(
                 TextButton(onClick = { showDeleteAccountDialog = false }) {
                     Text("Annuler", color = Primary, fontWeight = FontWeight.SemiBold)
                 }
+            }
+        )
+    }
+
+    // v2.1.60 : Dialog recu RGPD apres suppression compte.
+    // Affiche le recu Base64 signe HMAC + bouton "Partager" (export texte) +
+    // bouton "J'ai sauvegarde" qui declenche le logout / redirect.
+    deletionReceipt?.let { receipt ->
+        AlertDialog(
+            onDismissRequest = { /* non dismissable — l'utilisateur DOIT acter */ },
+            containerColor = if (isDark) Color(0xFF1A1A2E) else Color.White,
+            shape = RoundedCornerShape(24.dp),
+            icon = { Icon(Icons.Default.VerifiedUser, null, tint = Color(0xFF10B981)) },
+            title = {
+                Text(
+                    "Recu RGPD",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    color = if (isDark) DarkTextPrimary else TextPrimary
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        "Votre compte a ete supprime. Conservez ce recu signe comme preuve legale (article 17 RGPD / loi camerounaise sur les donnees personnelles).",
+                        fontSize = 13.sp,
+                        color = if (isDark) DarkTextSecondary else TextSecondary
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (isDark) Color(0xFF0F0F1F) else Color(0xFFF5F5F7)
+                    ) {
+                        Text(
+                            receipt,
+                            modifier = Modifier.padding(10.dp),
+                            fontSize = 10.sp,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            color = if (isDark) DarkTextPrimary else TextPrimary,
+                            maxLines = 6,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(onClick = {
+                        // Partage : intent SEND avec le recu en clair
+                        val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_SUBJECT, "Recu RGPD DiaSmart")
+                            putExtra(
+                                Intent.EXTRA_TEXT,
+                                "Recu de suppression de compte DiaSmart\n" +
+                                "Date : ${java.time.LocalDateTime.now()}\n\n" +
+                                "Recu signe (HMAC-SHA256, Base64) :\n$receipt\n\n" +
+                                "Pour verifier l'authenticite, contactez support@diasmart.app"
+                            )
+                        }
+                        context.startActivity(Intent.createChooser(sendIntent, "Partager le recu"))
+                    }) {
+                        Icon(Icons.Default.Share, null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Partager / Sauvegarder", fontSize = 13.sp)
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        deletionReceipt = null
+                        Toast.makeText(context, "Compte supprime", Toast.LENGTH_LONG).show()
+                        // Redemarrage : relancer l'activite pour retomber sur Login
+                        val pm = context.packageManager
+                        val intent = pm.getLaunchIntentForPackage(context.packageName)
+                        intent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK)
+                        context.startActivity(intent)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                    shape = RoundedCornerShape(14.dp)
+                ) { Text("J'ai sauvegarde") }
             }
         )
     }

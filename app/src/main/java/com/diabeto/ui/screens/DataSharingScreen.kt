@@ -397,6 +397,9 @@ private fun MonMedecinTabContent(
                     consent = consent,
                     onRateDoctor = {
                         viewModel.openRateDoctor(UserProfile(uid = consent.medecinUid, nom = consent.medecinNom))
+                    },
+                    onRevoke = {
+                        viewModel.revokeConsent(consent.medecinUid)
                     }
                 )
             }
@@ -408,8 +411,38 @@ private fun MonMedecinTabContent(
 @Composable
 private fun TreatingDoctorCard(
     consent: DataSharingConsent,
-    onRateDoctor: () -> Unit
+    onRateDoctor: () -> Unit,
+    onRevoke: () -> Unit
 ) {
+    // v2.1.60 : dialogue de confirmation pour revocation cote patient
+    // (avant, seul le medecin pouvait revoquer — desequilibre RGPD).
+    var showRevokeDialog by remember { mutableStateOf(false) }
+
+    if (showRevokeDialog) {
+        AlertDialog(
+            onDismissRequest = { showRevokeDialog = false },
+            icon = { Icon(Icons.Default.LinkOff, null, tint = StatusRedDark) },
+            title = { Text("Révoquer l'accès ?") },
+            text = {
+                Text(
+                    "Dr. ${consent.medecinNom} n'aura plus accès à vos données médicales. " +
+                    "Vos données restent dans votre compte. Vous pourrez le réinviter plus tard."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onRevoke()
+                    showRevokeDialog = false
+                }) {
+                    Text("Révoquer", color = StatusRedDark, fontWeight = FontWeight.SemiBold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRevokeDialog = false }) { Text("Annuler") }
+            }
+        )
+    }
+
     Card(
         Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(2.dp),
@@ -456,6 +489,10 @@ private fun TreatingDoctorCard(
             // Bouton noter
             IconButton(onClick = onRateDoctor) {
                 Icon(Icons.Default.StarRate, "Noter", tint = Color(0xFFF59E0B))
+            }
+            // v2.1.60 : bouton revoquer (parite RGPD avec le medecin)
+            IconButton(onClick = { showRevokeDialog = true }) {
+                Icon(Icons.Default.LinkOff, "Révoquer l'accès", tint = StatusRedDark)
             }
         }
     }
