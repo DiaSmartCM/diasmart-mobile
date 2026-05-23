@@ -1,9 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ﺍﻟﻌﺮﺑﻴﺔ — Arabe standard moderne (MSA)
+  v2.1.51 : couverture complete 206/206. Adaptee Cameroun
+  (regions Extreme-Nord pour Arabe Choa locuteurs).
+  Layout : Compose AutoMirrored gere le RTL automatiquement.
+-->
 <resources>
-    <string name="app_name">دياسمارت</string>
+    <string name="app_name">DiaSmart</string>
     <string name="app_description">إدارة مرض السكري</string>
+    <string name="app_developer">NGOS THEODORE</string>
+    <string name="app_contact_email">ngostheo30@gmail.com</string>
+    <string name="app_website">https://project-d-r1997t.web.app</string>
+    <string name="app_privacy_policy">https://project-d-r1997t.web.app/privacy.html</string>
 
     <!-- Navigation -->
-    <string name="nav_dashboard">لوحة التحكم</string>
+    <string name="nav_dashboard">لوحة القيادة</string>
     <string name="nav_patients">المرضى</string>
     <string name="nav_rendezvous">المواعيد</string>
     <string name="nav_medicaments">الأدوية</string>
@@ -18,9 +29,13 @@
     <string name="action_confirm">تأكيد</string>
     <string name="action_search">بحث</string>
     <string name="action_filter">تصفية</string>
+    <string name="ok">موافق</string>
+    <string name="error_generic">خطأ: %1$s</string>
+    <string name="export_error">خطأ في التصدير: %1$s</string>
+    <string name="loading_analysis">جاري تحليل البيانات…</string>
 
     <!-- Patient -->
-    <string name="patient_nom">اسم العائلة</string>
+    <string name="patient_nom">الاسم العائلي</string>
     <string name="patient_prenom">الاسم الأول</string>
     <string name="patient_date_naissance">تاريخ الميلاد</string>
     <string name="patient_sexe">الجنس</string>
@@ -30,17 +45,47 @@
     <string name="patient_type_diabete">نوع السكري</string>
     <string name="patient_date_diagnostic">تاريخ التشخيص</string>
     <string name="patient_notes">ملاحظات</string>
+    <string name="patient_edit_title">تعديل المريض</string>
+    <string name="patient_nom_required">الاسم العائلي *</string>
+    <string name="patient_prenom_required">الاسم الأول *</string>
+    <string name="patient_dob_required">تاريخ الميلاد *</string>
+    <string name="patient_choose_date">اختر التاريخ</string>
+    <string name="patient_sexe_required">الجنس *</string>
+    <string name="patient_type_required">نوع السكري *</string>
+    <string name="patient_body_data">بيانات الجسم</string>
+    <string name="patient_weight">الوزن (كغ)</string>
+    <string name="patient_height">الطول (سم)</string>
+    <string name="patient_waist">محيط الخصر (سم)</string>
+    <string name="patient_body_fat">نسبة الدهون (%%)</string>
 
     <!-- Glucose -->
-    <string name="glucose_valeur">القيمة (مجم/ديسيلتر)</string>
+    <string name="glucose_valeur">القيمة (ملغ/دل)</string>
     <string name="glucose_contexte">السياق</string>
     <string name="glucose_date">التاريخ والوقت</string>
     <string name="glucose_moyenne">المتوسط</string>
-    <string name="glucose_min_max">الأدنى-الأقصى</string>
-    <string name="glucose_time_in_range">الوقت في النطاق</string>
-    <string name="glucose_target_range">الهدف: 70-180 مجم/ديسيلتر</string>
+    <string name="glucose_min_max">الحد الأدنى-الأقصى</string>
+    <string name="glucose_time_in_range">الوقت في المجال المستهدف</string>
+    <string name="glucose_target_range">الهدف: 70-180 ملغ/دل</string>
+    <string name="glucose_added_success">تمت الإضافة بنجاح</string>
+    <string name="glucose_report_title">DiaSmart - تقرير السكر</string>
+    <string name="glucose_share_report">مشاركة التقرير</string>
+    <string name="glucose_tracking">متابعة السكر</string>
+    <string name="glucose_export">تصدير</string>
+    <string name="glucose_tab_glycemie">سكر الدم</string>
+    <string name="glucose_tab_hba1c">الهيموغلوبين السكري</string>
+    <string name="glucose_tab_suivi">المتابعة</string>
+    <string name="glucose_add_hba1c">إضافة نتيجة HbA1c</string>
+    <string name="glucose_invalid_value">قيمة غير صحيحة</string>
+    <string name="glucose_value_too_high">القيمة مرتفعة جدا</string>
+    <string name="glucose_hba1c_invalid">HbA1c غير صحيح (3%% إلى 20%%)</string>
+    <string name="glucose_hypo_severe">نقص حاد في السكر</string>
+    <string name="glucose_hypo">نقص السكر</string>
+    <string name="glucose_in_target">في الهدف</string>
+    <string name="glucose_hyper">ارتفاع السكر</string>
+    <string name="glucose_hyper_severe">ارتفاع حاد في السكر</string>
+    <string name="glucose_min_readings">على الأقل 10 قراءات لتقدير HbA1c</string>
 
-    <!-- Medication -->
+    <!-- Medicament -->
     <string name="medicament_nom">الاسم</string>
     <string name="medicament_dosage">الجرعة</string>
     <string name="medicament_frequence">التكرار</string>
@@ -48,8 +93,10 @@
     <string name="medicament_date_debut">تاريخ البدء</string>
     <string name="medicament_date_fin">تاريخ الانتهاء</string>
     <string name="medicament_rappel">تفعيل التذكيرات</string>
+    <string name="medicament_added_success">تمت إضافة الدواء بنجاح</string>
+    <string name="medicament_new">دواء جديد</string>
 
-    <!-- Appointments -->
+    <!-- Rendez-vous -->
     <string name="rdv_titre">العنوان</string>
     <string name="rdv_date">التاريخ</string>
     <string name="rdv_heure">الوقت</string>
@@ -65,27 +112,33 @@
     <string name="msg_glucose_added">تمت إضافة القراءة</string>
     <string name="msg_medicament_added">تمت إضافة الدواء</string>
     <string name="msg_rdv_added">تمت إضافة الموعد</string>
-    <string name="msg_confirm_delete">هل تريد الحذف فعلاً؟</string>
+    <string name="msg_confirm_delete">هل أنت متأكد من الحذف؟</string>
     <string name="msg_no_data">لا توجد بيانات</string>
 
-    <!-- AI Chatbot -->
-    <string name="chatbot_title">رولي</string>
-    <string name="chatbot_subtitle">مساعد دياسمارت الذكي</string>
-    <string name="chatbot_placeholder">اطرح سؤالك…</string>
-    <string name="chatbot_reset">إعادة تعيين المحادثة</string>
-    <string name="chatbot_analyse_glycemie">تحليل سكر الدم</string>
-    <string name="chatbot_prevision_risques">توقع المخاطر</string>
-    <string name="chatbot_conseils_nutrition">نصائح غذائية</string>
-
-    <!-- Messaging -->
-    <string name="messagerie_title">الرسائل</string>
-    <string name="messagerie_empty">لا توجد محادثات</string>
-    <string name="messagerie_new_conversation">محادثة جديدة</string>
-    <string name="messagerie_choisir_medecin">اختيار طبيب</string>
-    <string name="messagerie_saisir_message">اكتب رسالة…</string>
-    <string name="notif_channel_messages">رسائل دياسمارت</string>
-
     <!-- Auth -->
+    <string name="auth_welcome">مرحبا بك!</string>
+    <string name="auth_hello">مرحبا!</string>
+    <string name="auth_create_account_subtitle">أنشئ حسابك في DiaSmart</string>
+    <string name="auth_login_subtitle">سجل الدخول إلى DiaSmart</string>
+    <string name="auth_inscription">تسجيل</string>
+    <string name="auth_connexion">تسجيل الدخول</string>
+    <string name="auth_phone">الهاتف</string>
+    <string name="auth_prenom">الاسم الأول</string>
+    <string name="auth_nom">الاسم العائلي</string>
+    <string name="auth_i_am">أنا:</string>
+    <string name="auth_phone_number">رقم الهاتف</string>
+    <string name="auth_sms_sent">تم إرسال رمز SMS</string>
+    <string name="auth_verification_code">رمز التحقق</string>
+    <string name="auth_create_my_account">إنشاء حسابي</string>
+    <string name="auth_verify_code">التحقق من الرمز</string>
+    <string name="auth_send_sms">إرسال رمز SMS</string>
+    <string name="auth_sign_in">تسجيل الدخول</string>
+    <string name="auth_or">أو</string>
+    <string name="auth_google">جوجل</string>
+    <string name="auth_already_account">لدي حساب بالفعل</string>
+    <string name="auth_no_account">إنشاء حساب</string>
+    <string name="auth_tagline">DiaSmart — إدارة ذكية لمرض السكري</string>
+    <string name="auth_reset_email_sent">تم إرسال بريد إعادة تعيين كلمة المرور!</string>
     <string name="auth_login">تسجيل الدخول</string>
     <string name="auth_register">إنشاء حساب</string>
     <string name="auth_email">البريد الإلكتروني</string>
@@ -94,32 +147,113 @@
     <string name="auth_role_patient">مريض</string>
     <string name="auth_role_medecin">طبيب</string>
 
+    <!-- Onboarding -->
+    <string name="onboarding_title_1">متابعة ذكية</string>
+    <string name="onboarding_desc_1">إدارة مرض السكري يوميا</string>
+    <string name="onboarding_title_2">ROLLY، مساعدك الذكي</string>
+    <string name="onboarding_desc_2">روبوت طبي متاح 24/24</string>
+    <string name="onboarding_skip">تخطي</string>
+    <string name="onboarding_next">التالي</string>
+    <string name="onboarding_start">ابدأ</string>
+    <string name="onboarding_login_link">لديك حساب؟ سجل الدخول</string>
+
+    <!-- Widget -->
+    <string name="widget_description">يعرض السكر الحالي والاتجاه</string>
+
+    <!-- Predictive -->
+    <string name="predictive_title">المنحنيات التنبؤية</string>
+    <string name="predictive_subtitle">توقع السكر بواسطة ROLLY</string>
+
+    <!-- Pedometer -->
+    <string name="pedometer_title">عداد الخطوات</string>
+    <string name="pedometer_subtitle">عداد الخطوات</string>
+    <string name="pedometer_permission_denied">تم رفض الإذن</string>
+    <string name="pedometer_retry">إعادة المحاولة</string>
+    <string name="pedometer_glycemic_impact">التأثير على السكر</string>
+    <string name="pedometer_steps">خطوة</string>
+    <string name="pedometer_goal">من الهدف</string>
+    <string name="pedometer_start">بدء المتابعة</string>
+    <string name="pedometer_stop">إيقاف</string>
+
+    <!-- Dashboard -->
+    <string name="dashboard_glucose_avg">متوسط السكر</string>
+    <string name="dashboard_offline_mode">وضع عدم الاتصال</string>
+    <string name="dashboard_offline_data">البيانات المحلية متاحة</string>
+    <string name="dashboard_update_available">تحديث متاح</string>
+    <string name="dashboard_new_features">الجديد:</string>
+    <string name="dashboard_update_mandatory">هذا التحديث إلزامي.</string>
+    <string name="dashboard_authorize">السماح</string>
+    <string name="dashboard_via_browser">عبر المتصفح</string>
+    <string name="dashboard_install">تثبيت</string>
+    <string name="dashboard_later">لاحقا</string>
+    <string name="dashboard_install_permission">اسمح بالتثبيت من هذا المصدر.</string>
+    <string name="dashboard_version">الإصدار %1$s</string>
+    <string name="dashboard_pending_sync">%1$d عمليات في انتظار المزامنة</string>
+
+    <!-- Messagerie -->
+    <string name="messagerie_title">الرسائل</string>
+    <string name="messagerie_empty">لا توجد محادثة</string>
+    <string name="messagerie_new_conversation">محادثة جديدة</string>
+    <string name="messagerie_choisir_medecin">اختر طبيبا</string>
+    <string name="messagerie_saisir_message">اكتب رسالة…</string>
+    <string name="messagerie_contact_doctor">الاتصال بطبيب</string>
+    <string name="messagerie_empty_patient_hint">اتصل بطبيبك عبر زر +</string>
+    <string name="messagerie_empty_doctor_hint">سيتواصل معك مرضاك هنا</string>
+    <string name="messagerie_back">رجوع</string>
+
+    <!-- Chatbot -->
+    <string name="chatbot_title">ROLLY</string>
+    <string name="chatbot_subtitle">المساعد الذكي DiaSmart</string>
+    <string name="chatbot_placeholder">اطرح سؤالك…</string>
+    <string name="chatbot_reset">إعادة تعيين المحادثة</string>
+    <string name="chatbot_analyse_glycemie">تحليل السكر</string>
+    <string name="chatbot_prevision_risques">توقع المخاطر</string>
+    <string name="chatbot_conseils_nutrition">نصائح غذائية</string>
+    <string name="chatbot_discussions">المحادثات</string>
+    <string name="chatbot_new_discussion">محادثة جديدة</string>
+    <string name="chatbot_clear_history">مسح كامل السجل</string>
+    <string name="chatbot_back">رجوع</string>
+
+    <!-- Repas -->
+    <string name="repas_new_analysis">تحليل جديد</string>
+
+    <!-- Data sharing -->
+    <string name="data_sharing_title">مشاركة البيانات</string>
+    <string name="data_sharing_control">التحكم في بياناتك</string>
+    <string name="data_sharing_share_with_doctor">مشاركة مع طبيب</string>
+    <string name="data_sharing_choose_doctor">اختر طبيبا</string>
+    <string name="data_sharing_no_doctor">لا يوجد طبيب متاح حاليا.</string>
+
+    <!-- Validations -->
+    <string name="validations_title">تحقق ROLLY</string>
+    <string name="validations_subtitle">تعاون الذكاء الاصطناعي والطبيب</string>
+    <string name="validations_none_pending">لا يوجد تحقق معلق</string>
+
+    <!-- Profile -->
+    <string name="profile_image_read_error">لا يمكن قراءة الصورة</string>
+    <string name="profile_photo_updated">تم تحديث الصورة</string>
+    <string name="profile_change_phone">تعديل رقم الهاتف</string>
+
     <!-- Notifications -->
+    <string name="notif_channel_messages">رسائل DiaSmart</string>
     <string name="notif_channel_medicaments">تذكيرات الأدوية</string>
     <string name="notif_channel_rdv">تذكيرات المواعيد</string>
-    <string name="notif_medicament_title">تذكير بالدواء</string>
+    <string name="notif_medicament_title">وقت الدواء</string>
     <string name="notif_medicament_text">حان وقت تناول %1$s</string>
     <string name="notif_rdv_title">موعد قادم</string>
     <string name="notif_rdv_text">%1$s في %2$s</string>
 
     <!-- Settings -->
     <string name="settings_title">الإعدادات</string>
-    <string name="settings_theme">المظهر</string>
+    <string name="settings_theme">السمة</string>
     <string name="settings_language">اللغة</string>
     <string name="settings_notifications">الإشعارات</string>
 
     <!-- Journal -->
-    <string name="journal_title">دفتر اليوميات</string>
-    <string name="journal_subtitle">المذكرة اليومية</string>
+    <string name="journal_title">دفتر اليومية</string>
+    <string name="journal_subtitle">دفتر يومي</string>
     <string name="journal_mood">كيف تشعر؟</string>
     <string name="journal_stress">مستوى التوتر</string>
     <string name="journal_sleep">جودة النوم</string>
     <string name="journal_activity">النشاط البدني</string>
-
-    <!-- Pedometer -->
-    <string name="pedometer_title">عداد الخطوات</string>
-    <string name="pedometer_steps">خطوة</string>
-    <string name="pedometer_goal">من الهدف</string>
-    <string name="pedometer_start">بدء التتبع</string>
-    <string name="pedometer_stop">إيقاف</string>
 </resources>
