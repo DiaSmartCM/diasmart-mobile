@@ -56,6 +56,11 @@ android {
             storePassword = localProps.getProperty("KEYSTORE_PASSWORD", "")
             keyAlias = localProps.getProperty("KEY_ALIAS", "")
             keyPassword = localProps.getProperty("KEY_PASSWORD", "")
+            // v2.1.48+ : maximise la compatibilite. v1 = Android 4.4-6,
+            // v2 = Android 7+, v3 = Android 9+ (cle rotation).
+            enableV1Signing = true
+            enableV2Signing = true
+            enableV3Signing = true
         }
     }
 
