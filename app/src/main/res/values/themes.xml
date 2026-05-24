@@ -1,6 +1,14 @@
 <resources>
-    <!-- Thème principal de l'application -->
-    <style name="Theme.Diabeto" parent="android:Theme.Material.Light.NoActionBar">
+    <!-- Theme principal de l'application.
+         v2.1.62 : parent migre vers Theme.AppCompat.DayNight.NoActionBar
+         (depuis android:Theme.Material.Light.NoActionBar). Necessaire parce
+         que MainActivity etend desormais AppCompatActivity (v2.1.61 pour
+         supporter setApplicationLocales). AppCompatActivity exige imperati-
+         vement un theme de la famille Theme.AppCompat.*, sinon crash a
+         onCreate avec "You need to use a Theme.AppCompat theme...".
+         Pas d'impact UI car tout l'UI est en Compose Material 3 — ce theme
+         XML ne sert qu'aux barres systeme + au boot de l'activity. -->
+    <style name="Theme.Diabeto" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="android:statusBarColor">@color/primary</item>
         <item name="android:navigationBarColor">@color/background</item>
         <item name="android:windowLightStatusBar">false</item>
