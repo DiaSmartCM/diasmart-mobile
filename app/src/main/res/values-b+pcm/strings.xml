@@ -364,4 +364,82 @@
     <string name="cd_profile">Profayl</string>
     <string name="cd_settings">Setin</string>
     <string name="cd_back">Bak</string>
+
+    <!-- v2.1.64 Phase B — Kamtok -->
+    <string name="common_close">Klosi</string>
+    <string name="common_register">Sef</string>
+    <string name="common_modify">Cheinj</string>
+
+    <string name="glucose_hba1c_label">HbA1c (%)</string>
+    <string name="glucose_hba1c_placeholder">Ex: 6.8</string>
+    <string name="glucose_hba1c_info">HbA1c di sho di avareyj sugar fo last 2-3 munt.\nTagent: &lt; 7%% fo plenti diabetik dem.</string>
+    <string name="glucose_rolly_analysis">ROLLY analayz</string>
+    <string name="glucose_hba1c_estimated">HbA1c estimet</string>
+    <string name="glucose_glucose_avg_short">Avareyj sugar</string>
+    <string name="glucose_details">Detail dem</string>
+    <string name="glucose_hba1c_long">Sugar hemoglobin (HbA1c)</string>
+    <string name="glucose_hba1c_subtitle">Di sho di avareyj sugar fo last 2-3 munt</string>
+    <string name="glucose_last_result">Las rizolt</string>
+    <string name="glucose_no_measure">No mesh de</string>
+
+    <string name="med_title">Mededisin dem</string>
+    <string name="med_new">New mededisin</string>
+    <string name="med_time_pick">Taim fo tek</string>
+    <string name="med_enable_reminders">Tan memba dem</string>
+    <string name="med_inactive">No on</string>
+    <string name="cd_add">Add</string>
+    <string name="cd_pick_time">Pik taim</string>
+    <string name="cd_delete">Komot</string>
+    <string name="cd_reminder">Memba</string>
+
+    <string name="rdv_screen_title">Apintment dem</string>
+    <string name="rdv_schedule">Mak apintment</string>
+    <string name="rdv_request">Bok apintment</string>
+    <string name="rdv_filter_all">All</string>
+    <string name="rdv_filter_upcoming">We di kam</string>
+    <string name="rdv_filter_past">We don pas</string>
+    <string name="rdv_pending_requests">Pendin riques (%1$d)</string>
+    <string name="rdv_scheduled">Apintment we don mak</string>
+    <string name="rdv_no_scheduled">No apintment de</string>
+    <string name="rdv_my_requests">Mai riques (%1$d)</string>
+    <string name="rdv_confirmed">Apintment we don konfayam</string>
+    <string name="cd_calendar">Kalenda</string>
+    <string name="cd_doctor">Dokta</string>
+    <string name="cd_schedule_icon">Skedyul</string>
+    <string name="cd_location">Plas</string>
+
+    <string name="journal_screen_title">Mai book</string>
+    <string name="journal_header_subtitle">Evri dei rikod</string>
+    <string name="cd_add_entry">Add entri</string>
+    <string name="journal_glucose_24h">Avareyj sugar (24awa)</string>
+    <string name="journal_no_entry">No entri</string>
+    <string name="journal_start_subtitle">Stat yua dei book</string>
+    <string name="journal_today_log">Tudei book</string>
+    <string name="journal_mood_label">Hau yi dei</string>
+    <string name="journal_stress_label">Stress level</string>
+    <string name="journal_sleep_quality">Slip kwoliti</string>
+    <string name="journal_sleep_hours">Awa fo slip</string>
+    <string name="journal_physical_activity">Body movmen</string>
+    <string name="journal_activity_minutes">Minit fo aktiviti</string>
+    <string name="journal_notes">Not dem</string>
+    <string name="journal_today">Tudei</string>
+
+    <string name="msg_screen_title">Mesej</string>
+    <string name="msg_new_conversation">Kall dokta</string>
+    <string name="msg_no_conversation">No konvasayshon</string>
+    <string name="msg_pick_doctor">Pik dokta</string>
+    <string name="msg_no_doctor">No dokta de fo nau.</string>
+    <string name="msg_placeholder">Yua mesej…</string>
+    <string name="cd_new_conv">New konvasayshon</string>
+    <string name="cd_send">Sen</string>
+    <string name="msg_open_doc">Hau yu won opin dis dokyument?</string>
+    <string name="msg_open_browser">Browza</string>
+    <string name="msg_open_download">Dawnlod</string>
+    <string name="msg_open_copy">Kopi di link</string>
+
+    <string name="profile_screen_title">Mai profayl</string>
+    <string name="cd_profile_photo">Profayl foto</string>
+    <string name="profile_capturing">Di catch foto…</string>
+    <string name="profile_use_gps">Yuz mai GPS lokayshon</string>
+    <string name="profile_logout">Log aut</string>
 </resources>

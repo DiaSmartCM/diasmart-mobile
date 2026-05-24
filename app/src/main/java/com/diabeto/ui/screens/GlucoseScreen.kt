@@ -24,6 +24,8 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.diabeto.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -82,7 +84,7 @@ fun GlucoseTrackingScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Suivi glycémique") },
+                title = { Text(stringResource(R.string.glucose_tracking)) },
                 navigationIcon = { IconButton(onClick = onNavigateBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Retour") } },
                 actions = {
                     // Bouton export/partage
@@ -132,7 +134,7 @@ fun GlucoseTrackingScreen(
                     onClick = { viewModel.setActiveTab(GlucoseTab.GLYCEMIE) },
                     selectedContentColor = Primary,
                     unselectedContentColor = TextPrimary,
-                    text = { Text("Glycémie", fontSize = 12.sp) },
+                    text = { Text(stringResource(R.string.glucose_tab_glycemie), fontSize = 12.sp) },
                     icon = { Icon(Icons.Outlined.Bloodtype, null, Modifier.size(18.dp)) }
                 )
                 Tab(
@@ -140,7 +142,7 @@ fun GlucoseTrackingScreen(
                     onClick = { viewModel.setActiveTab(GlucoseTab.HBA1C) },
                     selectedContentColor = Primary,
                     unselectedContentColor = TextPrimary,
-                    text = { Text("HbA1c", fontSize = 12.sp) },
+                    text = { Text(stringResource(R.string.glucose_tab_hba1c), fontSize = 12.sp) },
                     icon = { Icon(Icons.Outlined.Science, null, Modifier.size(18.dp)) }
                 )
                 Tab(
@@ -148,7 +150,7 @@ fun GlucoseTrackingScreen(
                     onClick = { viewModel.setActiveTab(GlucoseTab.SUIVI) },
                     selectedContentColor = Primary,
                     unselectedContentColor = TextPrimary,
-                    text = { Text("Suivi", fontSize = 12.sp) },
+                    text = { Text(stringResource(R.string.glucose_tab_suivi), fontSize = 12.sp) },
                     icon = { Icon(Icons.Outlined.Timeline, null, Modifier.size(18.dp)) }
                 )
             }
@@ -173,22 +175,22 @@ fun GlucoseTrackingScreen(
     if (uiState.showAddHbA1cDialog) {
         AlertDialog(
             onDismissRequest = { viewModel.hideAddHbA1cDialog() },
-            title = { Text("Ajouter un résultat HbA1c") },
+            title = { Text(stringResource(R.string.glucose_add_hba1c)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedTextField(value = uiState.newHbA1cValeur, onValueChange = viewModel::onHbA1cValeurChange,
-                        label = { RequiredFieldLabel("HbA1c (%)", required = true) }, placeholder = { Text("Ex: 6.8") },
+                        label = { RequiredFieldLabel(stringResource(R.string.glucose_hba1c_label), required = true) }, placeholder = { Text(stringResource(R.string.glucose_hba1c_placeholder)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true, modifier = Modifier.fillMaxWidth(),
                         colors = diaSmartTextFieldColors())
                     OutlinedTextField(value = uiState.newHbA1cLabo, onValueChange = viewModel::onHbA1cLaboChange,
                         label = { RequiredFieldLabel("Laboratoire (optionnel)") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
                         colors = diaSmartTextFieldColors())
-                    Text("L'HbA1c reflète la glycémie moyenne des 2-3 derniers mois.\nCible : < 7% pour la plupart des diabétiques.",
+                    Text(stringResource(R.string.glucose_hba1c_info),
                         style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
                 }
             },
-            confirmButton = { TextButton(onClick = { viewModel.addHbA1c() }) { Text("Ajouter") } },
-            dismissButton = { TextButton(onClick = { viewModel.hideAddHbA1cDialog() }) { Text("Annuler") } }
+            confirmButton = { TextButton(onClick = { viewModel.addHbA1c() }) { Text(stringResource(R.string.action_add)) } },
+            dismissButton = { TextButton(onClick = { viewModel.hideAddHbA1cDialog() }) { Text(stringResource(R.string.action_cancel)) } }
         )
     }
 
@@ -200,7 +202,7 @@ fun GlucoseTrackingScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     RollyIcon(size = 28.dp, showBackground = true)
                     Spacer(Modifier.width(8.dp))
-                    Text("Analyse ROLLY", fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.glucose_rolly_analysis), fontWeight = FontWeight.Bold)
                 }
             },
             text = {
@@ -212,7 +214,7 @@ fun GlucoseTrackingScreen(
                     }
                 }
             },
-            confirmButton = { Button(onClick = viewModel::dismissRollyAnalysis) { Text("Fermer") } }
+            confirmButton = { Button(onClick = viewModel::dismissRollyAnalysis) { Text(stringResource(R.string.common_close)) } }
         )
     }
 }

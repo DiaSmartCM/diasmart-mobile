@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -31,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.graphics.asImageBitmap
 import coil.compose.AsyncImage
+import com.diabeto.R
 import com.diabeto.ui.theme.*
 import com.diabeto.ui.viewmodel.ProfileSyncViewModel
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -356,7 +358,7 @@ fun ProfileScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Retour", tint = Color.White)
                     }
-                    Text("Mon Profil", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(stringResource(R.string.profile_screen_title), fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 }
             }
         },
@@ -395,7 +397,7 @@ fun ProfileScreen(
                     // Photo stockée en base64 dans Firestore
                     androidx.compose.foundation.Image(
                         bitmap = profileBitmap.asImageBitmap(),
-                        contentDescription = "Photo de profil",
+                        contentDescription = stringResource(R.string.cd_profile_photo),
                         modifier = Modifier
                             .size(100.dp)
                             .clip(CircleShape)
@@ -406,7 +408,7 @@ fun ProfileScreen(
                     // Photo URL normale (Google profile, etc.)
                     AsyncImage(
                         model = photoUrl,
-                        contentDescription = "Photo de profil",
+                        contentDescription = stringResource(R.string.cd_profile_photo),
                         modifier = Modifier
                             .size(100.dp)
                             .clip(CircleShape)
@@ -526,11 +528,11 @@ fun ProfileScreen(
                                 strokeWidth = 2.dp
                             )
                             Spacer(Modifier.width(10.dp))
-                            Text("Capture en cours…")
+                            Text(stringResource(R.string.profile_capturing))
                         } else {
                             Icon(Icons.Default.MyLocation, null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("Utiliser ma position GPS")
+                            Text(stringResource(R.string.profile_use_gps))
                         }
                     }
                     Spacer(Modifier.height(4.dp))
@@ -622,7 +624,7 @@ fun ProfileScreen(
             ) {
                 Icon(Icons.Default.Logout, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Se déconnecter")
+                Text(stringResource(R.string.profile_logout))
             }
 
             Spacer(Modifier.height(24.dp))
@@ -654,10 +656,10 @@ fun ProfileScreen(
                 TextButton(onClick = {
                     saveField(editField, editValue)
                     showEditDialog = false
-                }) { Text("Enregistrer") }
+                }) { Text(stringResource(R.string.common_register)) }
             },
             dismissButton = {
-                TextButton(onClick = { showEditDialog = false }) { Text("Annuler") }
+                TextButton(onClick = { showEditDialog = false }) { Text(stringResource(R.string.action_cancel)) }
             }
         )
     }
@@ -738,7 +740,7 @@ private fun ProfileField(label: String, value: String, onEdit: (() -> Unit)? = n
                 onClick = onEdit,
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text("Modifier", fontSize = 13.sp, color = Primary, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.common_modify), fontSize = 13.sp, color = Primary, fontWeight = FontWeight.SemiBold)
             }
         }
     }

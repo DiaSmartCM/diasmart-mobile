@@ -333,4 +333,82 @@
     <string name="cd_profile">الملف الشخصي</string>
     <string name="cd_settings">الإعدادات</string>
     <string name="cd_back">رجوع</string>
+
+    <!-- v2.1.64 Phase B -->
+    <string name="common_close">إغلاق</string>
+    <string name="common_register">حفظ</string>
+    <string name="common_modify">تعديل</string>
+
+    <string name="glucose_hba1c_label">HbA1c (%)</string>
+    <string name="glucose_hba1c_placeholder">مثلاً 6.8</string>
+    <string name="glucose_hba1c_info">يعكس HbA1c متوسط السكر في آخر 2-3 أشهر.\nالهدف: &lt; 7%% لمعظم مرضى السكري.</string>
+    <string name="glucose_rolly_analysis">تحليل ROLLY</string>
+    <string name="glucose_hba1c_estimated">HbA1c تقديري</string>
+    <string name="glucose_glucose_avg_short">متوسط السكر</string>
+    <string name="glucose_details">تفاصيل</string>
+    <string name="glucose_hba1c_long">الهيموجلوبين السكري (HbA1c)</string>
+    <string name="glucose_hba1c_subtitle">يعكس متوسط السكر في آخر 2-3 أشهر</string>
+    <string name="glucose_last_result">آخر نتيجة</string>
+    <string name="glucose_no_measure">لا توجد قياسات</string>
+
+    <string name="med_title">الأدوية</string>
+    <string name="med_new">دواء جديد</string>
+    <string name="med_time_pick">وقت الجرعة</string>
+    <string name="med_enable_reminders">تفعيل التذكير</string>
+    <string name="med_inactive">معطل</string>
+    <string name="cd_add">إضافة</string>
+    <string name="cd_pick_time">اختيار الوقت</string>
+    <string name="cd_delete">حذف</string>
+    <string name="cd_reminder">تذكير</string>
+
+    <string name="rdv_screen_title">المواعيد</string>
+    <string name="rdv_schedule">جدولة موعد</string>
+    <string name="rdv_request">حجز موعد</string>
+    <string name="rdv_filter_all">الكل</string>
+    <string name="rdv_filter_upcoming">قادمة</string>
+    <string name="rdv_filter_past">سابقة</string>
+    <string name="rdv_pending_requests">طلبات معلقة (%1$d)</string>
+    <string name="rdv_scheduled">المواعيد المجدولة</string>
+    <string name="rdv_no_scheduled">لا توجد مواعيد مجدولة</string>
+    <string name="rdv_my_requests">طلباتي (%1$d)</string>
+    <string name="rdv_confirmed">المواعيد المؤكدة</string>
+    <string name="cd_calendar">تقويم</string>
+    <string name="cd_doctor">طبيب</string>
+    <string name="cd_schedule_icon">جدول</string>
+    <string name="cd_location">موقع</string>
+
+    <string name="journal_screen_title">الدفتر اليومي</string>
+    <string name="journal_header_subtitle">المتابعة اليومية</string>
+    <string name="cd_add_entry">إضافة إدخال</string>
+    <string name="journal_glucose_24h">متوسط السكر (24س)</string>
+    <string name="journal_no_entry">لا توجد إدخالات</string>
+    <string name="journal_start_subtitle">ابدأ دفترك اليومي</string>
+    <string name="journal_today_log">دفتر اليوم</string>
+    <string name="journal_mood_label">المزاج</string>
+    <string name="journal_stress_label">مستوى التوتر</string>
+    <string name="journal_sleep_quality">جودة النوم</string>
+    <string name="journal_sleep_hours">ساعات النوم</string>
+    <string name="journal_physical_activity">النشاط البدني</string>
+    <string name="journal_activity_minutes">دقائق النشاط</string>
+    <string name="journal_notes">ملاحظات</string>
+    <string name="journal_today">اليوم</string>
+
+    <string name="msg_screen_title">الرسائل</string>
+    <string name="msg_new_conversation">التواصل مع طبيب</string>
+    <string name="msg_no_conversation">لا توجد محادثة</string>
+    <string name="msg_pick_doctor">اختيار طبيب</string>
+    <string name="msg_no_doctor">لا يوجد طبيب متاح حاليا.</string>
+    <string name="msg_placeholder">رسالتك…</string>
+    <string name="cd_new_conv">محادثة جديدة</string>
+    <string name="cd_send">إرسال</string>
+    <string name="msg_open_doc">كيف تريد فتح هذا المستند؟</string>
+    <string name="msg_open_browser">المتصفح</string>
+    <string name="msg_open_download">تنزيل</string>
+    <string name="msg_open_copy">نسخ الرابط</string>
+
+    <string name="profile_screen_title">ملفي الشخصي</string>
+    <string name="cd_profile_photo">صورة الملف</string>
+    <string name="profile_capturing">جاري التقاط الصورة…</string>
+    <string name="profile_use_gps">استخدام موقعي GPS</string>
+    <string name="profile_logout">تسجيل الخروج</string>
 </resources>

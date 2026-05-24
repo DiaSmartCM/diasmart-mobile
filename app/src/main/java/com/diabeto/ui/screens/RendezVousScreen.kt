@@ -16,11 +16,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.diabeto.R
 import com.diabeto.data.entity.RendezVousAvecPatient
 import com.diabeto.data.entity.TypeRendezVous
 import com.diabeto.data.model.AppointmentRequestStatus
@@ -126,7 +128,7 @@ fun RendezVousScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
                 colors = diaSmartTopAppBarColors()
@@ -140,7 +142,7 @@ fun RendezVousScreen(
                     onClick = { viewModel.toggleAddDialog(true) },
                     containerColor = Primary,
                     icon = { Icon(Icons.Default.EventAvailable, contentDescription = null) },
-                    text = { Text("Programmer un RDV") }
+                    text = { Text(stringResource(R.string.rdv_schedule)) }
                 )
             } else {
                 // Patient: envoyer une demande de RDV
@@ -148,7 +150,7 @@ fun RendezVousScreen(
                     onClick = { viewModel.toggleBookDialog(true) },
                     containerColor = Primary,
                     icon = { Icon(Icons.Default.EventAvailable, contentDescription = null) },
-                    text = { Text("Prendre RDV") }
+                    text = { Text(stringResource(R.string.rdv_request)) }
                 )
             }
         }
@@ -169,17 +171,17 @@ fun RendezVousScreen(
                 FilterChip(
                     selected = uiState.filter == RendezVousFilter.TOUS,
                     onClick = { viewModel.setFilter(RendezVousFilter.TOUS) },
-                    label = { Text("Tous") }
+                    label = { Text(stringResource(R.string.rdv_filter_all)) }
                 )
                 FilterChip(
                     selected = uiState.filter == RendezVousFilter.A_VENIR,
                     onClick = { viewModel.setFilter(RendezVousFilter.A_VENIR) },
-                    label = { Text("À venir") }
+                    label = { Text(stringResource(R.string.rdv_filter_upcoming)) }
                 )
                 FilterChip(
                     selected = uiState.filter == RendezVousFilter.PASSES,
                     onClick = { viewModel.setFilter(RendezVousFilter.PASSES) },
-                    label = { Text("Passés") }
+                    label = { Text(stringResource(R.string.rdv_filter_past)) }
                 )
             }
 
@@ -204,7 +206,7 @@ fun RendezVousScreen(
                     if (pendingRequests.isNotEmpty()) {
                         item {
                             Text(
-                                text = "Demandes en attente (${pendingRequests.size})",
+                                text = stringResource(R.string.rdv_pending_requests, pendingRequests.size),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold,
                                 color = Warning,
@@ -227,7 +229,7 @@ fun RendezVousScreen(
                                 color = OnSurfaceVariant.copy(alpha = 0.2f)
                             )
                             Text(
-                                text = "Rendez-vous programmés",
+                                text = stringResource(R.string.rdv_scheduled),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold,
                                 color = OnSurfaceVariant,
@@ -246,7 +248,7 @@ fun RendezVousScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = "Aucun rendez-vous programmé",
+                                    text = stringResource(R.string.rdv_no_scheduled),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = OnSurfaceVariant
                                 )
@@ -280,7 +282,7 @@ fun RendezVousScreen(
                     if (myRequests.isNotEmpty()) {
                         item {
                             Text(
-                                text = "Mes demandes (${myRequests.size})",
+                                text = stringResource(R.string.rdv_my_requests, myRequests.size),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold,
                                 color = Primary,
@@ -302,7 +304,7 @@ fun RendezVousScreen(
                                 color = OnSurfaceVariant.copy(alpha = 0.2f)
                             )
                             Text(
-                                text = "Rendez-vous confirmés",
+                                text = stringResource(R.string.rdv_confirmed),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold,
                                 color = OnSurfaceVariant,
@@ -1508,7 +1510,7 @@ fun RendezVousEditScreen(
                 title = { Text(if (rdvId == null) "Nouveau rendez-vous" else "Modifier rendez-vous") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
                 colors = diaSmartTopAppBarColors()

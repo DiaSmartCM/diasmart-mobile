@@ -10,8 +10,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.diabeto.R
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.diabeto.data.entity.FrequencePrise
@@ -61,25 +63,25 @@ fun MedicamentsScreen(
     MaterialDialog(
         dialogState = timeDialogState,
         buttons = {
-            positiveButton("OK")
-            negativeButton("Annuler")
+            positiveButton(stringResource(R.string.ok))
+            negativeButton(stringResource(R.string.action_cancel))
         }
     ) {
         timepicker(
             initialTime = addState.heurePrise,
-            title = "Heure de prise"
+            title = stringResource(R.string.med_time_pick)
         ) { time ->
             viewModel.updateAddField("heurePrise", time)
         }
     }
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Médicaments") },
+                title = { Text(stringResource(R.string.med_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
                 colors = diaSmartTopAppBarColors()
@@ -91,7 +93,7 @@ fun MedicamentsScreen(
                 onClick = { viewModel.toggleAddDialog(true) },
                 containerColor = Primary
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Ajouter")
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_add))
             }
         }
     ) { padding ->
@@ -124,7 +126,7 @@ fun MedicamentsScreen(
     if (uiState.showAddDialog) {
         AlertDialog(
             onDismissRequest = { viewModel.toggleAddDialog(false) },
-            title = { Text("Nouveau médicament") },
+            title = { Text(stringResource(R.string.med_new)) },
             text = {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -184,12 +186,12 @@ fun MedicamentsScreen(
                     OutlinedTextField(
                         value = addState.heurePrise.format(DateTimeFormatter.ofPattern("HH:mm")),
                         onValueChange = { },
-                        label = { RequiredFieldLabel("Heure de prise", required = true) },
+                        label = { RequiredFieldLabel(stringResource(R.string.med_time_pick), required = true) },
                         modifier = Modifier.fillMaxWidth(),
                         readOnly = true,
                         trailingIcon = {
                             IconButton(onClick = { timeDialogState.show() }) {
-                                Icon(Icons.Default.Schedule, contentDescription = "Choisir heure")
+                                Icon(Icons.Default.Schedule, contentDescription = stringResource(R.string.cd_pick_time))
                             }
                         },
                         colors = diaSmartTextFieldColors()
@@ -204,7 +206,7 @@ fun MedicamentsScreen(
                             checked = addState.rappelActive,
                             onCheckedChange = { viewModel.updateAddField("rappelActive", it) }
                         )
-                        Text("Activer les rappels")
+                        Text(stringResource(R.string.med_enable_reminders))
                     }
                     
                     OutlinedTextField(
@@ -222,12 +224,12 @@ fun MedicamentsScreen(
                     onClick = { viewModel.addMedicament() },
                     enabled = addState.nom.isNotBlank() && addState.dosage.isNotBlank()
                 ) {
-                    Text("Ajouter")
+                    Text(stringResource(R.string.action_add))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.toggleAddDialog(false) }) {
-                    Text("Annuler")
+                    Text(stringResource(R.string.action_cancel))
                 }
             }
         )
@@ -275,7 +277,7 @@ private fun MedicamentCard(
                                 color = OnSurfaceVariant.copy(alpha = 0.2f)
                             ) {
                                 Text(
-                                    text = "Inactif",
+                                    text = stringResource(R.string.med_inactive),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = OnSurfaceVariant,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
@@ -297,7 +299,7 @@ private fun MedicamentCard(
                     ) {
                         Icon(
                             Icons.Default.Schedule,
-                            contentDescription = "Heure de prise",
+                            contentDescription = stringResource(R.string.med_time_pick),
                             modifier = Modifier.size(16.dp),
                             tint = Primary
                         )
@@ -322,7 +324,7 @@ private fun MedicamentCard(
                     IconButton(onClick = onDelete) {
                         Icon(
                             imageVector = Icons.Default.Delete,
-                            contentDescription = "Supprimer",
+                            contentDescription = stringResource(R.string.cd_delete),
                             tint = Error
                         )
                     }
@@ -337,7 +339,7 @@ private fun MedicamentCard(
                 IconButton(onClick = onToggleRappel) {
                     Icon(
                         imageVector = if (medicament.rappelActive) Icons.Default.Notifications else Icons.Default.NotificationsOff,
-                        contentDescription = "Rappel",
+                        contentDescription = stringResource(R.string.cd_reminder),
                         tint = if (medicament.rappelActive) Primary else OnSurfaceVariant
                     )
                 }

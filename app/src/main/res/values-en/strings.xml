@@ -345,4 +345,82 @@
     <string name="cd_profile">Profile</string>
     <string name="cd_settings">Settings</string>
     <string name="cd_back">Back</string>
+
+    <!-- v2.1.64 Phase B -->
+    <string name="common_close">Close</string>
+    <string name="common_register">Save</string>
+    <string name="common_modify">Edit</string>
+
+    <string name="glucose_hba1c_label">HbA1c (%)</string>
+    <string name="glucose_hba1c_placeholder">e.g. 6.8</string>
+    <string name="glucose_hba1c_info">HbA1c reflects average glucose over the past 2-3 months.\nTarget: &lt; 7%% for most diabetics.</string>
+    <string name="glucose_rolly_analysis">ROLLY analysis</string>
+    <string name="glucose_hba1c_estimated">Estimated HbA1c</string>
+    <string name="glucose_glucose_avg_short">Avg glucose</string>
+    <string name="glucose_details">Details</string>
+    <string name="glucose_hba1c_long">Glycated Hemoglobin (HbA1c)</string>
+    <string name="glucose_hba1c_subtitle">Reflects average glucose of past 2-3 months</string>
+    <string name="glucose_last_result">Latest result</string>
+    <string name="glucose_no_measure">No measurement</string>
+
+    <string name="med_title">Medications</string>
+    <string name="med_new">New medication</string>
+    <string name="med_time_pick">Dose time</string>
+    <string name="med_enable_reminders">Enable reminders</string>
+    <string name="med_inactive">Inactive</string>
+    <string name="cd_add">Add</string>
+    <string name="cd_pick_time">Pick time</string>
+    <string name="cd_delete">Delete</string>
+    <string name="cd_reminder">Reminder</string>
+
+    <string name="rdv_screen_title">Appointments</string>
+    <string name="rdv_schedule">Schedule appointment</string>
+    <string name="rdv_request">Book appointment</string>
+    <string name="rdv_filter_all">All</string>
+    <string name="rdv_filter_upcoming">Upcoming</string>
+    <string name="rdv_filter_past">Past</string>
+    <string name="rdv_pending_requests">Pending requests (%1$d)</string>
+    <string name="rdv_scheduled">Scheduled appointments</string>
+    <string name="rdv_no_scheduled">No scheduled appointments</string>
+    <string name="rdv_my_requests">My requests (%1$d)</string>
+    <string name="rdv_confirmed">Confirmed appointments</string>
+    <string name="cd_calendar">Calendar</string>
+    <string name="cd_doctor">Doctor</string>
+    <string name="cd_schedule_icon">Schedule</string>
+    <string name="cd_location">Location</string>
+
+    <string name="journal_screen_title">Daily log</string>
+    <string name="journal_header_subtitle">Daily tracking</string>
+    <string name="cd_add_entry">Add entry</string>
+    <string name="journal_glucose_24h">Average glucose (24h)</string>
+    <string name="journal_no_entry">No entry</string>
+    <string name="journal_start_subtitle">Start your daily log</string>
+    <string name="journal_today_log">Today\'s log</string>
+    <string name="journal_mood_label">Mood</string>
+    <string name="journal_stress_label">Stress level</string>
+    <string name="journal_sleep_quality">Sleep quality</string>
+    <string name="journal_sleep_hours">Hours of sleep</string>
+    <string name="journal_physical_activity">Physical activity</string>
+    <string name="journal_activity_minutes">Minutes of activity</string>
+    <string name="journal_notes">Notes</string>
+    <string name="journal_today">Today</string>
+
+    <string name="msg_screen_title">Messages</string>
+    <string name="msg_new_conversation">Contact a doctor</string>
+    <string name="msg_no_conversation">No conversation</string>
+    <string name="msg_pick_doctor">Choose a doctor</string>
+    <string name="msg_no_doctor">No doctor available at the moment.</string>
+    <string name="msg_placeholder">Your message…</string>
+    <string name="cd_new_conv">New conversation</string>
+    <string name="cd_send">Send</string>
+    <string name="msg_open_doc">How do you want to open this document?</string>
+    <string name="msg_open_browser">Browser</string>
+    <string name="msg_open_download">Download</string>
+    <string name="msg_open_copy">Copy link</string>
+
+    <string name="profile_screen_title">My Profile</string>
+    <string name="cd_profile_photo">Profile photo</string>
+    <string name="profile_capturing">Capturing…</string>
+    <string name="profile_use_gps">Use my GPS location</string>
+    <string name="profile_logout">Log out</string>
 </resources>

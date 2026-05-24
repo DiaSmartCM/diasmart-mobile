@@ -347,4 +347,92 @@
     <string name="cd_profile">Profil</string>
     <string name="cd_settings">Paramètres</string>
     <string name="cd_back">Retour</string>
+
+    <!-- ============================================================
+         v2.1.64 PHASE B — i18n écrans patient
+         ============================================================ -->
+
+    <!-- Common (utilisables partout) -->
+    <string name="common_close">Fermer</string>
+    <string name="common_register">Enregistrer</string>
+    <string name="common_modify">Modifier</string>
+
+    <!-- Glucose / HbA1c -->
+    <string name="glucose_hba1c_label">HbA1c (%)</string>
+    <string name="glucose_hba1c_placeholder">Ex: 6.8</string>
+    <string name="glucose_hba1c_info">L\'HbA1c reflète la glycémie moyenne des 2-3 derniers mois.\nCible : &lt; 7%% pour la plupart des diabétiques.</string>
+    <string name="glucose_rolly_analysis">Analyse ROLLY</string>
+    <string name="glucose_hba1c_estimated">HbA1c estimée</string>
+    <string name="glucose_glucose_avg_short">Glycémie moy.</string>
+    <string name="glucose_details">Détails</string>
+    <string name="glucose_hba1c_long">Hémoglobine Glyquée (HbA1c)</string>
+    <string name="glucose_hba1c_subtitle">Reflète la glycémie moyenne des 2-3 derniers mois</string>
+    <string name="glucose_last_result">Dernier résultat</string>
+    <string name="glucose_no_measure">Aucune mesure</string>
+
+    <!-- Médicaments -->
+    <string name="med_title">Médicaments</string>
+    <string name="med_new">Nouveau médicament</string>
+    <string name="med_time_pick">Heure de prise</string>
+    <string name="med_enable_reminders">Activer les rappels</string>
+    <string name="med_inactive">Inactif</string>
+    <string name="cd_add">Ajouter</string>
+    <string name="cd_pick_time">Choisir heure</string>
+    <string name="cd_delete">Supprimer</string>
+    <string name="cd_reminder">Rappel</string>
+
+    <!-- Rendez-vous -->
+    <string name="rdv_screen_title">Rendez-vous</string>
+    <string name="rdv_schedule">Programmer un RDV</string>
+    <string name="rdv_request">Prendre RDV</string>
+    <string name="rdv_filter_all">Tous</string>
+    <string name="rdv_filter_upcoming">À venir</string>
+    <string name="rdv_filter_past">Passés</string>
+    <string name="rdv_pending_requests">Demandes en attente (%1$d)</string>
+    <string name="rdv_scheduled">Rendez-vous programmés</string>
+    <string name="rdv_no_scheduled">Aucun rendez-vous programmé</string>
+    <string name="rdv_my_requests">Mes demandes (%1$d)</string>
+    <string name="rdv_confirmed">Rendez-vous confirmés</string>
+    <string name="cd_calendar">Calendrier</string>
+    <string name="cd_doctor">Médecin</string>
+    <string name="cd_schedule_icon">Horaire</string>
+    <string name="cd_location">Lieu</string>
+
+    <!-- Journal -->
+    <string name="journal_screen_title">Carnet de bord</string>
+    <string name="journal_header_subtitle">Suivi quotidien</string>
+    <string name="cd_add_entry">Ajouter entrée</string>
+    <string name="journal_glucose_24h">Glycémie moyenne (24h)</string>
+    <string name="journal_no_entry">Aucune entrée</string>
+    <string name="journal_start_subtitle">Commencez votre carnet de bord quotidien</string>
+    <string name="journal_today_log">Journal du jour</string>
+    <string name="journal_mood_label">Humeur</string>
+    <string name="journal_stress_label">Niveau de stress</string>
+    <string name="journal_sleep_quality">Qualité du sommeil</string>
+    <string name="journal_sleep_hours">Heures de sommeil</string>
+    <string name="journal_physical_activity">Activité physique</string>
+    <string name="journal_activity_minutes">Minutes d\'activité</string>
+    <string name="journal_notes">Notes</string>
+    <string name="journal_today">Aujourd\'hui</string>
+
+    <!-- Messagerie -->
+    <string name="msg_screen_title">Messagerie</string>
+    <string name="msg_new_conversation">Contacter un médecin</string>
+    <string name="msg_no_conversation">Aucune conversation</string>
+    <string name="msg_pick_doctor">Choisir un médecin</string>
+    <string name="msg_no_doctor">Aucun médecin disponible pour le moment.</string>
+    <string name="msg_placeholder">Votre message…</string>
+    <string name="cd_new_conv">Nouvelle conversation</string>
+    <string name="cd_send">Envoyer</string>
+    <string name="msg_open_doc">Comment voulez-vous ouvrir ce document ?</string>
+    <string name="msg_open_browser">Navigateur</string>
+    <string name="msg_open_download">Télécharger</string>
+    <string name="msg_open_copy">Copier le lien</string>
+
+    <!-- Profile -->
+    <string name="profile_screen_title">Mon Profil</string>
+    <string name="cd_profile_photo">Photo de profil</string>
+    <string name="profile_capturing">Capture en cours…</string>
+    <string name="profile_use_gps">Utiliser ma position GPS</string>
+    <string name="profile_logout">Se déconnecter</string>
 </resources>

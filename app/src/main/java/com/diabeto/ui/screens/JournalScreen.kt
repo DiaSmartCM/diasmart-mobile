@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -27,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.diabeto.R
 import com.diabeto.data.entity.*
 import com.diabeto.ui.theme.*
 import com.diabeto.ui.viewmodel.JournalViewModel
@@ -68,8 +70,8 @@ fun JournalScreen(
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, "Retour", tint = Color.White)
                         }
                         Column {
-                            Text("Carnet de bord", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                            Text("Suivi quotidien", fontSize = 12.sp, color = Color.White.copy(alpha = 0.8f))
+                            Text(stringResource(R.string.journal_screen_title), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text(stringResource(R.string.journal_header_subtitle), fontSize = 12.sp, color = Color.White.copy(alpha = 0.8f))
                         }
                     }
                 }
@@ -84,7 +86,7 @@ fun JournalScreen(
                 ) {
                     Icon(
                         if (uiState.currentEntry != null) Icons.Default.Edit else Icons.Default.Add,
-                        contentDescription = "Ajouter entrée",
+                        contentDescription = stringResource(R.string.cd_add_entry),
                         tint = Color.White
                     )
                 }
@@ -115,7 +117,7 @@ fun JournalScreen(
                             Icon(Icons.Default.MonitorHeart, null, tint = Primary, modifier = Modifier.size(28.dp))
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
-                                Text("Glycémie moyenne (24h)", fontSize = 13.sp, color = OnSurfaceVariant)
+                                Text(stringResource(R.string.journal_glucose_24h), fontSize = 13.sp, color = OnSurfaceVariant)
                                 Text("${glyc.toInt()} mg/dL", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = when {
                                     glyc < 70 -> GlucoseLow
                                     glyc in 70.0..180.0 -> GlucoseNormal
@@ -185,8 +187,8 @@ fun JournalScreen(
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(Icons.Default.MenuBook, null, tint = OnSurfaceVariant.copy(alpha = 0.4f), modifier = Modifier.size(64.dp))
                                 Spacer(modifier = Modifier.height(16.dp))
-                                Text("Aucune entrée", fontWeight = FontWeight.Medium, color = OnSurfaceVariant)
-                                Text("Commencez votre carnet de bord quotidien", fontSize = 13.sp, color = OnSurfaceVariant.copy(alpha = 0.7f))
+                                Text(stringResource(R.string.journal_no_entry), fontWeight = FontWeight.Medium, color = OnSurfaceVariant)
+                                Text(stringResource(R.string.journal_start_subtitle), fontSize = 13.sp, color = OnSurfaceVariant.copy(alpha = 0.7f))
                             }
                         }
                     }
@@ -223,10 +225,10 @@ private fun JournalEditForm(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text("Journal du jour", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Text(stringResource(R.string.journal_today_log), fontWeight = FontWeight.Bold, fontSize = 18.sp)
 
             // Humeur
-            Text("Humeur", fontWeight = FontWeight.Medium)
+            Text(stringResource(R.string.journal_mood_label), fontWeight = FontWeight.Medium)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(Humeur.entries, key = { it.name }) { h ->
                     FilterChip(
@@ -238,7 +240,7 @@ private fun JournalEditForm(
             }
 
             // Stress
-            Text("Niveau de stress", fontWeight = FontWeight.Medium)
+            Text(stringResource(R.string.journal_stress_label), fontWeight = FontWeight.Medium)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(NiveauStress.entries, key = { it.name }) { s ->
                     FilterChip(
@@ -250,7 +252,7 @@ private fun JournalEditForm(
             }
 
             // Sommeil
-            Text("Qualité du sommeil", fontWeight = FontWeight.Medium)
+            Text(stringResource(R.string.journal_sleep_quality), fontWeight = FontWeight.Medium)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(QualiteSommeil.entries, key = { it.name }) { q ->
                     FilterChip(
@@ -264,7 +266,7 @@ private fun JournalEditForm(
             OutlinedTextField(
                 value = heuresSommeil,
                 onValueChange = onHeuresSommeilChange,
-                label = { Text("Heures de sommeil") },
+                label = { Text(stringResource(R.string.journal_sleep_hours)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
@@ -276,7 +278,7 @@ private fun JournalEditForm(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Activité physique", fontWeight = FontWeight.Medium)
+                    Text(stringResource(R.string.journal_physical_activity), fontWeight = FontWeight.Medium)
                 }
                 Switch(checked = activitePhysique, onCheckedChange = onActiviteChange)
             }
@@ -285,7 +287,7 @@ private fun JournalEditForm(
                 OutlinedTextField(
                     value = minutesActivite,
                     onValueChange = onMinutesChange,
-                    label = { Text("Minutes d'activité") },
+                    label = { Text(stringResource(R.string.journal_activity_minutes)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
@@ -296,7 +298,7 @@ private fun JournalEditForm(
             OutlinedTextField(
                 value = notes,
                 onValueChange = onNotesChange,
-                label = { Text("Notes") },
+                label = { Text(stringResource(R.string.journal_notes)) },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 2,
                 maxLines = 4
@@ -311,7 +313,7 @@ private fun JournalEditForm(
                     onClick = onCancel,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Annuler")
+                    Text(stringResource(R.string.action_cancel))
                 }
                 Button(
                     onClick = onSave,
@@ -321,7 +323,7 @@ private fun JournalEditForm(
                     if (isLoading) {
                         CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                     } else {
-                        Text("Sauvegarder")
+                        Text(stringResource(R.string.action_save))
                     }
                 }
             }
@@ -336,7 +338,7 @@ private fun TodaySummaryCard(entry: JournalEntity) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Aujourd'hui", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text(stringResource(R.string.journal_today), fontWeight = FontWeight.Bold, fontSize = 16.sp)
             Spacer(modifier = Modifier.height(12.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),

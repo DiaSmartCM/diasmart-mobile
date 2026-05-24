@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -28,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
+import com.diabeto.R
 import com.diabeto.data.model.Conversation
 import com.diabeto.data.model.Message
 import com.diabeto.data.model.UserProfile
@@ -68,7 +70,7 @@ fun MessagerieScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("Messagerie", fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.msg_screen_title), fontWeight = FontWeight.Bold)
                         if (uiState.currentProfile != null) {
                             Text(
                                 text = uiState.currentProfile!!.nomComplet +
@@ -81,7 +83,7 @@ fun MessagerieScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
                 colors = diaSmartTopAppBarColors()
@@ -93,8 +95,8 @@ fun MessagerieScreen(
             if (uiState.currentProfile?.role == UserRole.PATIENT) {
                 ExtendedFloatingActionButton(
                     onClick = { viewModel.toggleNouvelleConversation(true) },
-                    icon = { Icon(Icons.Default.Add, contentDescription = "Nouvelle conversation") },
-                    text = { Text("Contacter un médecin") },
+                    icon = { Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_new_conv)) },
+                    text = { Text(stringResource(R.string.msg_new_conversation)) },
                     containerColor = Primary
                 )
             }
@@ -124,7 +126,7 @@ fun MessagerieScreen(
                 ) {
                     Icon(
                         Icons.Default.Forum,
-                        contentDescription = "Aucune conversation",
+                        contentDescription = stringResource(R.string.msg_no_conversation),
                         modifier = Modifier.size(64.dp),
                         tint = OnSurfaceVariant.copy(alpha = 0.4f)
                     )
@@ -168,10 +170,10 @@ fun MessagerieScreen(
     if (uiState.showNouvelleConversation) {
         AlertDialog(
             onDismissRequest = { viewModel.toggleNouvelleConversation(false) },
-            title = { Text("Choisir un médecin", fontWeight = FontWeight.Bold) },
+            title = { Text(stringResource(R.string.msg_pick_doctor), fontWeight = FontWeight.Bold) },
             text = {
                 if (uiState.medecins.isEmpty()) {
-                    Text("Aucun médecin disponible pour le moment.")
+                    Text(stringResource(R.string.msg_no_doctor))
                 } else {
                     LazyColumn(modifier = Modifier.heightIn(max = 300.dp)) {
                         items(uiState.medecins, key = { it.uid }) { medecin ->
@@ -191,7 +193,7 @@ fun MessagerieScreen(
             confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { viewModel.toggleNouvelleConversation(false) }) {
-                    Text("Annuler")
+                    Text(stringResource(R.string.action_cancel))
                 }
             }
         )
@@ -296,7 +298,7 @@ private fun MedecinItem(medecin: UserProfile, onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Icon(Icons.Default.LocalHospital, contentDescription = "Médecin", tint = Primary)
+            Icon(Icons.Default.LocalHospital, contentDescription = stringResource(R.string.cd_doctor), tint = Primary)
             Column {
                 Text(medecin.nomComplet, fontWeight = FontWeight.Medium)
                 Text(medecin.email, style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
@@ -369,7 +371,7 @@ fun ConversationDetailScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
                 actions = {
@@ -441,7 +443,7 @@ fun ConversationDetailScreen(
                     OutlinedTextField(
                         value = uiState.inputText,
                         onValueChange = viewModel::onInputChange,
-                        placeholder = { Text("Votre message...", fontSize = 14.sp) },
+                        placeholder = { Text(stringResource(R.string.msg_placeholder), fontSize = 14.sp) },
                         modifier = Modifier.weight(1f),
                         maxLines = 4,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
@@ -462,7 +464,7 @@ fun ConversationDetailScreen(
                                 strokeWidth = 2.dp
                             )
                         } else {
-                            Icon(Icons.Default.Send, contentDescription = "Envoyer", tint = Color.White)
+                            Icon(Icons.Default.Send, contentDescription = stringResource(R.string.cd_send), tint = Color.White)
                         }
                     }
                 }
@@ -487,12 +489,12 @@ private fun ChatMessageBubble(message: Message, isCurrentUser: Boolean) {
                     fontWeight = FontWeight.SemiBold
                 )
             },
-            text = { Text("Comment voulez-vous ouvrir ce document ?") },
+            text = { Text(stringResource(R.string.msg_open_doc)) },
             confirmButton = {
                 TextButton(onClick = {
                     com.diabeto.util.FileOpener.openInBrowser(context, message.attachmentUrl)
                     showFallbackDialog = false
-                }) { Text("Navigateur") }
+                }) { Text(stringResource(R.string.msg_open_browser)) }
             },
             dismissButton = {
                 Row {
@@ -501,11 +503,11 @@ private fun ChatMessageBubble(message: Message, isCurrentUser: Boolean) {
                             context, message.attachmentUrl, message.attachmentName
                         )
                         showFallbackDialog = false
-                    }) { Text("Telecharger") }
+                    }) { Text(stringResource(R.string.msg_open_download)) }
                     TextButton(onClick = {
                         com.diabeto.util.FileOpener.copyLink(context, message.attachmentUrl)
                         showFallbackDialog = false
-                    }) { Text("Copier le lien") }
+                    }) { Text(stringResource(R.string.msg_open_copy)) }
                 }
             }
         )
