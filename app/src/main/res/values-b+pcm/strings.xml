@@ -442,4 +442,83 @@
     <string name="profile_capturing">Di catch foto…</string>
     <string name="profile_use_gps">Yuz mai GPS lokayshon</string>
     <string name="profile_logout">Log aut</string>
+
+    <!-- v2.1.65 Phase C — Kamtok -->
+    <string name="pd_title">Patient detail</string>
+    <string name="pd_confirm_delete_title">Konfayam delet</string>
+    <string name="pd_confirm_delete_text">Yu won fo komot dis patient? Yu no go fit bring yi bak.</string>
+    <string name="pd_stats_title">Sugar statistik (30 dei)</string>
+    <string name="pd_stat_average">Avareyj</string>
+    <string name="pd_stat_min_max">Min-Max</string>
+    <string name="pd_stat_in_target">Insai tagent</string>
+    <string name="pd_last_reading">Las riding: </string>
+    <string name="pd_info_title">Infomeshon</string>
+    <string name="pd_info_birth">Dei fo bon</string>
+    <string name="pd_info_sex">Man/Woman</string>
+    <string name="pd_info_phone">Fon</string>
+    <string name="pd_info_email">Imeil</string>
+    <string name="pd_info_address">Adres</string>
+    <string name="pd_info_diag_date">Dei fo diagnosis</string>
+
+    <string name="val_question">Kueschon:</string>
+    <string name="val_rolly">ROLLY:</string>
+    <string name="val_doctor_comment">Dokta komen:</string>
+    <string name="val_comment_placeholder">Komen (opshional)</string>
+    <string name="val_validate">Validet</string>
+    <string name="val_reject">Riject</string>
+
+    <string name="rpt_title">Sen ripot</string>
+    <string name="rpt_error_title">⚠ Eror</string>
+    <string name="rpt_error_hide">Haid</string>
+    <string name="rpt_generate">Mak en sen di PDF</string>
+    <string name="rpt_period_title">Ripot taim</string>
+    <string name="rpt_period_7">7 dei</string>
+    <string name="rpt_period_30">30 dei</string>
+    <string name="rpt_period_custom">Yua chos</string>
+    <string name="rpt_consultation_title">Konsultashon ripot</string>
+    <string name="rpt_consultation_placeholder">Histori, eksam, konkluzhon…</string>
+    <string name="rpt_prescription_title">Preskripshon</string>
+    <string name="rpt_prescription_placeholder">Mededisin, dose, hau fo tek…</string>
+    <string name="rpt_recommendations_title">Rekomendeshon / folo-ap (opshional)</string>
+    <string name="rpt_recommendations_placeholder">Laif stayl, nex apintment…</string>
+    <string name="rpt_link_doctor">Link dokta</string>
+    <string name="rpt_other_recipient">Pik nada pesin</string>
+    <string name="rpt_send_inapp">Sen fo mesej insai app</string>
+    <string name="rpt_send_email">Sen by imeil</string>
+    <string name="rpt_email_label">Imeil adres</string>
+    <string name="rpt_email_placeholder">recipient@example.com</string>
+    <string name="rpt_comment_optional">Komen (opshional)</string>
+    <string name="rpt_sending">Di sen…</string>
+    <string name="rpt_export_csv">Ekspot mai data (CSV)</string>
+    <string name="rpt_preparing">Di prepar…</string>
+
+    <string name="ds_tab_doctor">Dokta</string>
+    <string name="ds_tab_my_doctor">Mai dokta</string>
+    <string name="ds_best_rating">Bes mak</string>
+    <string name="ds_no_reviews">No revyu yet</string>
+    <string name="ds_see_reviews">Si revyu dem</string>
+    <string name="ds_no_doctor">No dokta we di look me</string>
+    <string name="ds_revoke_dialog_title">Stop di akses?</string>
+    <string name="ds_revoke_action">Stop</string>
+    <string name="ds_wants_access">Yi won fo si yua data</string>
+    <string name="ds_unlink_title">Komot foton?</string>
+    <string name="ds_unlink_action">Komot foton</string>
+    <string name="ds_reactivate_title">Stat di akses bak?</string>
+    <string name="ds_reactivate_action">Stat bak</string>
+    <string name="ds_no_patient_shared">No patient we yu di shea</string>
+    <string name="ds_access_active">Akses on</string>
+    <string name="ds_access_revoked">Akses don stop</string>
+
+    <string name="fam_title">Famili mod</string>
+    <string name="fam_invite">Kall famili</string>
+    <string name="fam_revoke_title">Komot akses?</string>
+    <string name="fam_revoke_action">Komot</string>
+    <string name="fam_unlink_title">Komot foton?</string>
+    <string name="fam_accept">Aksep</string>
+    <string name="fam_reject">No aksep</string>
+    <string name="fam_reactivate">Stat bak</string>
+    <string name="fam_invite_dialog_title">Kall sombodi we go helep</string>
+    <string name="fam_invite_email_label">Imeil fo di pesin</string>
+    <string name="fam_invite_relation_label">Wuna relashon (eg: pikin, hosban, papa)</string>
+    <string name="fam_send">Sen</string>
 </resources>

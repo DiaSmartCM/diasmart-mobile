@@ -11,8 +11,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.diabeto.R
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.diabeto.data.entity.GlucoseStatistics
@@ -52,20 +54,20 @@ fun PatientDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Détail du patient") },
+                title = { Text(stringResource(R.string.pd_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
                 actions = {
                     IconButton(onClick = onNavigateToEdit) {
-                        Icon(Icons.Default.Edit, contentDescription = "Modifier")
+                        Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.common_modify))
                     }
                     IconButton(onClick = { showDeleteDialog = true }) {
                         Icon(
                             Icons.Default.Delete, 
-                            contentDescription = "Supprimer",
+                            contentDescription = stringResource(R.string.cd_delete),
                             tint = Error
                         )
                     }
@@ -119,8 +121,8 @@ fun PatientDetailScreen(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Confirmer la suppression") },
-            text = { Text("Voulez-vous vraiment supprimer ce patient ? Cette action est irréversible.") },
+            title = { Text(stringResource(R.string.pd_confirm_delete_title)) },
+            text = { Text(stringResource(R.string.pd_confirm_delete_text)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -129,12 +131,12 @@ fun PatientDetailScreen(
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = Error)
                 ) {
-                    Text("Supprimer")
+                    Text(stringResource(R.string.action_delete))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Annuler")
+                    Text(stringResource(R.string.action_cancel))
                 }
             }
         )
@@ -223,7 +225,7 @@ private fun GlucoseStatsCard(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = "Statistiques Glycémie (30 jours)",
+                text = stringResource(R.string.pd_stats_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
@@ -237,17 +239,17 @@ private fun GlucoseStatsCard(
                 StatItem(
                     value = "${stats.moyenne.toInt()}",
                     unit = "mg/dL",
-                    label = "Moyenne"
+                    label = stringResource(R.string.pd_stat_average)
                 )
                 StatItem(
                     value = "${stats.minimum.toInt()}-${stats.maximum.toInt()}",
                     unit = "mg/dL",
-                    label = "Min-Max"
+                    label = stringResource(R.string.pd_stat_min_max)
                 )
                 StatItem(
                     value = "${stats.timeInRange.toInt()}",
                     unit = "%",
-                    label = "Dans cible"
+                    label = stringResource(R.string.pd_stat_in_target)
                 )
             }
             
@@ -261,7 +263,7 @@ private fun GlucoseStatsCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Dernière lecture: ",
+                        text = stringResource(R.string.pd_last_reading),
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
@@ -321,19 +323,19 @@ private fun QuickActionsRow(
     ) {
         QuickActionButton(
             icon = Icons.Default.MonitorHeart,
-            label = "Glycémie",
+            label = stringResource(R.string.glucose_tab_glycemie),
             onClick = onGlucoseClick,
             modifier = Modifier.weight(1f)
         )
         QuickActionButton(
             icon = Icons.Default.Medication,
-            label = "Médicaments",
+            label = stringResource(R.string.med_title),
             onClick = onMedicamentsClick,
             modifier = Modifier.weight(1f)
         )
         QuickActionButton(
             icon = Icons.Default.CalendarToday,
-            label = "RDV",
+            label = stringResource(R.string.nav_rdv_short),
             onClick = onRendezVousClick,
             modifier = Modifier.weight(1f)
         )
@@ -371,7 +373,7 @@ private fun PatientInfoCard(patient: PatientEntity) {
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = "Informations",
+                text = stringResource(R.string.pd_info_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
@@ -380,35 +382,35 @@ private fun PatientInfoCard(patient: PatientEntity) {
             
             InfoRow(
                 icon = Icons.Default.Cake,
-                label = "Date de naissance",
+                label = stringResource(R.string.pd_info_birth),
                 value = patient.dateNaissance.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
             )
             InfoRow(
                 icon = Icons.Default.Person,
-                label = "Sexe",
+                label = stringResource(R.string.pd_info_sex),
                 value = patient.sexe.name
             )
             InfoRow(
                 icon = Icons.Default.Phone,
-                label = "Téléphone",
+                label = stringResource(R.string.pd_info_phone),
                 value = patient.telephone.ifBlank { "Non renseigné" }
             )
             InfoRow(
                 icon = Icons.Default.Email,
-                label = "Email",
+                label = stringResource(R.string.pd_info_email),
                 value = patient.email.ifBlank { "Non renseigné" }
             )
             if (patient.adresse.isNotBlank()) {
                 InfoRow(
                     icon = Icons.Default.LocationOn,
-                    label = "Adresse",
+                    label = stringResource(R.string.pd_info_address),
                     value = patient.adresse
                 )
             }
             patient.dateDiagnostic?.let {
                 InfoRow(
                     icon = Icons.Default.Event,
-                    label = "Date diagnostic",
+                    label = stringResource(R.string.pd_info_diag_date),
                     value = it.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
                 )
             }

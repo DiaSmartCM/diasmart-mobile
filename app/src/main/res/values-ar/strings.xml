@@ -411,4 +411,83 @@
     <string name="profile_capturing">جاري التقاط الصورة…</string>
     <string name="profile_use_gps">استخدام موقعي GPS</string>
     <string name="profile_logout">تسجيل الخروج</string>
+
+    <!-- v2.1.65 Phase C -->
+    <string name="pd_title">تفاصيل المريض</string>
+    <string name="pd_confirm_delete_title">تأكيد الحذف</string>
+    <string name="pd_confirm_delete_text">هل تريد حقا حذف هذا المريض؟ هذا الإجراء لا يمكن التراجع عنه.</string>
+    <string name="pd_stats_title">إحصائيات السكر (30 يوم)</string>
+    <string name="pd_stat_average">المتوسط</string>
+    <string name="pd_stat_min_max">حد أدنى-أقصى</string>
+    <string name="pd_stat_in_target">في الهدف</string>
+    <string name="pd_last_reading">آخر قراءة: </string>
+    <string name="pd_info_title">معلومات</string>
+    <string name="pd_info_birth">تاريخ الميلاد</string>
+    <string name="pd_info_sex">الجنس</string>
+    <string name="pd_info_phone">الهاتف</string>
+    <string name="pd_info_email">البريد الإلكتروني</string>
+    <string name="pd_info_address">العنوان</string>
+    <string name="pd_info_diag_date">تاريخ التشخيص</string>
+
+    <string name="val_question">سؤال:</string>
+    <string name="val_rolly">ROLLY:</string>
+    <string name="val_doctor_comment">تعليق الطبيب:</string>
+    <string name="val_comment_placeholder">تعليق (اختياري)</string>
+    <string name="val_validate">صادق</string>
+    <string name="val_reject">رفض</string>
+
+    <string name="rpt_title">إرسال تقرير</string>
+    <string name="rpt_error_title">⚠ خطأ</string>
+    <string name="rpt_error_hide">إخفاء</string>
+    <string name="rpt_generate">إنشاء وإرسال PDF</string>
+    <string name="rpt_period_title">فترة التقرير</string>
+    <string name="rpt_period_7">7 أيام</string>
+    <string name="rpt_period_30">30 يوم</string>
+    <string name="rpt_period_custom">حسب الاختيار</string>
+    <string name="rpt_consultation_title">تقرير الاستشارة</string>
+    <string name="rpt_consultation_placeholder">سوابق المرض، الفحص السريري، الاستنتاجات…</string>
+    <string name="rpt_prescription_title">وصفة طبية</string>
+    <string name="rpt_prescription_placeholder">الأدوية الموصوفة، الجرعة…</string>
+    <string name="rpt_recommendations_title">توصيات / متابعة (اختياري)</string>
+    <string name="rpt_recommendations_placeholder">نمط الحياة، الموعد القادم…</string>
+    <string name="rpt_link_doctor">ربط طبيب</string>
+    <string name="rpt_other_recipient">اختر مستقبل آخر</string>
+    <string name="rpt_send_inapp">إرسال عبر الرسائل</string>
+    <string name="rpt_send_email">إرسال بالبريد</string>
+    <string name="rpt_email_label">عنوان البريد الإلكتروني</string>
+    <string name="rpt_email_placeholder">recipient@example.com</string>
+    <string name="rpt_comment_optional">تعليق (اختياري)</string>
+    <string name="rpt_sending">جاري الإرسال…</string>
+    <string name="rpt_export_csv">تصدير بياناتي (CSV)</string>
+    <string name="rpt_preparing">جاري التحضير…</string>
+
+    <string name="ds_tab_doctor">طبيب</string>
+    <string name="ds_tab_my_doctor">طبيبي</string>
+    <string name="ds_best_rating">أفضل تقييم</string>
+    <string name="ds_no_reviews">لا توجد تقييمات بعد</string>
+    <string name="ds_see_reviews">عرض التقييمات</string>
+    <string name="ds_no_doctor">لا يوجد طبيب معالج</string>
+    <string name="ds_revoke_dialog_title">إلغاء الوصول؟</string>
+    <string name="ds_revoke_action">إلغاء</string>
+    <string name="ds_wants_access">يريد الوصول إلى بياناتك</string>
+    <string name="ds_unlink_title">إلغاء الاشتراك؟</string>
+    <string name="ds_unlink_action">إلغاء الاشتراك</string>
+    <string name="ds_reactivate_title">إعادة تفعيل الوصول؟</string>
+    <string name="ds_reactivate_action">إعادة تفعيل</string>
+    <string name="ds_no_patient_shared">لا يوجد مريض مشارك</string>
+    <string name="ds_access_active">الوصول مفعل</string>
+    <string name="ds_access_revoked">تم إلغاء الوصول</string>
+
+    <string name="fam_title">وضع العائلة</string>
+    <string name="fam_invite">دعوة قريب</string>
+    <string name="fam_revoke_title">إزالة الوصول؟</string>
+    <string name="fam_revoke_action">إزالة</string>
+    <string name="fam_unlink_title">إلغاء الاشتراك؟</string>
+    <string name="fam_accept">قبول</string>
+    <string name="fam_reject">رفض</string>
+    <string name="fam_reactivate">إعادة تفعيل</string>
+    <string name="fam_invite_dialog_title">دعوة مساعد</string>
+    <string name="fam_invite_email_label">بريد المساعد</string>
+    <string name="fam_invite_relation_label">العلاقة (مثلا: ابن، زوج، والد)</string>
+    <string name="fam_send">إرسال</string>
 </resources>

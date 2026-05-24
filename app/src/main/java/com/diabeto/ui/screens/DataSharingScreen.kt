@@ -16,6 +16,7 @@ import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -25,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.diabeto.R
 import com.diabeto.data.model.ConsentStatus
 import com.diabeto.data.model.DataSharingConsent
 import com.diabeto.data.model.GeoUtils
@@ -145,13 +147,13 @@ private fun PatientDoctorView(
             Tab(
                 selected = selectedTab == 0,
                 onClick = { selectedTab = 0 },
-                text = { Text("Médecin", fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal) },
+                text = { Text(stringResource(R.string.ds_tab_doctor), fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal) },
                 icon = { Icon(Icons.Default.LocalHospital, null, modifier = Modifier.size(18.dp)) }
             )
             Tab(
                 selected = selectedTab == 1,
                 onClick = { selectedTab = 1 },
-                text = { Text("Mon Médecin", fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal) },
+                text = { Text(stringResource(R.string.ds_tab_my_doctor), fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal) },
                 icon = { Icon(Icons.Default.Favorite, null, modifier = Modifier.size(18.dp)) }
             )
         }
@@ -180,7 +182,7 @@ private fun MedecinTabContent(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             SortChip(
-                label = "Meilleure note",
+                label = stringResource(R.string.ds_best_rating),
                 selected = uiState.sortMode == DoctorSortMode.SCORE,
                 onClick = { viewModel.setSortMode(DoctorSortMode.SCORE) },
                 modifier = Modifier.weight(1f)
@@ -285,7 +287,7 @@ private fun BrowseDoctorCard(
                         fontWeight = FontWeight.Medium
                     )
                 } else {
-                    Text("Pas encore d'avis", fontSize = 12.sp, color = OnSurfaceVariant)
+                    Text(stringResource(R.string.ds_no_reviews), fontSize = 12.sp, color = OnSurfaceVariant)
                 }
                 // Distance + ville
                 Row(
@@ -309,7 +311,7 @@ private fun BrowseDoctorCard(
                     ) {
                         Icon(Icons.Default.RateReview, null, tint = Primary, modifier = Modifier.size(14.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Voir les avis", fontSize = 12.sp, color = Primary, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.ds_see_reviews), fontSize = 12.sp, color = Primary, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -374,7 +376,7 @@ private fun MonMedecinTabContent(
                         Modifier.size(64.dp), tint = OnSurfaceVariant.copy(alpha = 0.4f)
                     )
                     Spacer(Modifier.height(16.dp))
-                    Text("Aucun médecin traitant", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                    Text(stringResource(R.string.ds_no_doctor), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
                     Spacer(Modifier.height(8.dp))
                     Text(
                         "Votre médecin peut vous envoyer une demande d'accès depuis son application DiaSmart.",
@@ -422,7 +424,7 @@ private fun TreatingDoctorCard(
         AlertDialog(
             onDismissRequest = { showRevokeDialog = false },
             icon = { Icon(Icons.Default.LinkOff, null, tint = StatusRedDark) },
-            title = { Text("Révoquer l'accès ?") },
+            title = { Text(stringResource(R.string.ds_revoke_dialog_title)) },
             text = {
                 Text(
                     "Dr. ${consent.medecinNom} n'aura plus accès à vos données médicales. " +
@@ -434,11 +436,11 @@ private fun TreatingDoctorCard(
                     onRevoke()
                     showRevokeDialog = false
                 }) {
-                    Text("Révoquer", color = StatusRedDark, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.ds_revoke_action), color = StatusRedDark, fontWeight = FontWeight.SemiBold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showRevokeDialog = false }) { Text("Annuler") }
+                TextButton(onClick = { showRevokeDialog = false }) { Text(stringResource(R.string.action_cancel)) }
             }
         )
     }
@@ -526,7 +528,7 @@ private fun PatientPendingRequestCard(
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text("Dr. ${consent.medecinNom}", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                Text("Souhaite accéder à vos données", fontSize = 12.sp, color = OnSurfaceVariant)
+                Text(stringResource(R.string.ds_wants_access), fontSize = 12.sp, color = OnSurfaceVariant)
             }
             IconButton(onClick = onAccept, modifier = Modifier.size(38.dp)) {
                 Icon(Icons.Default.CheckCircle, "Accepter", tint = StatusGreen)
@@ -560,7 +562,7 @@ private fun DoctorPatientsView(
         AlertDialog(
             onDismissRequest = { pendingUnlink = null },
             icon = { Icon(Icons.Default.PersonRemove, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text("Se desabonner ?") },
+            title = { Text(stringResource(R.string.ds_unlink_title)) },
             text = {
                 Text(
                     "Vous ne verrez plus les donnees de ${consent.patientNom}. " +
@@ -575,10 +577,10 @@ private fun DoctorPatientsView(
                         pendingUnlink = null
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("Se desabonner") }
+                ) { Text(stringResource(R.string.ds_unlink_action)) }
             },
             dismissButton = {
-                TextButton(onClick = { pendingUnlink = null }) { Text("Annuler") }
+                TextButton(onClick = { pendingUnlink = null }) { Text(stringResource(R.string.action_cancel)) }
             }
         )
     }
@@ -586,7 +588,7 @@ private fun DoctorPatientsView(
         AlertDialog(
             onDismissRequest = { pendingReactivate = null },
             icon = { Icon(Icons.Default.LinkOff, null, tint = StatusGreen) },
-            title = { Text("Reactiver l'acces ?") },
+            title = { Text(stringResource(R.string.ds_reactivate_title)) },
             text = {
                 Text(
                     "Reactiver le lien avec ${consent.patientNom} ? " +
@@ -598,10 +600,10 @@ private fun DoctorPatientsView(
                 TextButton(onClick = {
                     onReactivateLink(consent.patientUid)
                     pendingReactivate = null
-                }) { Text("Reactiver") }
+                }) { Text(stringResource(R.string.ds_reactivate_action)) }
             },
             dismissButton = {
-                TextButton(onClick = { pendingReactivate = null }) { Text("Annuler") }
+                TextButton(onClick = { pendingReactivate = null }) { Text(stringResource(R.string.action_cancel)) }
             }
         )
     }
@@ -614,7 +616,7 @@ private fun DoctorPatientsView(
         ) {
             Icon(Icons.Default.PeopleOutline, null, Modifier.size(64.dp), tint = OnSurfaceVariant.copy(alpha = 0.4f))
             Spacer(Modifier.height(16.dp))
-            Text("Aucun patient partagé", fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.ds_no_patient_shared), fontWeight = FontWeight.SemiBold)
             Text(
                 "Les patients peuvent partager leurs données depuis l'onglet Médecin de leur application.",
                 style = MaterialTheme.typography.bodySmall,
@@ -656,13 +658,13 @@ private fun DoctorPatientsView(
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(consent.patientNom, fontWeight = FontWeight.SemiBold)
-                                Text("Acces actif", fontSize = 12.sp, color = StatusGreen)
+                                Text(stringResource(R.string.ds_access_active), fontSize = 12.sp, color = StatusGreen)
                             }
                             // v2.1.45 : bouton "se desabonner"
                             IconButton(onClick = { pendingUnlink = consent }) {
                                 Icon(
                                     Icons.Default.PersonRemove,
-                                    contentDescription = "Se desabonner",
+                                    contentDescription = stringResource(R.string.ds_unlink_action),
                                     tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
                                 )
                             }
@@ -703,10 +705,10 @@ private fun DoctorPatientsView(
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(consent.patientNom, fontSize = 14.sp, color = OnSurfaceVariant)
-                                Text("Acces revoque", fontSize = 11.sp, color = OnSurfaceVariant.copy(alpha = 0.7f))
+                                Text(stringResource(R.string.ds_access_revoked), fontSize = 11.sp, color = OnSurfaceVariant.copy(alpha = 0.7f))
                             }
                             TextButton(onClick = { pendingReactivate = consent }) {
-                                Text("Reactiver", fontSize = 12.sp)
+                                Text(stringResource(R.string.ds_reactivate_action), fontSize = 12.sp)
                             }
                         }
                     }
@@ -855,7 +857,7 @@ private fun RateDoctorDialog(
                 OutlinedTextField(
                     value = comment,
                     onValueChange = { if (it.length <= 500) comment = it },
-                    label = { Text("Commentaire (optionnel)") },
+                    label = { Text(stringResource(R.string.val_comment_placeholder)) },
                     placeholder = { Text("Votre expérience, accueil, suivi...") },
                     minLines = 3,
                     maxLines = 5,

@@ -435,4 +435,91 @@
     <string name="profile_capturing">Capture en cours…</string>
     <string name="profile_use_gps">Utiliser ma position GPS</string>
     <string name="profile_logout">Se déconnecter</string>
+
+    <!-- ============================================================
+         v2.1.65 PHASE C — i18n écrans médecin + partage + famille
+         ============================================================ -->
+
+    <!-- PatientDetailScreen -->
+    <string name="pd_title">Détail du patient</string>
+    <string name="pd_confirm_delete_title">Confirmer la suppression</string>
+    <string name="pd_confirm_delete_text">Voulez-vous vraiment supprimer ce patient ? Cette action est irréversible.</string>
+    <string name="pd_stats_title">Statistiques Glycémie (30 jours)</string>
+    <string name="pd_stat_average">Moyenne</string>
+    <string name="pd_stat_min_max">Min-Max</string>
+    <string name="pd_stat_in_target">Dans cible</string>
+    <string name="pd_last_reading">Dernière lecture: </string>
+    <string name="pd_info_title">Informations</string>
+    <string name="pd_info_birth">Date de naissance</string>
+    <string name="pd_info_sex">Sexe</string>
+    <string name="pd_info_phone">Téléphone</string>
+    <string name="pd_info_email">Email</string>
+    <string name="pd_info_address">Adresse</string>
+    <string name="pd_info_diag_date">Date diagnostic</string>
+
+    <!-- Validations -->
+    <string name="val_question">Question :</string>
+    <string name="val_rolly">ROLLY :</string>
+    <string name="val_doctor_comment">Commentaire médecin :</string>
+    <string name="val_comment_placeholder">Commentaire (optionnel)</string>
+    <string name="val_validate">Valider</string>
+    <string name="val_reject">Rejeter</string>
+
+    <!-- Reports -->
+    <string name="rpt_title">Envoyer un rapport</string>
+    <string name="rpt_error_title">⚠ Erreur</string>
+    <string name="rpt_error_hide">Masquer</string>
+    <string name="rpt_generate">Générer et envoyer le PDF</string>
+    <string name="rpt_period_title">Période du rapport</string>
+    <string name="rpt_period_7">7 jours</string>
+    <string name="rpt_period_30">30 jours</string>
+    <string name="rpt_period_custom">Au choix</string>
+    <string name="rpt_consultation_title">Compte-rendu de consultation</string>
+    <string name="rpt_consultation_placeholder">Anamnèse, examen clinique, conclusions…</string>
+    <string name="rpt_prescription_title">Ordonnance</string>
+    <string name="rpt_prescription_placeholder">Médicaments prescrits, dosage, posologie…</string>
+    <string name="rpt_recommendations_title">Recommandations / suivi (optionnel)</string>
+    <string name="rpt_recommendations_placeholder">Hygiène de vie, prochain RDV…</string>
+    <string name="rpt_link_doctor">Lier un médecin</string>
+    <string name="rpt_other_recipient">Sélectionner un autre destinataire</string>
+    <string name="rpt_send_inapp">Envoyer dans la messagerie in-app</string>
+    <string name="rpt_send_email">Envoyer par email</string>
+    <string name="rpt_email_label">Adresse email</string>
+    <string name="rpt_email_placeholder">destinataire@example.com</string>
+    <string name="rpt_comment_optional">Commentaire (optionnel)</string>
+    <string name="rpt_sending">Envoi…</string>
+    <string name="rpt_export_csv">Exporter mes données (CSV)</string>
+    <string name="rpt_preparing">Préparation…</string>
+
+    <!-- DataSharing -->
+    <string name="ds_tab_doctor">Médecin</string>
+    <string name="ds_tab_my_doctor">Mon Médecin</string>
+    <string name="ds_best_rating">Meilleure note</string>
+    <string name="ds_no_reviews">Pas encore d\'avis</string>
+    <string name="ds_see_reviews">Voir les avis</string>
+    <string name="ds_no_doctor">Aucun médecin traitant</string>
+    <string name="ds_revoke_dialog_title">Révoquer l\'accès ?</string>
+    <string name="ds_revoke_action">Révoquer</string>
+    <string name="ds_wants_access">Souhaite accéder à vos données</string>
+    <string name="ds_unlink_title">Se désabonner ?</string>
+    <string name="ds_unlink_action">Se désabonner</string>
+    <string name="ds_reactivate_title">Réactiver l\'accès ?</string>
+    <string name="ds_reactivate_action">Réactiver</string>
+    <string name="ds_no_patient_shared">Aucun patient partagé</string>
+    <string name="ds_access_active">Accès actif</string>
+    <string name="ds_access_revoked">Accès révoqué</string>
+
+    <!-- Family -->
+    <string name="fam_title">Mode famille</string>
+    <string name="fam_invite">Inviter un proche</string>
+    <string name="fam_revoke_title">Retirer l\'accès ?</string>
+    <string name="fam_revoke_action">Retirer</string>
+    <string name="fam_unlink_title">Se désabonner ?</string>
+    <string name="fam_accept">Accepter</string>
+    <string name="fam_reject">Refuser</string>
+    <string name="fam_reactivate">Réactiver</string>
+    <string name="fam_invite_dialog_title">Inviter un aidant</string>
+    <string name="fam_invite_email_label">Email de l\'aidant</string>
+    <string name="fam_invite_relation_label">Relation (ex: fils, conjoint, parent)</string>
+    <string name="fam_send">Envoyer</string>
 </resources>

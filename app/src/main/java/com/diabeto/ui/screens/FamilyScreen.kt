@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -19,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.diabeto.R
 import com.diabeto.data.model.FamilyLink
 import com.diabeto.data.model.FamilyLinkStatus
 import com.diabeto.ui.theme.OnSurfaceVariant
@@ -61,7 +63,7 @@ fun FamilyScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Mode famille") },
+                title = { Text(stringResource(R.string.fam_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Retour")
@@ -74,7 +76,7 @@ fun FamilyScreen(
             ExtendedFloatingActionButton(
                 onClick = { showInviteDialog = true },
                 icon = { Icon(Icons.Default.PersonAdd, null) },
-                text = { Text("Inviter un proche") }
+                text = { Text(stringResource(R.string.fam_invite)) }
             )
         }
     ) { padding ->
@@ -168,7 +170,7 @@ fun FamilyScreen(
         AlertDialog(
             onDismissRequest = { pendingRevoke = null },
             icon = { Icon(Icons.Default.PersonRemove, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text("Retirer l'acces ?") },
+            title = { Text(stringResource(R.string.fam_revoke_title)) },
             text = {
                 Text(
                     "${link.aidantNom} ne verra plus tes donnees. Tu pourras le re-inviter plus tard si tu changes d'avis."
@@ -181,10 +183,10 @@ fun FamilyScreen(
                         pendingRevoke = null
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("Retirer") }
+                ) { Text(stringResource(R.string.fam_revoke_action)) }
             },
             dismissButton = {
-                TextButton(onClick = { pendingRevoke = null }) { Text("Annuler") }
+                TextButton(onClick = { pendingRevoke = null }) { Text(stringResource(R.string.action_cancel)) }
             }
         )
     }
@@ -194,7 +196,7 @@ fun FamilyScreen(
         AlertDialog(
             onDismissRequest = { pendingUnlink = null },
             icon = { Icon(Icons.Default.LinkOff, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text("Se desabonner ?") },
+            title = { Text(stringResource(R.string.fam_unlink_title)) },
             text = {
                 Text("Tu ne suivras plus les donnees de ${link.ownerNom}. Il pourra te re-inviter plus tard.")
             },
@@ -205,10 +207,10 @@ fun FamilyScreen(
                         pendingUnlink = null
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("Se desabonner") }
+                ) { Text(stringResource(R.string.ds_unlink_action)) }
             },
             dismissButton = {
-                TextButton(onClick = { pendingUnlink = null }) { Text("Annuler") }
+                TextButton(onClick = { pendingUnlink = null }) { Text(stringResource(R.string.action_cancel)) }
             }
         )
     }
@@ -281,7 +283,7 @@ private fun AidantCard(link: FamilyLink, onRevoke: () -> Unit) {
             if (link.isActive || link.status == FamilyLinkStatus.PENDING) {
                 IconButton(onClick = onRevoke) {
                     Icon(
-                        Icons.Default.PersonRemove, contentDescription = "Retirer",
+                        Icons.Default.PersonRemove, contentDescription = stringResource(R.string.fam_revoke_action),
                         tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
                     )
                 }
@@ -341,19 +343,19 @@ private fun OwnerCard(
                     Button(onClick = onAccept, modifier = Modifier.weight(1f)) {
                         Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Accepter")
+                        Text(stringResource(R.string.fam_accept))
                     }
-                    OutlinedButton(onClick = onReject, modifier = Modifier.weight(1f)) { Text("Refuser") }
+                    OutlinedButton(onClick = onReject, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.fam_reject)) }
                 }
             } else if (isActive) {
                 Spacer(Modifier.height(8.dp))
                 TextButton(
                     onClick = onUnlink,
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("Se desabonner", fontSize = 12.sp) }
+                ) { Text(stringResource(R.string.ds_unlink_action), fontSize = 12.sp) }
             } else if (isRevoked) {
                 Spacer(Modifier.height(8.dp))
-                TextButton(onClick = onReactivate) { Text("Reactiver", fontSize = 12.sp) }
+                TextButton(onClick = onReactivate) { Text(stringResource(R.string.fam_reactivate), fontSize = 12.sp) }
             }
         }
     }
@@ -370,7 +372,7 @@ private fun InviteAidantDialog(
     AlertDialog(
         onDismissRequest = onCancel,
         icon = { Icon(Icons.Default.PersonAdd, null, tint = MaterialTheme.colorScheme.primary) },
-        title = { Text("Inviter un aidant") },
+        title = { Text(stringResource(R.string.fam_invite_dialog_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
@@ -381,7 +383,7 @@ private fun InviteAidantDialog(
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
-                    label = { Text("Email de l'aidant") },
+                    label = { Text(stringResource(R.string.fam_invite_email_label)) },
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Email),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -389,7 +391,7 @@ private fun InviteAidantDialog(
                 OutlinedTextField(
                     value = relation,
                     onValueChange = { relation = it },
-                    label = { Text("Relation (ex: fils, conjoint, parent)") },
+                    label = { Text(stringResource(R.string.fam_invite_relation_label)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -403,12 +405,12 @@ private fun InviteAidantDialog(
                 if (isInviting) {
                     CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                 } else {
-                    Text("Envoyer")
+                    Text(stringResource(R.string.fam_send))
                 }
             }
         },
         dismissButton = {
-            TextButton(onClick = onCancel) { Text("Annuler") }
+            TextButton(onClick = onCancel) { Text(stringResource(R.string.action_cancel)) }
         }
     )
 }

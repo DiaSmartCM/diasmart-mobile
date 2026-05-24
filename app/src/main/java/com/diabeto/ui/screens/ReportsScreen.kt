@@ -19,12 +19,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.diabeto.R
 import com.diabeto.data.model.UserRole
 import com.diabeto.data.repository.ReportRepository
 import com.diabeto.ui.viewmodel.AuthViewModel
@@ -76,7 +78,7 @@ fun ReportsScreen(
                 title = { Text(if (isPatient) "Envoyer un rapport" else "Compte-rendu / Ordonnance") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 }
             )
@@ -98,7 +100,7 @@ fun ReportsScreen(
             val reportsSeen by onboardingVm.reportsSeen.collectAsStateWithLifecycle()
             com.diabeto.ui.components.ContextualTooltip(
                 visible = !reportsSeen,
-                title = "Envoyer un rapport",
+                title = stringResource(R.string.rpt_title),
                 message = if (isPatient) "Selectionne ton medecin destinataire, choisis la periode, puis genere ton rapport PDF. 3 canaux d'envoi : messagerie in-app, email, WhatsApp." else "Genere une ordonnance ou un compte-rendu personnalise et envoie-le directement au patient.",
                 onDismiss = onboardingVm::dismissReports
             )
@@ -112,12 +114,12 @@ fun ReportsScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(Modifier.padding(12.dp)) {
-                        Text("⚠ Erreur", fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.rpt_error_title), fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(4.dp))
                         Text(msg, fontSize = 12.sp)
                         Spacer(Modifier.height(6.dp))
                         TextButton(onClick = viewModel::clearMessages) {
-                            Text("Masquer")
+                            Text(stringResource(R.string.rpt_error_hide))
                         }
                     }
                 }
@@ -157,7 +159,7 @@ fun ReportsScreen(
                 } else {
                     Icon(Icons.Default.Send, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Generer et envoyer le PDF")
+                    Text(stringResource(R.string.rpt_generate))
                 }
             }
 
@@ -171,22 +173,22 @@ fun ReportsScreen(
 private fun PatientReportSection(state: com.diabeto.ui.viewmodel.ReportUiState, vm: ReportViewModel) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Periode du rapport", fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.rpt_period_title), fontWeight = FontWeight.SemiBold)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(
                     selected = state.period == ReportRepository.PERIOD_7D,
                     onClick = { vm.setPeriod(ReportRepository.PERIOD_7D) },
-                    label = { Text("7 jours") }
+                    label = { Text(stringResource(R.string.rpt_period_7)) }
                 )
                 FilterChip(
                     selected = state.period == ReportRepository.PERIOD_30D,
                     onClick = { vm.setPeriod(ReportRepository.PERIOD_30D) },
-                    label = { Text("30 jours") }
+                    label = { Text(stringResource(R.string.rpt_period_30)) }
                 )
                 FilterChip(
                     selected = state.period == ReportRepository.PERIOD_CUSTOM,
                     onClick = { vm.setPeriod(ReportRepository.PERIOD_CUSTOM) },
-                    label = { Text("Au choix") }
+                    label = { Text(stringResource(R.string.rpt_period_custom)) }
                 )
             }
             Text(
@@ -203,30 +205,30 @@ private fun PatientReportSection(state: com.diabeto.ui.viewmodel.ReportUiState, 
 private fun DoctorReportSection(state: com.diabeto.ui.viewmodel.ReportUiState, vm: ReportViewModel) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("Compte-rendu de consultation", fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.rpt_consultation_title), fontWeight = FontWeight.SemiBold)
             OutlinedTextField(
                 value = state.compteRendu,
                 onValueChange = vm::setCompteRendu,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 110.dp),
-                placeholder = { Text("Anamnese, examen clinique, conclusions...") },
+                placeholder = { Text(stringResource(R.string.rpt_consultation_placeholder)) },
                 minLines = 4
             )
             Divider()
-            Text("Ordonnance", fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.rpt_prescription_title), fontWeight = FontWeight.SemiBold)
             OutlinedTextField(
                 value = state.ordonnance,
                 onValueChange = vm::setOrdonnance,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 110.dp),
-                placeholder = { Text("Medicaments prescrits, dosage, posologie...") },
+                placeholder = { Text(stringResource(R.string.rpt_prescription_placeholder)) },
                 minLines = 4
             )
             Divider()
-            Text("Recommandations / suivi (optionnel)", fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.rpt_recommendations_title), fontWeight = FontWeight.SemiBold)
             OutlinedTextField(
                 value = state.recommandations,
                 onValueChange = vm::setRecommandations,
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Hygiene de vie, prochain RDV...") }
+                placeholder = { Text(stringResource(R.string.rpt_recommendations_placeholder)) }
             )
         }
     }
@@ -283,7 +285,7 @@ private fun RecipientSection(
                             ) {
                                 Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(8.dp))
-                                Text("Lier un medecin")
+                                Text(stringResource(R.string.rpt_link_doctor))
                             }
                         }
                     }
@@ -347,7 +349,7 @@ private fun RecipientSection(
                             readOnly = true,
                             value = "Changer (${state.recipients.size} disponibles)",
                             onValueChange = {},
-                            label = { Text("Selectionner un autre destinataire") },
+                            label = { Text(stringResource(R.string.rpt_other_recipient)) },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
                             modifier = Modifier.fillMaxWidth().menuAnchor()
                         )
@@ -374,22 +376,22 @@ private fun RecipientSection(
                 Checkbox(checked = state.sendByMessagerie, onCheckedChange = vm::setSendByMessagerie)
                 Icon(Icons.Default.Forum, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("Envoyer dans la messagerie in-app")
+                Text(stringResource(R.string.rpt_send_inapp))
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = state.sendByEmail, onCheckedChange = vm::setSendByEmail)
                 Icon(Icons.Default.Email, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("Envoyer par email")
+                Text(stringResource(R.string.rpt_send_email))
             }
             if (state.sendByEmail) {
                 OutlinedTextField(
                     value = state.emailOverride,
                     onValueChange = vm::setEmailOverride,
-                    label = { Text("Adresse email") },
+                    label = { Text(stringResource(R.string.rpt_email_label)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                     modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("destinataire@example.com") }
+                    placeholder = { Text(stringResource(R.string.rpt_email_placeholder)) }
                 )
             }
             // ── WhatsApp ──
@@ -503,7 +505,7 @@ private fun ShareLocalFileSection(
             OutlinedTextField(
                 value = commentaire,
                 onValueChange = { commentaire = it },
-                label = { Text("Commentaire (optionnel)") },
+                label = { Text(stringResource(R.string.rpt_comment_optional)) },
                 modifier = Modifier.fillMaxWidth()
             )
             Button(
@@ -524,7 +526,7 @@ private fun ShareLocalFileSection(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text("Envoi...")
+                    Text(stringResource(R.string.rpt_sending))
                 } else {
                     Icon(Icons.Default.Send, contentDescription = null)
                     Spacer(Modifier.width(6.dp))
@@ -568,7 +570,7 @@ private fun ExportCsvSection(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Share, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("Exporter mes donnees (CSV)", fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.rpt_export_csv), fontWeight = FontWeight.SemiBold)
             }
             Text(
                 "Exporte vos glycemies et HbA1c au format CSV — compatible Excel, LibreOffice, Google Sheets.",
@@ -587,7 +589,7 @@ private fun ExportCsvSection(
                         color = MaterialTheme.colorScheme.primary
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text("Preparation...")
+                    Text(stringResource(R.string.rpt_preparing))
                 } else {
                     Icon(Icons.Default.Share, contentDescription = null)
                     Spacer(Modifier.width(6.dp))

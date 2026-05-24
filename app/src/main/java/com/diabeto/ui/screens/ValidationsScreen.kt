@@ -200,7 +200,7 @@ private fun ValidationCard(
                 color = Background
             ) {
                 Column(modifier = Modifier.padding(10.dp)) {
-                    Text("Question :", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Primary)
+                    Text(stringResource(R.string.val_question), fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Primary)
                     Spacer(Modifier.height(4.dp))
                     Text(
                         validation.question,
@@ -228,7 +228,7 @@ private fun ValidationCard(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("🤖", fontSize = 14.sp)
                         Spacer(Modifier.width(6.dp))
-                        Text("ROLLY :", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Primary)
+                        Text(stringResource(R.string.val_rolly), fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Primary)
                     }
                     Spacer(Modifier.height(4.dp))
                     Text(
@@ -248,7 +248,7 @@ private fun ValidationCard(
                     color = Success.copy(alpha = 0.06f)
                 ) {
                     Column(modifier = Modifier.padding(10.dp)) {
-                        Text("Commentaire médecin :", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Success)
+                        Text(stringResource(R.string.val_doctor_comment), fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Success)
                         Spacer(Modifier.height(4.dp))
                         Text(validation.medecinComment, fontSize = 13.sp, color = OnSurface.copy(alpha = 0.7f))
                     }
@@ -262,7 +262,7 @@ private fun ValidationCard(
                 OutlinedTextField(
                     value = comment,
                     onValueChange = { comment = it },
-                    placeholder = { Text("Commentaire (optionnel)", fontSize = 13.sp) },
+                    placeholder = { Text(stringResource(R.string.val_comment_placeholder), fontSize = 13.sp) },
                     modifier = Modifier.fillMaxWidth(),
                     maxLines = 3,
                     shape = RoundedCornerShape(12.dp)
@@ -282,7 +282,7 @@ private fun ValidationCard(
                     ) {
                         Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Valider", fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.val_validate), fontWeight = FontWeight.SemiBold)
                     }
                     Button(
                         onClick = { onReject(comment) },
@@ -292,7 +292,7 @@ private fun ValidationCard(
                     ) {
                         Icon(Icons.Default.Close, null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Rejeter", fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.val_reject), fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
