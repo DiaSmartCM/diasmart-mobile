@@ -316,7 +316,7 @@ fun DashboardScreen(
                                 Spacer(modifier = Modifier.width(14.dp))
                                 Column {
                                     Text(
-                                        "Bonjour !",
+                                        stringResource(R.string.dash_greeting),
                                         fontSize = 14.sp,
                                         color = Color.White.copy(alpha = 0.8f)
                                     )
@@ -330,10 +330,10 @@ fun DashboardScreen(
                             }
                             Row {
                                 IconButton(onClick = onNavigateToProfile) {
-                                    Icon(Icons.Outlined.AccountCircle, "Profil", tint = Color.White, modifier = Modifier.size(26.dp))
+                                    Icon(Icons.Outlined.AccountCircle, stringResource(R.string.cd_profile), tint = Color.White, modifier = Modifier.size(26.dp))
                                 }
                                 IconButton(onClick = onNavigateToSettings) {
-                                    Icon(Icons.Outlined.Settings, "Paramètres", tint = Color.White, modifier = Modifier.size(26.dp))
+                                    Icon(Icons.Outlined.Settings, stringResource(R.string.cd_settings), tint = Color.White, modifier = Modifier.size(26.dp))
                                 }
                             }
                         }
@@ -355,7 +355,7 @@ fun DashboardScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column {
-                                    Text("Glycémie moyenne", fontSize = 12.sp, color = Color.White.copy(alpha = 0.7f))
+                                    Text(stringResource(R.string.dash_glucose_avg), fontSize = 12.sp, color = Color.White.copy(alpha = 0.7f))
                                     Spacer(Modifier.height(4.dp))
                                     Row(verticalAlignment = Alignment.Bottom) {
                                         Text(
@@ -414,8 +414,8 @@ fun DashboardScreen(
                             }
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
-                                Text("Mode hors-ligne", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = Color(0xFFE65100))
-                                Text("Données locales accessibles", fontSize = 11.sp, color = TextSecondary)
+                                Text(stringResource(R.string.dash_offline_mode), fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = Color(0xFFE65100))
+                                Text(stringResource(R.string.dash_offline_subtitle), fontSize = 11.sp, color = TextSecondary)
                             }
                         }
                     }
@@ -436,7 +436,7 @@ fun DashboardScreen(
                     val isPatient = uiState.userRole == UserRole.PATIENT
                     MiniStatCard(
                         value = if (isPatient) uiState.linkedDoctors.toString() else uiState.totalPatients.toString(),
-                        label = if (isPatient) "Médecins" else "Patients",
+                        label = if (isPatient) stringResource(R.string.dash_stat_doctors) else stringResource(R.string.dash_stat_patients),
                         icon = if (isPatient) Icons.Outlined.MedicalServices else Icons.Outlined.People,
                         iconBg = if (isDark) CardGlucoseDark else CardGlucose,
                         iconTint = if (isDark) Color(0xFF9D91FF) else Primary,
@@ -447,7 +447,7 @@ fun DashboardScreen(
                     )
                     MiniStatCard(
                         value = uiState.todayRendezVous.toString(),
-                        label = "RDV",
+                        label = stringResource(R.string.dash_stat_rdv),
                         icon = Icons.Outlined.CalendarMonth,
                         iconBg = if (isDark) CardAppointmentDark else CardAppointment,
                         iconTint = if (isDark) Color(0xFF66E3CE) else Tertiary,
@@ -458,7 +458,7 @@ fun DashboardScreen(
                     )
                     MiniStatCard(
                         value = uiState.upcomingMedicaments.toString(),
-                        label = "Rappels",
+                        label = stringResource(R.string.dash_stat_reminders),
                         icon = Icons.Outlined.Medication,
                         iconBg = if (isDark) CardMedicationDark else CardMedication,
                         iconTint = if (isDark) Color(0xFFFFB3C6) else Secondary,
@@ -488,7 +488,7 @@ fun DashboardScreen(
                     )
                     Spacer(Modifier.width(10.dp))
                     Text(
-                        "ACTIONS RAPIDES",
+                        stringResource(R.string.dash_section_quick_actions),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         color = textPri,
@@ -506,8 +506,8 @@ fun DashboardScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         FeatureCard(
-                            title = "ROLLY",
-                            subtitle = "Assistant IA",
+                            title = stringResource(R.string.card_rolly_title),
+                            subtitle = stringResource(R.string.card_rolly_subtitle),
                             icon = null,
                             isRolly = true,
                             cardColor = RollyCardColor,
@@ -516,8 +516,8 @@ fun DashboardScreen(
                             modifier = Modifier.weight(1f)
                         )
                         FeatureCard(
-                            title = "Messagerie",
-                            subtitle = "Patient-Médecin",
+                            title = stringResource(R.string.card_messaging_title),
+                            subtitle = stringResource(R.string.card_messaging_subtitle),
                             icon = Icons.Outlined.Forum,
                             cardColor = CardGlucose,
                             iconTint = Primary,
@@ -536,8 +536,8 @@ fun DashboardScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         FeatureCard(
-                            title = "Analyse Repas",
-                            subtitle = "Glucides & IG",
+                            title = stringResource(R.string.card_meal_title),
+                            subtitle = stringResource(R.string.card_meal_subtitle),
                             icon = Icons.Outlined.Restaurant,
                             cardColor = CardNutrition,
                             iconTint = Color(0xFFFF8E72),
@@ -546,8 +546,8 @@ fun DashboardScreen(
                             modifier = Modifier.weight(1f)
                         )
                         FeatureCard(
-                            title = "Mon médecin",
-                            subtitle = "Mon médecin traitant",
+                            title = stringResource(R.string.card_my_doctor_title),
+                            subtitle = stringResource(R.string.card_my_doctor_subtitle),
                             icon = Icons.Outlined.MedicalServices,
                             cardColor = CardInsulin,
                             iconTint = Warning,
@@ -565,8 +565,8 @@ fun DashboardScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         FeatureCard(
-                            title = "Carnet de bord",
-                            subtitle = "Humeur & sommeil",
+                            title = stringResource(R.string.card_journal_title),
+                            subtitle = stringResource(R.string.card_journal_subtitle),
                             icon = Icons.Outlined.MenuBook,
                             cardColor = Color(0xFFF0E6FF),
                             iconTint = Color(0xFF8E24AA),
@@ -574,8 +574,8 @@ fun DashboardScreen(
                             modifier = Modifier.weight(1f)
                         )
                         FeatureCard(
-                            title = "Podomètre",
-                            subtitle = "Compteur de pas",
+                            title = stringResource(R.string.card_pedometer_title),
+                            subtitle = stringResource(R.string.card_pedometer_subtitle),
                             icon = Icons.Outlined.DirectionsWalk,
                             cardColor = CardAppointment,
                             iconTint = Tertiary,
@@ -593,8 +593,8 @@ fun DashboardScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         FeatureCard(
-                            title = "Courbes",
-                            subtitle = "Prédiction glycémie",
+                            title = stringResource(R.string.card_curves_title),
+                            subtitle = stringResource(R.string.card_curves_subtitle),
                             icon = Icons.Outlined.TrendingUp,
                             cardColor = CardMedication,
                             iconTint = Secondary,
@@ -602,8 +602,8 @@ fun DashboardScreen(
                             modifier = Modifier.weight(1f)
                         )
                         FeatureCard(
-                            title = "Communauté",
-                            subtitle = "Échanges patients",
+                            title = stringResource(R.string.card_community_title),
+                            subtitle = stringResource(R.string.card_community_subtitle),
                             icon = Icons.Outlined.Groups,
                             cardColor = CardActivity,
                             iconTint = Color(0xFF0288D1),
@@ -622,8 +622,8 @@ fun DashboardScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         FeatureCard(
-                            title = "Données patients",
-                            subtitle = "Glycémiques",
+                            title = stringResource(R.string.card_patient_data_title),
+                            subtitle = stringResource(R.string.card_patient_data_subtitle),
                             icon = Icons.Outlined.Assessment,
                             cardColor = CardAppointment,
                             iconTint = Tertiary,
@@ -631,8 +631,8 @@ fun DashboardScreen(
                             modifier = Modifier.weight(1f)
                         )
                         FeatureCard(
-                            title = "Messagerie",
-                            subtitle = "Patient-Médecin",
+                            title = stringResource(R.string.card_messaging_title),
+                            subtitle = stringResource(R.string.card_messaging_subtitle),
                             icon = Icons.Outlined.Forum,
                             cardColor = CardGlucose,
                             iconTint = Primary,
@@ -649,8 +649,8 @@ fun DashboardScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         FeatureCard(
-                            title = "Ajouter patient",
-                            subtitle = "Nouveau dossier",
+                            title = stringResource(R.string.card_add_patient_title),
+                            subtitle = stringResource(R.string.card_add_patient_subtitle),
                             icon = Icons.Outlined.PersonAdd,
                             cardColor = CardInsulin,
                             iconTint = Warning,
@@ -658,8 +658,8 @@ fun DashboardScreen(
                             modifier = Modifier.weight(1f)
                         )
                         FeatureCard(
-                            title = "Validations",
-                            subtitle = "ROLLY IA",
+                            title = stringResource(R.string.card_validations_title),
+                            subtitle = stringResource(R.string.card_validations_subtitle),
                             icon = Icons.Outlined.VerifiedUser,
                             cardColor = Color(0xFFF0E6FF),
                             iconTint = Color(0xFF8E24AA),
@@ -675,8 +675,8 @@ fun DashboardScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         FeatureCard(
-                            title = "Compte-rendu / Ordonnance",
-                            subtitle = "Envoyer au patient",
+                            title = stringResource(R.string.card_report_title),
+                            subtitle = stringResource(R.string.card_report_subtitle),
                             icon = Icons.Outlined.Description,
                             cardColor = CardGlucose,
                             iconTint = Primary,
@@ -684,8 +684,8 @@ fun DashboardScreen(
                             modifier = Modifier.weight(1f)
                         )
                         FeatureCard(
-                            title = "Mes avis",
-                            subtitle = "Note moyenne",
+                            title = stringResource(R.string.card_my_reviews_title),
+                            subtitle = stringResource(R.string.card_my_reviews_subtitle),
                             icon = Icons.Outlined.Star,
                             cardColor = CardAppointment,
                             iconTint = Color(0xFFF59E0B),
@@ -705,8 +705,8 @@ fun DashboardScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         FeatureCard(
-                            title = "Envoyer un rapport",
-                            subtitle = "PDF a mon medecin",
+                            title = stringResource(R.string.card_send_report_title),
+                            subtitle = stringResource(R.string.card_send_report_subtitle),
                             icon = Icons.Outlined.Description,
                             cardColor = CardAppointment,
                             iconTint = Tertiary,
@@ -725,8 +725,8 @@ fun DashboardScreen(
             // ═══════════════════════════════════════════════════════
             item {
                 SectionHeader(
-                    title = "Prochains rendez-vous",
-                    action = "Voir tout",
+                    title = stringResource(R.string.dash_section_next_rdv),
+                    action = stringResource(R.string.dash_action_see_all),
                     onAction = onNavigateToRendezVous
                 )
             }
@@ -742,7 +742,7 @@ fun DashboardScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         if (uiState.upcomingRendezVous.isEmpty()) {
-                            EmptyStateMessage("Aucun rendez-vous à venir", Icons.Outlined.CalendarMonth, textSec = textSec, textTer = textTer, surfaceVar = if (isDark) DarkOutline else SurfaceVariant)
+                            EmptyStateMessage(stringResource(R.string.dash_no_rdv), Icons.Outlined.CalendarMonth, textSec = textSec, textTer = textTer, surfaceVar = if (isDark) DarkOutline else SurfaceVariant)
                         } else {
                             uiState.upcomingRendezVous.take(3).forEachIndexed { index, rdv ->
                                 ModernRendezVousItem(
@@ -1175,20 +1175,27 @@ private fun DiaSmartBottomBar(
         ) {
             data class NavItem(val label: String, val outlined: ImageVector, val filled: ImageVector, val isRolly: Boolean = false)
 
+            // v2.1.63 : labels via stringResource pour i18n
+            val labelHome = stringResource(R.string.nav_home)
+            val labelPatients = stringResource(R.string.nav_patients)
+            val labelRdv = stringResource(R.string.nav_rdv_short)
+            val labelMessages = stringResource(R.string.nav_messages)
+            val labelDoctor = stringResource(R.string.nav_doctor)
+            val labelRolly = stringResource(R.string.nav_rolly)
             val items = if (isMedecin) {
                 listOf(
-                    NavItem("Accueil", Icons.Outlined.Dashboard, Icons.Filled.Dashboard),
-                    NavItem("Patients", Icons.Outlined.People, Icons.Filled.People),
-                    NavItem("RDV", Icons.Outlined.CalendarMonth, Icons.Filled.CalendarMonth),
-                    NavItem("Messages", Icons.Outlined.Forum, Icons.Filled.Forum)
+                    NavItem(labelHome, Icons.Outlined.Dashboard, Icons.Filled.Dashboard),
+                    NavItem(labelPatients, Icons.Outlined.People, Icons.Filled.People),
+                    NavItem(labelRdv, Icons.Outlined.CalendarMonth, Icons.Filled.CalendarMonth),
+                    NavItem(labelMessages, Icons.Outlined.Forum, Icons.Filled.Forum)
                 )
             } else {
                 listOf(
-                    NavItem("Accueil", Icons.Outlined.Dashboard, Icons.Filled.Dashboard),
-                    NavItem("Médecin", Icons.Outlined.MedicalServices, Icons.Filled.MedicalServices),
-                    NavItem("RDV", Icons.Outlined.CalendarMonth, Icons.Filled.CalendarMonth),
-                    NavItem("ROLLY", Icons.Outlined.Dashboard, Icons.Filled.Dashboard, isRolly = true),
-                    NavItem("Messages", Icons.Outlined.Forum, Icons.Filled.Forum)
+                    NavItem(labelHome, Icons.Outlined.Dashboard, Icons.Filled.Dashboard),
+                    NavItem(labelDoctor, Icons.Outlined.MedicalServices, Icons.Filled.MedicalServices),
+                    NavItem(labelRdv, Icons.Outlined.CalendarMonth, Icons.Filled.CalendarMonth),
+                    NavItem(labelRolly, Icons.Outlined.Dashboard, Icons.Filled.Dashboard, isRolly = true),
+                    NavItem(labelMessages, Icons.Outlined.Forum, Icons.Filled.Forum)
                 )
             }
             val actions = if (isMedecin) {

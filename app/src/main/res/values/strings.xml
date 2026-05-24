@@ -263,4 +263,88 @@
     <string name="error_generic">Erreur: %1$s</string>
     <string name="export_error">Erreur export: %1$s</string>
     <string name="loading_analysis">Analyse des données…</string>
+
+    <!-- ============================================================
+         v2.1.63 PHASE A — i18n DashboardScreen + SettingsScreen + nav
+         ============================================================ -->
+
+    <!-- Dashboard header + stats -->
+    <string name="dash_greeting">Bonjour !</string>
+    <string name="dash_glucose_avg">Glycémie moyenne</string>
+    <string name="dash_offline_mode">Mode hors-ligne</string>
+    <string name="dash_offline_subtitle">Données locales accessibles</string>
+    <string name="dash_stat_doctors">Médecins</string>
+    <string name="dash_stat_patients">Patients</string>
+    <string name="dash_stat_rdv">RDV</string>
+    <string name="dash_stat_reminders">Rappels</string>
+    <string name="dash_section_quick_actions">ACTIONS RAPIDES</string>
+    <string name="dash_section_next_rdv">Prochains rendez-vous</string>
+    <string name="dash_action_see_all">Voir tout</string>
+    <string name="dash_no_rdv">Aucun rendez-vous à venir</string>
+
+    <!-- Dashboard feature cards -->
+    <string name="card_rolly_title">ROLLY</string>
+    <string name="card_rolly_subtitle">Assistant IA</string>
+    <string name="card_messaging_title">Messagerie</string>
+    <string name="card_messaging_subtitle">Patient-Médecin</string>
+    <string name="card_meal_title">Analyse Repas</string>
+    <string name="card_meal_subtitle">Glucides &amp; IG</string>
+    <string name="card_my_doctor_title">Mon médecin</string>
+    <string name="card_my_doctor_subtitle">Mon médecin traitant</string>
+    <string name="card_journal_title">Carnet de bord</string>
+    <string name="card_journal_subtitle">Humeur &amp; sommeil</string>
+    <string name="card_pedometer_title">Podomètre</string>
+    <string name="card_pedometer_subtitle">Compteur de pas</string>
+    <string name="card_curves_title">Courbes</string>
+    <string name="card_curves_subtitle">Prédiction glycémie</string>
+    <string name="card_community_title">Communauté</string>
+    <string name="card_community_subtitle">Échanges patients</string>
+    <string name="card_patient_data_title">Données patients</string>
+    <string name="card_patient_data_subtitle">Glycémiques</string>
+    <string name="card_add_patient_title">Ajouter patient</string>
+    <string name="card_add_patient_subtitle">Nouveau dossier</string>
+    <string name="card_validations_title">Validations</string>
+    <string name="card_validations_subtitle">ROLLY IA</string>
+    <string name="card_report_title">Compte-rendu / Ordonnance</string>
+    <string name="card_report_subtitle">Envoyer au patient</string>
+    <string name="card_my_reviews_title">Mes avis</string>
+    <string name="card_my_reviews_subtitle">Note moyenne</string>
+    <string name="card_send_report_title">Envoyer un rapport</string>
+    <string name="card_send_report_subtitle">PDF à mon médecin</string>
+
+    <!-- Settings sections + items -->
+    <string name="settings_section_appearance">Apparence</string>
+    <string name="settings_section_measures">Mesures &amp; Unités</string>
+    <string name="settings_section_security">Sécurité</string>
+    <string name="settings_section_export">Export &amp; Données</string>
+    <string name="settings_section_account">Compte</string>
+    <string name="settings_theme_system">Système</string>
+    <string name="settings_theme_light">Clair</string>
+    <string name="settings_theme_dark">Sombre</string>
+    <string name="settings_glucose_unit_title">Unité de glycémie</string>
+    <string name="settings_measure_type_title">Type de mesure</string>
+    <string name="settings_target_title">Objectif glycémique</string>
+    <string name="settings_notifications_subtitle">Activer les notifications push</string>
+    <string name="settings_med_reminders_title">Rappels médicaments</string>
+    <string name="settings_med_reminders_subtitle">Rappel avant chaque prise</string>
+    <string name="settings_glucose_reminders_title">Rappels glycémie</string>
+    <string name="settings_glucose_reminders_subtitle">Rappel de mesure quotidien</string>
+    <string name="settings_rdv_reminders_title">Rappels rendez-vous</string>
+    <string name="settings_rdv_reminders_subtitle">Rappel 1h avant le RDV</string>
+    <string name="settings_lock_title">Verrouiller l\'application</string>
+    <string name="settings_lock_disabled">Désactivé</string>
+    <string name="settings_cloud_backup_title">Sauvegarde cloud</string>
+    <string name="settings_cloud_backup_subtitle">Sauvegarder maintenant</string>
+    <string name="settings_delete_account_title">Supprimer mon compte</string>
+    <string name="settings_delete_account_subtitle">Efface profil et partages Firestore</string>
+
+    <!-- Bottom navigation + content descriptions -->
+    <string name="nav_home">Accueil</string>
+    <string name="nav_messages">Messages</string>
+    <string name="nav_doctor">Médecin</string>
+    <string name="nav_rolly">ROLLY</string>
+    <string name="nav_rdv_short">RDV</string>
+    <string name="cd_profile">Profil</string>
+    <string name="cd_settings">Paramètres</string>
+    <string name="cd_back">Retour</string>
 </resources>

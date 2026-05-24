@@ -107,7 +107,7 @@ fun SettingsScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Retour",
+                            contentDescription = stringResource(R.string.cd_back),
                             tint = Color.White
                         )
                     }
@@ -134,7 +134,7 @@ fun SettingsScreen(
             // ── Apparence ─────────────────────────────────────
             item {
                 DayLifeSectionHeader(
-                    title = "Apparence",
+                    title = stringResource(R.string.settings_section_appearance),
                     color = sectionTextColor,
                     isDark = isDark
                 )
@@ -146,9 +146,9 @@ fun SettingsScreen(
                         iconBg = Color(0xFF6771E4),
                         title = stringResource(R.string.settings_theme),
                         subtitle = when (uiState.themeMode) {
-                            ThemeMode.SYSTEM -> "Système"
-                            ThemeMode.LIGHT -> "Clair"
-                            ThemeMode.DARK -> "Sombre"
+                            ThemeMode.SYSTEM -> stringResource(R.string.settings_theme_system)
+                            ThemeMode.LIGHT -> stringResource(R.string.settings_theme_light)
+                            ThemeMode.DARK -> stringResource(R.string.settings_theme_dark)
                         },
                         titleColor = titleColor,
                         subtitleColor = subtitleColor,
@@ -170,7 +170,7 @@ fun SettingsScreen(
             // ── Mesures & Unités ──────────────────────────────
             item {
                 DayLifeSectionHeader(
-                    title = "Mesures & Unités",
+                    title = stringResource(R.string.settings_section_measures),
                     color = sectionTextColor,
                     isDark = isDark
                 )
@@ -180,7 +180,7 @@ fun SettingsScreen(
                     DayLifeSettingsItem(
                         icon = Icons.Default.Straighten,
                         iconBg = Color(0xFF3B82F6),
-                        title = "Unité de glycémie",
+                        title = stringResource(R.string.settings_glucose_unit_title),
                         subtitle = uiState.glucoseUnit.label,
                         titleColor = titleColor,
                         subtitleColor = subtitleColor,
@@ -190,7 +190,7 @@ fun SettingsScreen(
                     DayLifeSettingsItem(
                         icon = Icons.Default.MonitorHeart,
                         iconBg = Color(0xFFEF4444),
-                        title = "Type de mesure",
+                        title = stringResource(R.string.settings_measure_type_title),
                         subtitle = uiState.measureType.displayName,
                         titleColor = titleColor,
                         subtitleColor = subtitleColor,
@@ -203,7 +203,7 @@ fun SettingsScreen(
                         DayLifeSettingsItem(
                             icon = Icons.Default.Analytics,
                             iconBg = Color(0xFF8B5CF6),
-                            title = "Objectif glycémique",
+                            title = stringResource(R.string.settings_target_title),
                             subtitle = if (uiState.glucoseUnit == GlucoseUnit.MG_DL)
                                 "${uiState.targetMin.toInt()} - ${uiState.targetMax.toInt()} mg/dL"
                             else
@@ -230,7 +230,7 @@ fun SettingsScreen(
                         icon = Icons.Default.Notifications,
                         iconBg = Color(0xFFFF8C42),
                         title = stringResource(R.string.settings_notifications),
-                        subtitle = "Activer les notifications push",
+                        subtitle = stringResource(R.string.settings_notifications_subtitle),
                         checked = uiState.notificationsEnabled,
                         onCheckedChange = viewModel::setNotificationsEnabled,
                         titleColor = titleColor,
@@ -245,8 +245,8 @@ fun SettingsScreen(
                         DayLifeToggleItem(
                             icon = Icons.Default.Medication,
                             iconBg = Color(0xFFEF4444),
-                            title = "Rappels médicaments",
-                            subtitle = "Rappel avant chaque prise",
+                            title = stringResource(R.string.settings_med_reminders_title),
+                            subtitle = stringResource(R.string.settings_med_reminders_subtitle),
                             checked = uiState.medicationReminders,
                             onCheckedChange = viewModel::setMedicationReminders,
                             enabled = uiState.notificationsEnabled,
@@ -258,8 +258,8 @@ fun SettingsScreen(
                         DayLifeToggleItem(
                             icon = Icons.Default.MonitorHeart,
                             iconBg = Color(0xFF6771E4),
-                            title = "Rappels glycémie",
-                            subtitle = "Rappel de mesure quotidien",
+                            title = stringResource(R.string.settings_glucose_reminders_title),
+                            subtitle = stringResource(R.string.settings_glucose_reminders_subtitle),
                             checked = uiState.measurementReminders,
                             onCheckedChange = viewModel::setMeasurementReminders,
                             enabled = uiState.notificationsEnabled,
@@ -272,8 +272,8 @@ fun SettingsScreen(
                     DayLifeToggleItem(
                         icon = Icons.Default.CalendarMonth,
                         iconBg = Color(0xFF14B8A6),
-                        title = "Rappels rendez-vous",
-                        subtitle = "Rappel 1h avant le RDV",
+                        title = stringResource(R.string.settings_rdv_reminders_title),
+                        subtitle = stringResource(R.string.settings_rdv_reminders_subtitle),
                         checked = uiState.appointmentReminders,
                         onCheckedChange = viewModel::setAppointmentReminders,
                         enabled = uiState.notificationsEnabled,
@@ -288,7 +288,7 @@ fun SettingsScreen(
             // ── Securite ──────────────────────────────────────
             item {
                 DayLifeSectionHeader(
-                    title = "Securite",
+                    title = stringResource(R.string.settings_section_security),
                     color = sectionTextColor,
                     isDark = isDark
                 )
@@ -304,9 +304,9 @@ fun SettingsScreen(
                     DayLifeToggleItem(
                         icon = Icons.Default.Lock,
                         iconBg = Color(0xFF6771E4),
-                        title = "Verrouiller l'application",
+                        title = stringResource(R.string.settings_lock_title),
                         subtitle = if (uiState.appLockEnabled) "Active — $methodLabel"
-                            else "Desactive",
+                            else stringResource(R.string.settings_lock_disabled),
                         checked = uiState.appLockEnabled,
                         onCheckedChange = { enabled ->
                             if (enabled) {
@@ -336,7 +336,7 @@ fun SettingsScreen(
 
             item {
                 DayLifeSectionHeader(
-                    title = "Export & Données",
+                    title = stringResource(R.string.settings_section_export),
                     color = sectionTextColor,
                     isDark = isDark
                 )
@@ -359,8 +359,8 @@ fun SettingsScreen(
                     DayLifeSettingsItem(
                         icon = Icons.Default.CloudSync,
                         iconBg = Color(0xFF3B82F6),
-                        title = "Sauvegarde cloud",
-                        subtitle = if (isBackingUp) "Sauvegarde en cours..." else "Sauvegarder maintenant",
+                        title = stringResource(R.string.settings_cloud_backup_title),
+                        subtitle = if (isBackingUp) "Sauvegarde en cours..." else stringResource(R.string.settings_cloud_backup_subtitle),
                         titleColor = titleColor,
                         subtitleColor = subtitleColor,
                         onClick = {
@@ -422,7 +422,7 @@ fun SettingsScreen(
             // ── Compte ──────────────────────────────────────
             item {
                 DayLifeSectionHeader(
-                    title = "Compte",
+                    title = stringResource(R.string.settings_section_account),
                     color = sectionTextColor,
                     isDark = isDark
                 )
@@ -432,8 +432,8 @@ fun SettingsScreen(
                     DayLifeSettingsItem(
                         icon = Icons.Default.PersonOff,
                         iconBg = Color(0xFFEF4444),
-                        title = "Supprimer mon compte",
-                        subtitle = if (isDeletingAccount) "Suppression en cours..." else "Efface profil et partages Firestore",
+                        title = stringResource(R.string.settings_delete_account_title),
+                        subtitle = if (isDeletingAccount) "Suppression en cours..." else stringResource(R.string.settings_delete_account_subtitle),
                         titleColor = titleColor,
                         subtitleColor = subtitleColor,
                         onClick = {
