@@ -108,6 +108,9 @@ async function deleteEnvVar(token, projectId, envId, teamSlug) {
 }
 
 async function createEnvVar(token, projectId, teamSlug, name, value, sensitive) {
+  // Vercel : les Sensitive env vars ne peuvent PAS cibler 'development'.
+  // (cf. erreur API : "You cannot set a Sensitive Environment Variable's target to development.")
+  const target = sensitive ? ["production", "preview"] : ENV_TARGETS;
   return vercelFetch(
     `/v10/projects/${projectId}/env?upsert=true`,
     {
@@ -116,7 +119,7 @@ async function createEnvVar(token, projectId, teamSlug, name, value, sensitive) 
         key: name,
         value,
         type: sensitive ? "sensitive" : "encrypted",
-        target: ENV_TARGETS,
+        target,
       }),
     },
     token,
@@ -132,7 +135,8 @@ async function upsertEnvVar(token, projectId, teamSlug, name, value, sensitive) 
     await deleteEnvVar(token, projectId, e.id, teamSlug);
   }
   await createEnvVar(token, projectId, teamSlug, name, value, sensitive);
-  console.log(`  ${name} : ${existing.length > 0 ? "remplace" : "cree"} sur ${ENV_TARGETS.join(", ")}`);
+  const appliedTo = sensitive ? "production, preview" : ENV_TARGETS.join(", ");
+  console.log(`  ${name} : ${existing.length > 0 ? "remplace" : "cree"} sur ${appliedTo}`);
 }
 
 async function triggerRedeploy(token, projectName, teamSlug) {
