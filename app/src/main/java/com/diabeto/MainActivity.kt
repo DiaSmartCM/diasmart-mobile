@@ -13,7 +13,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.fragment.app.FragmentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.diabeto.data.repository.CloudBackupRepository
 import com.diabeto.data.repository.PreferencesRepository
@@ -38,7 +38,13 @@ import javax.inject.Inject
  * Activity principale de l'application
  */
 @AndroidEntryPoint
-class MainActivity : FragmentActivity() {
+// v2.1.61 : herite de AppCompatActivity (qui herite de FragmentActivity, donc
+// AppLockManager + BiometricPrompt continuent de marcher) pour permettre
+// a AppCompatDelegate.setApplicationLocales() de recreer correctement
+// l'Activity quand l'utilisateur change de langue. Avant : FragmentActivity
+// pure -> la pref langue etait sauvee mais l'UI restait dans la langue
+// initiale (bug switch langue).
+class MainActivity : AppCompatActivity() {
 
     @Inject lateinit var preferencesRepository: PreferencesRepository
     @Inject lateinit var callManager: CallManager

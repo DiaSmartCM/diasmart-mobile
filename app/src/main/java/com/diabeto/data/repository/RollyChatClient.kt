@@ -191,6 +191,13 @@ class RollyChatClient @Inject constructor(
             if (history.isNotBlank()) put("history", history)
             put("stream", stream)
             put("useFallback", useFallback)
+            // v2.1.61 : transmet le code locale de l'app pour que ROLLY reponde
+            // dans la langue choisie par l'utilisateur (et pas dans la langue
+            // qu'il devine du message). Lecture via AppCompatDelegate qui est
+            // la source de verite per-app language (Android 13+) avec fallback
+            // compat pre-Tiramisu.
+            val tag = currentAppLanguageTag()
+            if (tag.isNotBlank()) put("userLanguage", tag)
             if (imageBitmap != null) {
                 val baos = ByteArrayOutputStream()
                 imageBitmap.compress(Bitmap.CompressFormat.JPEG, 85, baos)
@@ -199,5 +206,22 @@ class RollyChatClient @Inject constructor(
             }
         }
         return obj.toString()
+    }
+
+    /**
+     * Renvoie le tag BCP 47 de la 1ere locale active de l'app (ex "fr", "pcm",
+     * "dua"). Si aucune locale per-app n'est definie, retombe sur la locale
+     * systeme (qui pour la plupart des telephones camerounais sera "fr").
+     * Vide si tout echoue — le serveur tombera alors en mode detection auto.
+     */
+    private fun currentAppLanguageTag(): String = try {
+        val appLocales = androidx.appcompat.app.AppCompatDelegate.getApplicationLocales()
+        if (!appLocales.isEmpty) {
+            appLocales.get(0)?.language.orEmpty()
+        } else {
+            java.util.Locale.getDefault().language.orEmpty()
+        }
+    } catch (_: Throwable) {
+        ""
     }
 }

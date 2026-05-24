@@ -50,6 +50,48 @@ function pickSystemPrompt(mode, useFallback) {
   }
 }
 
+// v2.1.61 : preambule de langue prioritaire. Le client envoie le code locale
+// de l'app (ex "fr", "ar", "pcm", "dua", "bas", "ful", "dii") et on l'injecte
+// en haut du systemInstruction pour forcer Gemini a repondre dans cette langue
+// MEME si le message utilisateur est en francais (ex le user a configure son
+// app en pidgin mais ecrit en francais pour aller plus vite — il veut quand
+// meme une reponse en pidgin).
+const LANGUAGE_NAMES = {
+  fr: "francais",
+  en: "anglais",
+  ar: "arabe",
+  pcm: "Pidgin English camerounais (Kamtok)",
+  dua: "duala",
+  bas: "bassa",
+  ful: "fulfulde (Adamaoua/Nord Cameroun)",
+  dii: "dii (dourou)",
+};
+
+function buildLanguagePreamble(userLanguage, mode) {
+  // Modes JSON structures (meal_json, meal_image) : pas de langue libre,
+  // c'est du JSON pur — on skip le preambule pour ne pas perturber le format.
+  if (mode === "meal_json" || mode === "meal_image") return null;
+
+  const tag = (userLanguage || "").toLowerCase().split("-")[0];
+  const name = LANGUAGE_NAMES[tag] || null;
+  if (!name) return null; // langue inconnue / non transmise -> comportement par defaut (detection auto)
+
+  return `═══ LANGUE DE REPONSE ═══
+Configuration utilisateur : application DiaSmart en ${name} (code ${tag}).
+
+REGLE DE DECISION (dans l'ordre) :
+1. SI le message utilisateur est clairement ecrit dans une langue donnee (au moins 5 mots significatifs detectables), reponds DANS LA LANGUE DU MESSAGE.
+2. SINON (message tres court, mot isole, ambiguite, salutation, "oui"/"non"), reponds dans la langue configuree de l'app : ${name}.
+3. Code-switching naturel : si l'utilisateur melange (ex francais + pidgin), melange aussi dans ta reponse — c'est le comportement naturel au Cameroun.
+
+VOCABULAIRE :
+- Termes medicaux techniques (insuline, HbA1c, mg/dL, TIR, glycemie, IMC) restent toujours en francais ou anglais selon la langue principale.
+- Numeros d'urgence (SAMU 119, Police 117, Pompiers 118) restent en chiffres + francais.
+- Ne demande JAMAIS la permission de changer de langue — applique directement.
+
+`;
+}
+
 function pickModelName(useFallback) {
   return useFallback ? "gemini-2.0-flash" : "gemini-2.5-flash";
 }
@@ -108,6 +150,7 @@ module.exports = async (req, res) => {
     imageBase64 = "",
     stream = false,
     useFallback = false,
+    userLanguage = "",  // v2.1.61 : code locale de l'app (fr, en, ar, pcm, dua, bas, ful, dii)
   } = req.body || {};
 
   if (typeof message !== "string" || message.length === 0) {
@@ -141,7 +184,12 @@ module.exports = async (req, res) => {
     console.warn("rate_limit_check_failed:", e.message);
   }
 
-  const systemInstruction = pickSystemPrompt(mode, useFallback);
+  let systemInstruction = pickSystemPrompt(mode, useFallback);
+  // v2.1.61 : prepend preambule de langue si le client a transmis sa locale.
+  const langPreamble = buildLanguagePreamble(userLanguage, mode);
+  if (langPreamble) {
+    systemInstruction = langPreamble + systemInstruction;
+  }
   const modelName = pickModelName(useFallback);
   const userPrompt = buildUserPrompt(mode, message, context, history);
 
