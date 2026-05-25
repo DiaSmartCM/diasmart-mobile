@@ -110,7 +110,7 @@ fun MessagerieScreen(
             val messagerieSeen by onboardingVm.messagerieSeen.collectAsStateWithLifecycle()
             com.diabeto.ui.components.ContextualTooltip(
                 visible = !messagerieSeen,
-                title = "Messagerie patient-medecin",
+                title = stringResource(R.string.msg_screen_title) + " " + stringResource(R.string.card_messaging_subtitle),
                 message = "Echange textuel ou par appel video avec ton medecin attitre. Tape sur le bouton + (en bas) pour demarrer une nouvelle conversation. Tu peux envoyer des PDF (rapports, ordonnances).",
                 onDismiss = onboardingVm::dismissMessagerie
             )

@@ -17,7 +17,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.diabeto.R
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -48,8 +50,8 @@ fun PredictiveGlucoseScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("Courbes prédictives", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                        Text("ROLLY - Prédiction glycémique", fontSize = 12.sp, color = OnSurfaceVariant)
+                        Text(stringResource(R.string.predict_title), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.predict_subtitle), fontSize = 12.sp, color = OnSurfaceVariant)
                     }
                 },
                 navigationIcon = {
@@ -67,7 +69,7 @@ fun PredictiveGlucoseScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     CircularProgressIndicator()
                     Spacer(Modifier.height(12.dp))
-                    Text("Analyse des données...")
+                    Text(stringResource(R.string.predict_analyzing))
                 }
             }
         } else {
@@ -112,7 +114,7 @@ fun PredictiveGlucoseScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     RollyIcon(size = 28.dp, showBackground = true)
                     Spacer(Modifier.width(8.dp))
-                    Text("Prédiction ROLLY", fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.predict_rolly), fontWeight = FontWeight.Bold)
                 }
             },
             text = {
@@ -128,7 +130,7 @@ fun PredictiveGlucoseScreen(
                 }
             },
             confirmButton = {
-                Button(onClick = viewModel::dismissAnalysis) { Text("Fermer") }
+                Button(onClick = viewModel::dismissAnalysis) { Text(stringResource(R.string.common_close)) }
             }
         )
     }
@@ -150,7 +152,7 @@ private fun CurrentStatusCard(uiState: PredictiveUiState) {
                 Alignment.CenterVertically
             ) {
                 Column {
-                    Text("Glycémie actuelle", style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
+                    Text(stringResource(R.string.predict_current), style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text(
                             "${uiState.currentValue?.toInt() ?: "---"}",
@@ -209,8 +211,8 @@ private fun PredictiveChartCard(uiState: PredictiveUiState) {
         colors = CardDefaults.cardColors(Color.White)
     ) {
         Column(Modifier.padding(16.dp)) {
-            Text("Prédiction des 6 prochaines heures", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            Text("Basée sur vos données récentes", style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
+            Text(stringResource(R.string.predict_6h_title), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text(stringResource(R.string.predict_6h_basis), style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
             Spacer(Modifier.height(12.dp))
 
             if (uiState.historicalPoints.isNotEmpty() || uiState.predictedPoints.isNotEmpty()) {
@@ -236,8 +238,8 @@ private fun PredictiveChartCard(uiState: PredictiveUiState) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Outlined.Timeline, null, Modifier.size(48.dp), tint = OnSurfaceVariant)
                         Spacer(Modifier.height(8.dp))
-                        Text("Données insuffisantes", color = OnSurfaceVariant)
-                        Text("Ajoutez des mesures de glycémie", style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
+                        Text(stringResource(R.string.glucose_insufficient_data), color = OnSurfaceVariant)
+                        Text(stringResource(R.string.predict_add_measures), style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
                     }
                 }
             }

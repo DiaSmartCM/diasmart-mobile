@@ -19,10 +19,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.diabeto.R
 import androidx.core.content.ContextCompat
 import com.diabeto.ui.theme.*
 
@@ -165,7 +167,7 @@ fun VideoCallScreen(
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = Primary)
                     ) {
-                        Text("Autoriser")
+                        Text(stringResource(R.string.common_authorize))
                     }
                 }
             } else {

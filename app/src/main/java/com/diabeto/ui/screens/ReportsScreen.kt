@@ -593,7 +593,7 @@ private fun ExportCsvSection(
                 } else {
                     Icon(Icons.Default.Share, contentDescription = null)
                     Spacer(Modifier.width(6.dp))
-                    Text("Exporter et partager CSV")
+                    Text(stringResource(R.string.reports_export_share_csv))
                 }
             }
         }
@@ -610,7 +610,7 @@ private fun HistorySection(state: com.diabeto.ui.viewmodel.ReportUiState) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.History, contentDescription = null)
                 Spacer(Modifier.width(6.dp))
-                Text("Historique", fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.reports_history), fontWeight = FontWeight.SemiBold)
             }
             Spacer(Modifier.height(10.dp))
             val df = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.FRANCE) }

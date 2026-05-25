@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -39,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.diabeto.R
 import com.diabeto.data.model.RepasAnalyse
 import com.diabeto.data.model.RepasDocument
 import com.diabeto.ui.components.RollyIconInline
@@ -216,7 +218,7 @@ fun RepasAnalyseScreen(
                                 strokeWidth = 2.dp
                             )
                             Spacer(modifier = Modifier.width(12.dp))
-                            Text("ROLLY analyse votre repas...", color = AccentCyan)
+                            Text(stringResource(R.string.repas_rolly_analyzing), color = AccentCyan)
                         }
                     }
                 }
@@ -288,7 +290,7 @@ fun RepasAnalyseScreen(
                         } else {
                             Icon(Icons.Default.CheckCircle, null)
                             Spacer(Modifier.width(8.dp))
-                            Text("Confirmer et enregistrer", fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.repas_confirm_save), fontWeight = FontWeight.Bold)
                         }
                     }
                     Spacer(Modifier.height(16.dp))
@@ -436,7 +438,7 @@ fun RepasAnalyseScreen(
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = AccentCyan),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("Modifier", fontSize = 13.sp)
+                            Text(stringResource(R.string.common_modify), fontSize = 13.sp)
                         }
                         Button(
                             onClick = viewModel::confirmerEtSauvegarder,
@@ -451,7 +453,7 @@ fun RepasAnalyseScreen(
                                 tint = Color.White
                             )
                             Spacer(Modifier.width(4.dp))
-                            Text("Confirmer", fontSize = 13.sp, color = Color.White)
+                            Text(stringResource(R.string.settings_confirm), fontSize = 13.sp, color = Color.White)
                         }
                     }
                 }
@@ -466,7 +468,7 @@ fun RepasAnalyseScreen(
             titleContentColor = TextPrimary,
             textContentColor = TextSecondary,
             icon = { Icon(Icons.Default.ShowChart, null, tint = AccentCyan) },
-            title = { Text("Integrer la glycemie ?", fontWeight = FontWeight.Bold) },
+            title = { Text(stringResource(R.string.repas_integrate_glucose), fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     uiState.glycemieAvantSauvegardee?.let {
@@ -511,12 +513,12 @@ fun RepasAnalyseScreen(
                 ) {
                     Icon(Icons.Default.AddChart, null, modifier = Modifier.size(18.dp), tint = Color.White)
                     Spacer(Modifier.width(6.dp))
-                    Text("Oui, integrer", color = Color.White)
+                    Text(stringResource(R.string.repas_yes_integrate), color = Color.White)
                 }
             },
             dismissButton = {
                 TextButton(onClick = viewModel::refuserIntegrationGlycemie) {
-                    Text("Non, pas maintenant", color = TextTertiary)
+                    Text(stringResource(R.string.repas_no_now), color = TextTertiary)
                 }
             }
         )

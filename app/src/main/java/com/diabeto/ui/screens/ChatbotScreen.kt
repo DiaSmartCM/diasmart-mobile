@@ -185,8 +185,8 @@ fun ChatbotScreen(
             val rollySeen by onboardingVm.rollySeen.collectAsStateWithLifecycle()
             com.diabeto.ui.components.ContextualTooltip(
                 visible = !rollySeen,
-                title = "Ton assistant ROLLY",
-                message = "Pose tes questions en francais, pidgin, ewondo, duala, bassa, fulfulde ou arabe. En cas d'urgence (tape \"malaise\", \"vertige\"...), les numeros SAMU 119 apparaissent immediatement.",
+                title = stringResource(R.string.chatbot_assistant),
+                message = stringResource(R.string.onb_rolly_tip),
                 onDismiss = onboardingVm::dismissRolly
             )
             // Chips d'analyse rapide
@@ -255,7 +255,7 @@ fun ChatbotScreen(
                                 containerColor = Primary
                             ),
                             shape = RoundedCornerShape(20.dp)
-                        ) { Text("Fermer", color = Color.White) }
+                        ) { Text(stringResource(R.string.common_close), color = Color.White) }
                     }
                 )
             }
@@ -350,7 +350,7 @@ fun ChatbotScreen(
                     confirmButton = {},
                     dismissButton = {
                         TextButton(onClick = viewModel::dismissValidation) {
-                            Text("Passer", color = Color.White.copy(alpha = 0.5f))
+                            Text(stringResource(R.string.onb_skip), color = Color.White.copy(alpha = 0.5f))
                         }
                     }
                 )

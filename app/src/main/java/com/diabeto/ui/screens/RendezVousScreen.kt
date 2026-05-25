@@ -613,7 +613,7 @@ private fun MedecinRendezVousCard(
             },
             dismissButton = {
                 TextButton(onClick = { showConfirmDialog = false }) {
-                    Text("Annuler")
+                    Text(stringResource(R.string.action_cancel))
                 }
             }
         )
@@ -840,7 +840,7 @@ private fun MedecinRequestCard(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Refuser")
+                    Text(stringResource(R.string.common_refuse))
                 }
                 Button(
                     onClick = onAccept,
@@ -853,7 +853,7 @@ private fun MedecinRequestCard(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Accepter")
+                    Text(stringResource(R.string.common_accept))
                 }
             }
         }
@@ -969,7 +969,7 @@ private fun PatientRequestCard(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Annuler la demande")
+                    Text(stringResource(R.string.rdv_cancel_request))
                 }
             }
         }
@@ -999,7 +999,7 @@ private fun BookAppointmentDialog(
     ) {
         datepicker(
             initialDate = state.date,
-            title = "Date souhaitée",
+            title = stringResource(R.string.rdv_wanted_date),
             allowedDateValidator = { it.isAfter(LocalDate.now().minusDays(1)) }
         ) { date ->
             onUpdateField("date", date)
@@ -1015,7 +1015,7 @@ private fun BookAppointmentDialog(
     ) {
         timepicker(
             initialTime = state.heure,
-            title = "Heure souhaitée"
+            title = stringResource(R.string.rdv_wanted_time)
         ) { time ->
             onUpdateField("heure", time)
         }
@@ -1023,7 +1023,7 @@ private fun BookAppointmentDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Demander un rendez-vous") },
+        title = { Text(stringResource(R.string.rdv_request_dialog)) },
         text = {
             Column(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -1186,7 +1186,7 @@ private fun BookAppointmentDialog(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
-                    Text("Envoyer")
+                    Text(stringResource(R.string.common_send))
                 }
             }
         },
@@ -1695,7 +1695,7 @@ fun RendezVousEditScreen(
                     onClick = onNavigateBack,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Annuler")
+                    Text(stringResource(R.string.action_cancel))
                 }
                 Button(
                     onClick = { viewModel.addRendezVous() },

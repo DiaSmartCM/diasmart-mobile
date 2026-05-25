@@ -19,6 +19,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.res.stringResource
+import com.diabeto.R
 import com.diabeto.data.model.ConsentStatus
 import com.diabeto.data.model.DataSharingConsent
 import com.diabeto.data.model.UserProfile
@@ -54,16 +56,16 @@ fun PatientsListScreen(
                 title = {
                     Text(
                         when {
-                            !uiState.isMedecin -> "Mes Patients"
-                            medecinMode == MedecinPatientsMode.PLATFORM_SEARCH -> "Ajouter un patient"
-                            else -> "Mes patients"
+                            !uiState.isMedecin -> stringResource(R.string.patients_title_my)
+                            medecinMode == MedecinPatientsMode.PLATFORM_SEARCH -> stringResource(R.string.patients_title_add)
+                            else -> stringResource(R.string.patients_title_my)
                         },
                         fontWeight = FontWeight.Bold
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Retour")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.cd_back))
                     }
                 },
                 colors = diaSmartTopAppBarColors()
@@ -81,7 +83,7 @@ fun PatientsListScreen(
             OutlinedTextField(
                 value = uiState.searchQuery,
                 onValueChange = viewModel::onSearchQueryChange,
-                label = { Text("Rechercher un patient...") },
+                label = { Text(stringResource(R.string.patients_search_hint)) },
                 leadingIcon = { Icon(Icons.Default.Search, null) },
                 trailingIcon = {
                     if (uiState.searchQuery.isNotEmpty()) {
@@ -138,9 +140,9 @@ fun PatientsListScreen(
                         if (filtered.isEmpty()) {
                             EmptyState(
                                 if (uiState.searchQuery.isBlank())
-                                    "Aucun patient abonne. Ajoutez un patient depuis l'accueil."
+                                    stringResource(R.string.patients_empty_none)
                                 else
-                                    "Aucun patient ne correspond",
+                                    stringResource(R.string.patients_empty_no_match),
                                 Icons.Default.HourglassEmpty
                             )
                         } else {
@@ -175,7 +177,7 @@ fun PatientsListScreen(
                                 Icon(Icons.Default.NotificationsActive, null, tint = Warning)
                                 Spacer(Modifier.width(8.dp))
                                 Text(
-                                    "Demandes d'acces en attente",
+                                    stringResource(R.string.patients_pending_requests),
                                     fontWeight = FontWeight.Bold,
                                     color = Warning
                                 )
@@ -286,7 +288,7 @@ private fun PlatformPatientCard(
                         Row(Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.CheckCircle, null, tint = StatusGreen, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text("Accepte", fontSize = 12.sp, color = StatusGreen, fontWeight = FontWeight.Medium)
+                            Text(stringResource(R.string.patients_accepted), fontSize = 12.sp, color = StatusGreen, fontWeight = FontWeight.Medium)
                         }
                     }
                 }
@@ -323,7 +325,7 @@ private fun PlatformPatientCard(
                         } else {
                             Icon(Icons.Default.PersonAdd, null, Modifier.size(16.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text("Demander acces", fontSize = 12.sp)
+                            Text(stringResource(R.string.patients_request_access), fontSize = 12.sp)
                         }
                     }
                 }
@@ -356,7 +358,7 @@ private fun MyPatientCard(
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(consent.patientNom, fontWeight = FontWeight.SemiBold)
-                Text("Acces accorde", style = MaterialTheme.typography.bodySmall, color = StatusGreen)
+                Text(stringResource(R.string.patients_access_granted), style = MaterialTheme.typography.bodySmall, color = StatusGreen)
             }
             Icon(Icons.Default.ChevronRight, null, tint = OnSurfaceVariant)
         }

@@ -858,7 +858,7 @@ private fun RateDoctorDialog(
                     value = comment,
                     onValueChange = { if (it.length <= 500) comment = it },
                     label = { Text(stringResource(R.string.val_comment_placeholder)) },
-                    placeholder = { Text("Votre expérience, accueil, suivi...") },
+                    placeholder = { Text(stringResource(R.string.ds_review_placeholder)) },
                     minLines = 3,
                     maxLines = 5,
                     shape = RoundedCornerShape(12.dp),
@@ -888,7 +888,7 @@ private fun RateDoctorDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSubmitting) { Text("Annuler") }
+            TextButton(onClick = onDismiss, enabled = !isSubmitting) { Text(stringResource(R.string.action_cancel)) }
         }
     )
 }
@@ -934,7 +934,7 @@ private fun DoctorReviewsDialog(
                         CircularProgressIndicator()
                     }
                     reviews.isEmpty() -> Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                        Text("Aucun avis publié pour le moment.", color = OnSurfaceVariant, textAlign = TextAlign.Center)
+                        Text(stringResource(R.string.ds_no_review_published), color = OnSurfaceVariant, textAlign = TextAlign.Center)
                     }
                     else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         items(reviews, key = { it.id }) { r -> ReviewItemCard(r) }
@@ -943,7 +943,7 @@ private fun DoctorReviewsDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Fermer") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_close)) }
         }
     )
 }

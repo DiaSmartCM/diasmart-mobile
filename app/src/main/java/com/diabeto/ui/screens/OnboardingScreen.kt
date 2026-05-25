@@ -21,10 +21,12 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.diabeto.R
 import com.diabeto.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -42,11 +44,12 @@ data class OnboardingPage(
     val accentColor: Color
 )
 
-private val pages = listOf(
+@Composable
+private fun pages() = listOf(
     OnboardingPage(
         icon = "\uD83E\uDE78",  // 🩸
-        title = "Suivi Intelligent",
-        subtitle = "Gerez votre diabete au quotidien",
+        title = stringResource(R.string.onb_t1),
+        subtitle = stringResource(R.string.onb_s1),
         features = listOf(
             "\uD83D\uDCC8  Suivi glycemique en temps reel",
             "\uD83D\uDC8A  Gestion des medicaments",
@@ -57,8 +60,8 @@ private val pages = listOf(
     ),
     OnboardingPage(
         icon = "\uD83E\uDD16",  // 🤖
-        title = "ROLLY, votre assistant IA",
-        subtitle = "Un chatbot medical disponible 24h/24",
+        title = stringResource(R.string.onb_t2),
+        subtitle = stringResource(R.string.onb_s2),
         features = listOf(
             "\uD83D\uDCAC  Reponses personnalisees",
             "\uD83D\uDCC9  Predictions glycemiques a 6h",
@@ -69,8 +72,8 @@ private val pages = listOf(
     ),
     OnboardingPage(
         icon = "\uD83D\uDC65",  // 👥
-        title = "Connecte & Securise",
-        subtitle = "Partagez avec votre equipe medicale",
+        title = stringResource(R.string.onb_t3),
+        subtitle = stringResource(R.string.onb_s3),
         features = listOf(
             "\uD83D\uDCE9  Messagerie medecin-patient",
             "\uD83D\uDD14  Rappels intelligents",
@@ -85,7 +88,8 @@ private val pages = listOf(
 fun OnboardingScreen(
     onFinished: () -> Unit
 ) {
-    val pagerState = rememberPagerState(pageCount = { pages.size })
+    val pageList = pages()
+    val pagerState = rememberPagerState(pageCount = { pageList.size })
     val scope = rememberCoroutineScope()
 
     Box(
@@ -104,7 +108,7 @@ fun OnboardingScreen(
                 .offset(x = (-100).dp, y = (-80).dp)
                 .blur(80.dp)
                 .alpha(0.2f)
-                .background(pages[pagerState.currentPage].accentColor, CircleShape)
+                .background(pageList[pagerState.currentPage].accentColor, CircleShape)
         )
         Box(
             modifier = Modifier
@@ -112,7 +116,7 @@ fun OnboardingScreen(
                 .offset(x = 150.dp, y = 500.dp)
                 .blur(70.dp)
                 .alpha(0.15f)
-                .background(pages[pagerState.currentPage].accentColor, CircleShape)
+                .background(pageList[pagerState.currentPage].accentColor, CircleShape)
         )
 
         Column(
@@ -128,7 +132,7 @@ fun OnboardingScreen(
             ) {
                 TextButton(onClick = onFinished) {
                     Text(
-                        "Passer",
+                        stringResource(R.string.onb_skip),
                         color = Color.White.copy(alpha = 0.6f),
                         fontSize = 14.sp
                     )
@@ -140,7 +144,7 @@ fun OnboardingScreen(
                 state = pagerState,
                 modifier = Modifier.weight(1f)
             ) { page ->
-                OnboardingPageContent(pages[page])
+                OnboardingPageContent(pageList[page])
             }
 
             // Indicateurs de page
@@ -148,7 +152,7 @@ fun OnboardingScreen(
                 modifier = Modifier.padding(bottom = 24.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                repeat(pages.size) { index ->
+                repeat(pageList.size) { index ->
                     val isSelected = pagerState.currentPage == index
                     Box(
                         modifier = Modifier
@@ -156,7 +160,7 @@ fun OnboardingScreen(
                             .width(if (isSelected) 28.dp else 8.dp)
                             .clip(CircleShape)
                             .background(
-                                if (isSelected) pages[index].accentColor
+                                if (isSelected) pageList[index].accentColor
                                 else Color.White.copy(alpha = 0.3f)
                             )
                     )
@@ -164,7 +168,7 @@ fun OnboardingScreen(
             }
 
             // Bouton action
-            val isLastPage = pagerState.currentPage == pages.size - 1
+            val isLastPage = pagerState.currentPage == pageList.size - 1
 
             Button(
                 onClick = {
@@ -183,11 +187,11 @@ fun OnboardingScreen(
                     .height(56.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = pages[pagerState.currentPage].accentColor
+                    containerColor = pageList[pagerState.currentPage].accentColor
                 )
             ) {
                 Text(
-                    text = if (isLastPage) "Commencer" else "Suivant",
+                    text = if (isLastPage) stringResource(R.string.onb_lets_go) else stringResource(R.string.onb_next),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = Color.White

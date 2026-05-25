@@ -23,7 +23,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.diabeto.R
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -61,7 +63,7 @@ fun EmergencyCallButton(
     ) {
         Icon(
             imageVector = Icons.Default.Call,
-            contentDescription = "Appel d'urgence $number",
+            contentDescription = "${stringResource(R.string.emergency_call_desc)} $number",
             tint = tint
         )
     }
@@ -161,7 +163,7 @@ private fun EmergencyNumberDialog(
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "Urgence Cameroun",
+                    stringResource(R.string.emergency_title),
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp
                 )
@@ -170,25 +172,25 @@ private fun EmergencyNumberDialog(
         text = {
             Column {
                 Text(
-                    "Choisis le service a appeler :",
+                    stringResource(R.string.emergency_choose),
                     fontSize = 14.sp
                 )
                 Spacer(Modifier.height(16.dp))
 
                 EmergencyNumberRow(
-                    label = "SAMU (medical)",
+                    label = stringResource(R.string.emergency_samu),
                     number = "119",
                     onClick = { onCallNumber("119") }
                 )
                 Spacer(Modifier.height(8.dp))
                 EmergencyNumberRow(
-                    label = "Police Secours",
+                    label = stringResource(R.string.emergency_police),
                     number = "117",
                     onClick = { onCallNumber("117") }
                 )
                 Spacer(Modifier.height(8.dp))
                 EmergencyNumberRow(
-                    label = "Pompiers",
+                    label = stringResource(R.string.emergency_pompiers),
                     number = "118",
                     onClick = { onCallNumber("118") }
                 )
@@ -196,7 +198,7 @@ private fun EmergencyNumberDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Annuler")
+                Text(stringResource(R.string.action_cancel))
             }
         }
     )
@@ -267,9 +269,10 @@ fun VoiceInputButton(
     onTextRecognized: (String) -> Unit,
     modifier: Modifier = Modifier,
     tint: Color = Color(0xFF6771E4),
-    prompt: String = "Parle a ROLLY..."
+    prompt: String? = null
 ) {
     val context = LocalContext.current
+    val resolvedPrompt = prompt ?: stringResource(R.string.voice_prompt)
 
     // v2.1.9 : detecte si l'appareil est hors-ligne pour activer le mode offline
     // de Google Speech Recognition (necessite un pack vocal fr-FR telecharge
@@ -314,7 +317,7 @@ fun VoiceInputButton(
                     RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
                 )
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE, "fr-FR")
-                putExtra(RecognizerIntent.EXTRA_PROMPT, prompt)
+                putExtra(RecognizerIntent.EXTRA_PROMPT, resolvedPrompt)
                 putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
                 // Active la detection de fin de parole (auto-arret silence)
                 putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 1500L)
@@ -342,7 +345,7 @@ fun VoiceInputButton(
     ) {
         Icon(
             imageVector = Icons.Default.Mic,
-            contentDescription = "Saisie vocale",
+            contentDescription = stringResource(R.string.voice_input_desc),
             tint = tint
         )
     }

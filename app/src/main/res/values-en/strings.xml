@@ -502,4 +502,154 @@
     <string name="fam_invite_email_label">Caregiver email</string>
     <string name="fam_invite_relation_label">Relationship (e.g. son, spouse, parent)</string>
     <string name="fam_send">Send</string>
+
+    <!-- v2.1.66 Phase D1 -->
+    <string name="settings_section_about">About</string>
+    <string name="settings_section_legal">Legal</string>
+    <string name="settings_about_version">Version</string>
+    <string name="settings_about_contact">Contact</string>
+    <string name="settings_about_app_desc">Intelligent Diabetology</string>
+    <string name="settings_legal_privacy_title">Privacy policy</string>
+    <string name="settings_legal_privacy_subtitle">GDPR - Data protection</string>
+    <string name="settings_legal_license_title">License</string>
+    <string name="settings_legal_license_subtitle">Proprietary license - NGOS THEODORE</string>
+    <string name="settings_legal_terms_title">Terms of use</string>
+    <string name="settings_legal_terms_subtitle">Terms and conditions</string>
+    <string name="settings_target_min">Minimum (mg/dL)</string>
+    <string name="settings_target_max">Maximum (mg/dL)</string>
+    <string name="settings_lock_method_title">Lock method</string>
+    <string name="settings_method_biometric">Fingerprint</string>
+    <string name="settings_method_pin">PIN code (4 digits)</string>
+    <string name="settings_method_password">Password</string>
+    <string name="settings_method_none">None</string>
+    <string name="settings_lock_method_change">Change method</string>
+    <string name="settings_lock_method_change_sub">Choose between fingerprint, PIN or password</string>
+    <string name="settings_export_my_data">Export my data</string>
+    <string name="settings_export_my_data_sub">CSV, PDF — glucose, meals, medications</string>
+    <string name="settings_family_section">Family mode</string>
+    <string name="settings_family_aidants">My caregivers</string>
+    <string name="settings_family_aidants_sub">Invite a relative as read-only (1 free)</string>
+    <string name="settings_receipt_share">Share / Save</string>
+    <string name="settings_receipt_saved">I have saved it</string>
+    <string name="settings_confirm">Confirm</string>
+
+    <string name="patients_title_my">My patients</string>
+    <string name="patients_title_add">Add a patient</string>
+    <string name="patients_search_hint">Search a patient…</string>
+    <string name="patients_empty_none">No patient subscribed. Add a patient from home.</string>
+    <string name="patients_empty_no_match">No patient matches</string>
+    <string name="patients_pending_requests">Pending access requests</string>
+    <string name="patients_access_granted">Access granted</string>
+    <string name="patients_request_access">Request access</string>
+    <string name="patients_accepted">Accepted</string>
+
+    <string name="patient_edit_screen_title">Edit patient</string>
+    <string name="pf_name">Name</string>
+    <string name="pf_firstname">First name</string>
+    <string name="pf_birth">Date of birth</string>
+    <string name="pf_sex">Sex</string>
+    <string name="pf_phone">Phone</string>
+    <string name="pf_email">Email</string>
+    <string name="pf_address">Address</string>
+    <string name="pf_diabetes_type">Diabetes type</string>
+    <string name="pf_diag_date">Diagnosis date</string>
+
+    <string name="onb_next">Next</string>
+    <string name="onb_lets_go">Let\'s go!</string>
+    <string name="onb_skip">Skip</string>
+    <string name="onb_glucose_title">Track your glucose</string>
+    <string name="onb_glucose_tip">Aim for 4 to 6 measurements per day for optimal tracking.</string>
+    <string name="onb_rolly_title">Talk to ROLLY</string>
+    <string name="onb_rolly_tip">For an emergency, just type \"malaise\" or \"dizziness\".</string>
+    <string name="onb_doctor_title">Share with your doctor</string>
+    <string name="onb_doctor_desc">Authorize a doctor to view your data from the \"My doctor\" screen.</string>
+    <string name="onb_community_title">Join the community</string>
+    <string name="onb_med_view_title">Your patients at a glance</string>
+    <string name="onb_med_view_desc">\"My patients\" list: all those who authorized you see their glucose, HbA1c, meals and medications synced.</string>
+
+    <string name="emergency_title">Cameroon Emergency</string>
+    <string name="emergency_choose">Choose the service to call:</string>
+    <string name="emergency_samu">SAMU (medical)</string>
+    <string name="emergency_police">Police</string>
+    <string name="emergency_pompiers">Firefighters</string>
+    <string name="emergency_call_desc">Emergency call</string>
+
+    <string name="voice_prompt">Talk to ROLLY…</string>
+    <string name="voice_offline_unavailable">Offline voice recognition unavailable. Connect to the internet to use voice.</string>
+    <string name="voice_input_desc">Voice input</string>
+
+    <string name="lock_pin_incorrect">Incorrect PIN</string>
+    <string name="lock_password_incorrect">Incorrect password</string>
+    <string name="lock_settings_security">Settings > Security.</string>
+    <string name="lock_unlock">Unlock</string>
+    <string name="lock_show">Show</string>
+    <string name="lock_hide">Hide</string>
+
+    <string name="tooltip_close">Close</string>
+
+    <!-- v2.1.66 Phase D2 -->
+    <string name="common_send">Send</string>
+    <string name="common_accept">Accept</string>
+    <string name="common_refuse">Decline</string>
+    <string name="common_authorize">Authorize</string>
+    <string name="common_validate">Validate</string>
+
+    <string name="glucose_screen_title">Glucose tracking</string>
+    <string name="glucose_avg_short">Avg glucose</string>
+    <string name="glucose_hba1c_est">Estimated HbA1c</string>
+    <string name="glucose_estimation">Estimation</string>
+    <string name="glucose_insufficient_data">Insufficient data</string>
+    <string name="glucose_lab_result">Lab result</string>
+
+    <string name="repas_rolly_analyzing">ROLLY is analyzing your meal…</string>
+    <string name="repas_confirm_save">Confirm and save</string>
+    <string name="repas_integrate_glucose">Integrate glucose?</string>
+    <string name="repas_yes_integrate">Yes, integrate</string>
+    <string name="repas_no_now">Not now</string>
+
+    <string name="rdv_cancel_request">Cancel request</string>
+    <string name="rdv_request_dialog">Request an appointment</string>
+    <string name="rdv_wanted_date">Desired date</string>
+    <string name="rdv_wanted_time">Desired time</string>
+
+    <string name="predict_title">Predictive curves</string>
+    <string name="predict_subtitle">ROLLY - Glucose prediction</string>
+    <string name="predict_analyzing">Analyzing data…</string>
+    <string name="predict_rolly">ROLLY prediction</string>
+    <string name="predict_current">Current glucose</string>
+    <string name="predict_6h_title">Next 6 hours prediction</string>
+    <string name="predict_6h_basis">Based on your recent data</string>
+    <string name="predict_add_measures">Add glucose measurements</string>
+
+    <string name="pd_info_weight">Weight</string>
+    <string name="pd_info_height">Height</string>
+    <string name="pd_info_waist">Waist size</string>
+    <string name="pd_info_fat">Body fat</string>
+
+    <string name="onb_t1">Smart tracking</string>
+    <string name="onb_s1">Manage your diabetes daily</string>
+    <string name="onb_t2">ROLLY, your AI assistant</string>
+    <string name="onb_s2">A medical chatbot available 24/7</string>
+    <string name="onb_t3">Connected &amp; Secure</string>
+    <string name="onb_s3">Share with your medical team</string>
+
+    <string name="shared_data_shared">Shared data</string>
+    <string name="shared_create_rdv">Create appointment</string>
+    <string name="shared_refresh">Refresh</string>
+
+    <string name="community_title">DiaSmart Community</string>
+    <string name="community_no_messages">No messages yet</string>
+    <string name="community_be_first">Be the first to write!</string>
+
+    <string name="mesavis_title">My reviews</string>
+
+    <string name="chatbot_assistant">Your ROLLY assistant</string>
+
+    <string name="reports_export_share_csv">Export and share CSV</string>
+    <string name="reports_history">History</string>
+
+    <string name="ds_review_placeholder">Your experience, welcome, follow-up…</string>
+    <string name="ds_no_review_published">No reviews published yet.</string>
+
+    <string name="dash_recent_patients">Recent patients</string>
 </resources>

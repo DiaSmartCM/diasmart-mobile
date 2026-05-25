@@ -490,4 +490,154 @@
     <string name="fam_invite_email_label">بريد المساعد</string>
     <string name="fam_invite_relation_label">العلاقة (مثلا: ابن، زوج، والد)</string>
     <string name="fam_send">إرسال</string>
+
+    <!-- v2.1.66 Phase D1 -->
+    <string name="settings_section_about">عن التطبيق</string>
+    <string name="settings_section_legal">قانوني</string>
+    <string name="settings_about_version">الإصدار</string>
+    <string name="settings_about_contact">اتصال</string>
+    <string name="settings_about_app_desc">السكري الذكي</string>
+    <string name="settings_legal_privacy_title">سياسة الخصوصية</string>
+    <string name="settings_legal_privacy_subtitle">حماية البيانات</string>
+    <string name="settings_legal_license_title">الترخيص</string>
+    <string name="settings_legal_license_subtitle">ترخيص خاص - NGOS THEODORE</string>
+    <string name="settings_legal_terms_title">شروط الاستخدام</string>
+    <string name="settings_legal_terms_subtitle">الأحكام والشروط</string>
+    <string name="settings_target_min">الحد الأدنى (mg/dL)</string>
+    <string name="settings_target_max">الحد الأقصى (mg/dL)</string>
+    <string name="settings_lock_method_title">طريقة القفل</string>
+    <string name="settings_method_biometric">بصمة الإصبع</string>
+    <string name="settings_method_pin">رمز PIN (4 أرقام)</string>
+    <string name="settings_method_password">كلمة المرور</string>
+    <string name="settings_method_none">لا شيء</string>
+    <string name="settings_lock_method_change">تغيير الطريقة</string>
+    <string name="settings_lock_method_change_sub">اختر بين البصمة أو PIN أو كلمة المرور</string>
+    <string name="settings_export_my_data">تصدير بياناتي</string>
+    <string name="settings_export_my_data_sub">CSV، PDF — السكر، الوجبات، الأدوية</string>
+    <string name="settings_family_section">وضع العائلة</string>
+    <string name="settings_family_aidants">مساعديي</string>
+    <string name="settings_family_aidants_sub">دعوة قريب للقراءة فقط (1 مجاني)</string>
+    <string name="settings_receipt_share">مشاركة / حفظ</string>
+    <string name="settings_receipt_saved">لقد حفظته</string>
+    <string name="settings_confirm">تأكيد</string>
+
+    <string name="patients_title_my">مرضاي</string>
+    <string name="patients_title_add">إضافة مريض</string>
+    <string name="patients_search_hint">البحث عن مريض…</string>
+    <string name="patients_empty_none">لا يوجد مريض مشترك. أضف مريضا من الرئيسية.</string>
+    <string name="patients_empty_no_match">لا يوجد مريض مطابق</string>
+    <string name="patients_pending_requests">طلبات وصول معلقة</string>
+    <string name="patients_access_granted">تم منح الوصول</string>
+    <string name="patients_request_access">طلب الوصول</string>
+    <string name="patients_accepted">مقبول</string>
+
+    <string name="patient_edit_screen_title">تعديل المريض</string>
+    <string name="pf_name">اسم العائلة</string>
+    <string name="pf_firstname">الاسم</string>
+    <string name="pf_birth">تاريخ الميلاد</string>
+    <string name="pf_sex">الجنس</string>
+    <string name="pf_phone">الهاتف</string>
+    <string name="pf_email">البريد الإلكتروني</string>
+    <string name="pf_address">العنوان</string>
+    <string name="pf_diabetes_type">نوع السكري</string>
+    <string name="pf_diag_date">تاريخ التشخيص</string>
+
+    <string name="onb_next">التالي</string>
+    <string name="onb_lets_go">لنبدأ!</string>
+    <string name="onb_skip">تخطي</string>
+    <string name="onb_glucose_title">تتبع السكر</string>
+    <string name="onb_glucose_tip">استهدف 4 إلى 6 قياسات في اليوم للمتابعة المثلى.</string>
+    <string name="onb_rolly_title">تحدث مع ROLLY</string>
+    <string name="onb_rolly_tip">في حالة الطوارئ، اكتب فقط \"وعكة\" أو \"دوار\".</string>
+    <string name="onb_doctor_title">شارك مع طبيبك</string>
+    <string name="onb_doctor_desc">السماح للطبيب برؤية بياناتك من شاشة \"طبيبي\".</string>
+    <string name="onb_community_title">انضم للمجتمع</string>
+    <string name="onb_med_view_title">مرضاك في لمحة</string>
+    <string name="onb_med_view_desc">قائمة \"مرضاي\": جميع من سمحوا لك يظهرون مع قياسات السكر، HbA1c، الوجبات والأدوية متزامنة.</string>
+
+    <string name="emergency_title">طوارئ الكاميرون</string>
+    <string name="emergency_choose">اختر الخدمة للاتصال:</string>
+    <string name="emergency_samu">SAMU (طبي)</string>
+    <string name="emergency_police">الشرطة</string>
+    <string name="emergency_pompiers">الإطفاء</string>
+    <string name="emergency_call_desc">مكالمة طوارئ</string>
+
+    <string name="voice_prompt">تحدث مع ROLLY…</string>
+    <string name="voice_offline_unavailable">التعرف الصوتي غير متاح بدون اتصال. اتصل بالإنترنت لاستخدام الصوت.</string>
+    <string name="voice_input_desc">إدخال صوتي</string>
+
+    <string name="lock_pin_incorrect">رمز PIN غير صحيح</string>
+    <string name="lock_password_incorrect">كلمة مرور غير صحيحة</string>
+    <string name="lock_settings_security">الإعدادات > الأمان.</string>
+    <string name="lock_unlock">فتح القفل</string>
+    <string name="lock_show">إظهار</string>
+    <string name="lock_hide">إخفاء</string>
+
+    <string name="tooltip_close">إغلاق</string>
+
+    <!-- v2.1.66 Phase D2 -->
+    <string name="common_send">إرسال</string>
+    <string name="common_accept">قبول</string>
+    <string name="common_refuse">رفض</string>
+    <string name="common_authorize">تفويض</string>
+    <string name="common_validate">تأكيد</string>
+
+    <string name="glucose_screen_title">متابعة السكر</string>
+    <string name="glucose_avg_short">متوسط السكر</string>
+    <string name="glucose_hba1c_est">HbA1c تقديري</string>
+    <string name="glucose_estimation">تقدير</string>
+    <string name="glucose_insufficient_data">بيانات غير كافية</string>
+    <string name="glucose_lab_result">نتيجة المختبر</string>
+
+    <string name="repas_rolly_analyzing">ROLLY يحلل وجبتك…</string>
+    <string name="repas_confirm_save">تأكيد وحفظ</string>
+    <string name="repas_integrate_glucose">دمج السكر؟</string>
+    <string name="repas_yes_integrate">نعم، دمج</string>
+    <string name="repas_no_now">ليس الآن</string>
+
+    <string name="rdv_cancel_request">إلغاء الطلب</string>
+    <string name="rdv_request_dialog">طلب موعد</string>
+    <string name="rdv_wanted_date">التاريخ المرغوب</string>
+    <string name="rdv_wanted_time">الوقت المرغوب</string>
+
+    <string name="predict_title">منحنيات التوقع</string>
+    <string name="predict_subtitle">ROLLY - توقع السكر</string>
+    <string name="predict_analyzing">تحليل البيانات…</string>
+    <string name="predict_rolly">توقع ROLLY</string>
+    <string name="predict_current">السكر الحالي</string>
+    <string name="predict_6h_title">توقع 6 ساعات قادمة</string>
+    <string name="predict_6h_basis">حسب بياناتك الأخيرة</string>
+    <string name="predict_add_measures">أضف قياسات السكر</string>
+
+    <string name="pd_info_weight">الوزن</string>
+    <string name="pd_info_height">الطول</string>
+    <string name="pd_info_waist">محيط الخصر</string>
+    <string name="pd_info_fat">الدهون</string>
+
+    <string name="onb_t1">متابعة ذكية</string>
+    <string name="onb_s1">إدارة السكري يوميا</string>
+    <string name="onb_t2">ROLLY، مساعدك الذكي</string>
+    <string name="onb_s2">روبوت طبي متاح 24/24</string>
+    <string name="onb_t3">متصل وآمن</string>
+    <string name="onb_s3">شارك مع فريقك الطبي</string>
+
+    <string name="shared_data_shared">بيانات مشتركة</string>
+    <string name="shared_create_rdv">إنشاء موعد</string>
+    <string name="shared_refresh">تحديث</string>
+
+    <string name="community_title">مجتمع DiaSmart</string>
+    <string name="community_no_messages">لا توجد رسائل</string>
+    <string name="community_be_first">كن الأول في الكتابة!</string>
+
+    <string name="mesavis_title">تقييماتي</string>
+
+    <string name="chatbot_assistant">مساعدك ROLLY</string>
+
+    <string name="reports_export_share_csv">تصدير ومشاركة CSV</string>
+    <string name="reports_history">السجل</string>
+
+    <string name="ds_review_placeholder">تجربتك، الاستقبال، المتابعة…</string>
+    <string name="ds_no_review_published">لا توجد تقييمات منشورة بعد.</string>
+
+    <string name="dash_recent_patients">مرضى حديثون</string>
 </resources>

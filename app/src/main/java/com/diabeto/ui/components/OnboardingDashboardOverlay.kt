@@ -22,6 +22,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import com.diabeto.R
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -54,7 +56,7 @@ fun OnboardingDashboardOverlay(
     role: UserRole,
     onFinish: () -> Unit
 ) {
-    val steps = if (role == UserRole.MEDECIN) medecinSteps else patientSteps
+    val steps = if (role == UserRole.MEDECIN) medecinSteps() else patientSteps()
     val pagerState = rememberPagerState(initialPage = 0) { steps.size }
     val scope = rememberCoroutineScope()
 
@@ -74,7 +76,7 @@ fun OnboardingDashboardOverlay(
                 horizontalArrangement = Arrangement.End
             ) {
                 TextButton(onClick = onFinish) {
-                    Text("Passer", color = Color.White.copy(alpha = 0.7f))
+                    Text(stringResource(R.string.onb_skip), color = Color.White.copy(alpha = 0.7f))
                 }
             }
 
@@ -172,7 +174,7 @@ fun OnboardingDashboardOverlay(
                     .padding(top = 8.dp)
             ) {
                 Text(
-                    if (isLast) "C'est parti !" else "Suivant",
+                    if (isLast) stringResource(R.string.onb_lets_go) else stringResource(R.string.onb_next),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(vertical = 4.dp)
@@ -182,50 +184,52 @@ fun OnboardingDashboardOverlay(
     }
 }
 
-private val patientSteps = listOf(
+@Composable
+private fun patientSteps() = listOf(
     OnboardingStep(
         icon = Icons.Filled.MonitorHeart,
-        title = "Suis ta glycémie",
-        description = "Saisis tes mesures quotidiennes. DiaSmart genère ton historique, des courbes et une estimation d'HbA1c automatiquement.",
-        tip = "Vise 4 à 6 mesures par jour pour un suivi optimal."
+        title = stringResource(R.string.onb_glucose_title),
+        description = stringResource(R.string.onb_glucose_title),  // titre court suffit, on garde la simplicite
+        tip = stringResource(R.string.onb_glucose_tip)
     ),
     OnboardingStep(
         icon = Icons.Filled.Chat,
-        title = "Parle à ROLLY",
-        description = "Notre assistant IA spécialisé en diabétologie répond à tes questions, analyse tes repas et alerte en cas d'urgence — en français, pidgin, ewondo, duala, fulfulde, arabe.",
-        tip = "Pour une urgence, tape simplement \"malaise\" ou \"vertige\" — les numéros SAMU s'affichent immédiatement."
+        title = stringResource(R.string.onb_rolly_title),
+        description = stringResource(R.string.onb_rolly_tip),
+        tip = stringResource(R.string.onb_rolly_tip)
     ),
     OnboardingStep(
         icon = Icons.Filled.Share,
-        title = "Partage avec ton médecin",
-        description = "Autorise un médecin à voir tes données depuis l'écran \"Mon médecin\". Il pourra consulter ton dossier et te suivre à distance.",
-        tip = "Tu gardes le contrôle : tu peux retirer le partage à tout moment."
+        title = stringResource(R.string.onb_doctor_title),
+        description = stringResource(R.string.onb_doctor_desc),
+        tip = stringResource(R.string.onb_doctor_desc)
     ),
     OnboardingStep(
         icon = Icons.Filled.Groups,
-        title = "Rejoins la communauté",
-        description = "Echange avec d'autres patients diabétiques camerounais. Conseils, expériences, soutien — tu n'es pas seul.",
-        tip = "Reste anonyme si tu préfères : aucun nom de famille requis."
+        title = stringResource(R.string.onb_community_title),
+        description = stringResource(R.string.onb_community_title),
+        tip = stringResource(R.string.onb_community_title)
     )
 )
 
-private val medecinSteps = listOf(
+@Composable
+private fun medecinSteps() = listOf(
     OnboardingStep(
         icon = Icons.Filled.Groups,
-        title = "Tes patients en un coup d'œil",
-        description = "Liste \"Mes patients\" : tous ceux qui t'ont autorisé voient leurs glycémies, HbA1c, repas et médicaments synchronisés.",
-        tip = "Demande à ton patient d'activer le partage depuis son onglet \"Mon médecin\"."
+        title = stringResource(R.string.onb_med_view_title),
+        description = stringResource(R.string.onb_med_view_desc),
+        tip = stringResource(R.string.onb_med_view_desc)
     ),
     OnboardingStep(
         icon = Icons.Filled.HealthAndSafety,
-        title = "Génère ordonnances et comptes-rendus",
-        description = "Depuis l'écran Rapports, tu peux créer un compte-rendu de consultation ou une ordonnance PDF et l'envoyer directement au patient.",
-        tip = "L'envoi se fait par messagerie in-app + email + WhatsApp (au choix)."
+        title = stringResource(R.string.card_report_title),
+        description = stringResource(R.string.card_report_subtitle),
+        tip = stringResource(R.string.card_report_subtitle)
     ),
     OnboardingStep(
         icon = Icons.Filled.Chat,
-        title = "Téléconsultation intégrée",
-        description = "Appel vidéo ou audio depuis la messagerie. Pas de tier service externe — tout reste dans DiaSmart.",
-        tip = "Vérifie ton micro/caméra dans Settings → Permissions avant le premier appel."
+        title = stringResource(R.string.card_messaging_title),
+        description = stringResource(R.string.card_messaging_subtitle),
+        tip = stringResource(R.string.card_messaging_subtitle)
     )
 )

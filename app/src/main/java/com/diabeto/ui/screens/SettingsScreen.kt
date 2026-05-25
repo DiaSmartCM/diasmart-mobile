@@ -324,8 +324,8 @@ fun SettingsScreen(
                         DayLifeSettingsItem(
                             icon = Icons.Default.Edit,
                             iconBg = Color(0xFF8B93F0),
-                            title = "Changer la methode",
-                            subtitle = "Choisir entre empreinte, PIN ou mot de passe",
+                            title = stringResource(R.string.settings_lock_method_change),
+                            subtitle = stringResource(R.string.settings_lock_method_change_sub),
                             titleColor = titleColor,
                             subtitleColor = subtitleColor,
                             onClick = { showAppLockChooser = true }
@@ -348,8 +348,8 @@ fun SettingsScreen(
                         DayLifeSettingsItem(
                             icon = Icons.Default.FileDownload,
                             iconBg = Color(0xFF10B981),
-                            title = "Exporter mes données",
-                            subtitle = "CSV, PDF — Glycémie, repas, médicaments",
+                            title = stringResource(R.string.settings_export_my_data),
+                            subtitle = stringResource(R.string.settings_export_my_data_sub),
                             titleColor = titleColor,
                             subtitleColor = subtitleColor,
                             onClick = { showExportDialog = true }
@@ -386,7 +386,7 @@ fun SettingsScreen(
             if (!uiState.isMedecin) {
                 item {
                     DayLifeSectionHeader(
-                        title = "Mode famille",
+                        title = stringResource(R.string.settings_family_section),
                         color = sectionTextColor,
                         isDark = isDark
                     )
@@ -396,8 +396,8 @@ fun SettingsScreen(
                         DayLifeSettingsItem(
                             icon = Icons.Default.Group,
                             iconBg = Color(0xFFEC4899),
-                            title = "Mes aidants",
-                            subtitle = "Inviter un proche en lecture seule (1 gratuit)",
+                            title = stringResource(R.string.settings_family_aidants),
+                            subtitle = stringResource(R.string.settings_family_aidants_sub),
                             titleColor = titleColor,
                             subtitleColor = subtitleColor,
                             onClick = onNavigateToFamily
@@ -446,7 +446,7 @@ fun SettingsScreen(
             // ── À propos ─────────────────────────────────────
             item {
                 DayLifeSectionHeader(
-                    title = "À propos",
+                    title = stringResource(R.string.settings_section_about),
                     color = sectionTextColor,
                     isDark = isDark
                 )
@@ -456,7 +456,7 @@ fun SettingsScreen(
                     DayLifeInfoItem(
                         icon = Icons.Default.Info,
                         iconBg = Color(0xFF6771E4),
-                        title = "Version",
+                        title = stringResource(R.string.settings_about_version),
                         subtitle = "${com.diabeto.BuildConfig.VERSION_NAME} (build ${com.diabeto.BuildConfig.VERSION_CODE})",
                         titleColor = titleColor,
                         subtitleColor = subtitleColor
@@ -465,8 +465,8 @@ fun SettingsScreen(
                     DayLifeInfoItem(
                         icon = Icons.Default.LocalHospital,
                         iconBg = Color(0xFFEF4444),
-                        title = "DiaSmart",
-                        subtitle = "Diabétologie Intelligente",
+                        title = stringResource(R.string.app_name),
+                        subtitle = stringResource(R.string.settings_about_app_desc),
                         titleColor = titleColor,
                         subtitleColor = subtitleColor
                     )
@@ -474,7 +474,7 @@ fun SettingsScreen(
                     DayLifeInfoItem(
                         icon = Icons.Default.Email,
                         iconBg = Color(0xFFFF8C42),
-                        title = "Contact",
+                        title = stringResource(R.string.settings_about_contact),
                         subtitle = "ngostheo30@gmail.com",
                         titleColor = titleColor,
                         subtitleColor = subtitleColor
@@ -485,7 +485,7 @@ fun SettingsScreen(
             // ── Légal ────────────────────────────────────────
             item {
                 DayLifeSectionHeader(
-                    title = "Légal",
+                    title = stringResource(R.string.settings_section_legal),
                     color = sectionTextColor,
                     isDark = isDark
                 )
@@ -495,8 +495,8 @@ fun SettingsScreen(
                     DayLifeSettingsItem(
                         icon = Icons.Default.Policy,
                         iconBg = Color(0xFF6771E4),
-                        title = "Politique de confidentialité",
-                        subtitle = "RGPD - Protection des données",
+                        title = stringResource(R.string.settings_legal_privacy_title),
+                        subtitle = stringResource(R.string.settings_legal_privacy_subtitle),
                         titleColor = titleColor,
                         subtitleColor = subtitleColor,
                         onClick = {
@@ -508,8 +508,8 @@ fun SettingsScreen(
                     DayLifeSettingsItem(
                         icon = Icons.Default.Gavel,
                         iconBg = Color(0xFF8B5CF6),
-                        title = "Licence",
-                        subtitle = "Licence propriétaire - NGOS THEODORE",
+                        title = stringResource(R.string.settings_legal_license_title),
+                        subtitle = stringResource(R.string.settings_legal_license_subtitle),
                         titleColor = titleColor,
                         subtitleColor = subtitleColor,
                         onClick = {
@@ -521,8 +521,8 @@ fun SettingsScreen(
                     DayLifeSettingsItem(
                         icon = Icons.Default.Description,
                         iconBg = Color(0xFF14B8A6),
-                        title = "Conditions d'utilisation",
-                        subtitle = "Termes et conditions",
+                        title = stringResource(R.string.settings_legal_terms_title),
+                        subtitle = stringResource(R.string.settings_legal_terms_subtitle),
                         titleColor = titleColor,
                         subtitleColor = subtitleColor,
                         onClick = {
@@ -713,11 +713,11 @@ fun SettingsScreen(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
                     shape = RoundedCornerShape(14.dp)
-                ) { Text("Supprimer") }
+                ) { Text(stringResource(R.string.action_delete)) }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteAccountDialog = false }) {
-                    Text("Annuler", color = Primary, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.action_cancel), color = Primary, fontWeight = FontWeight.SemiBold)
                 }
             }
         )
@@ -780,7 +780,7 @@ fun SettingsScreen(
                     }) {
                         Icon(Icons.Default.Share, null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Partager / Sauvegarder", fontSize = 13.sp)
+                        Text(stringResource(R.string.settings_receipt_share), fontSize = 13.sp)
                     }
                 }
             },
@@ -797,7 +797,7 @@ fun SettingsScreen(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
                     shape = RoundedCornerShape(14.dp)
-                ) { Text("J'ai sauvegarde") }
+                ) { Text(stringResource(R.string.settings_receipt_saved)) }
             }
         )
     }
@@ -1275,7 +1275,7 @@ private fun DayLifeTargetDialog(
                 OutlinedTextField(
                     value = minText,
                     onValueChange = { minText = it.filter { c -> c.isDigit() } },
-                    label = { Text("Minimum (mg/dL)") },
+                    label = { Text(stringResource(R.string.settings_target_min)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     shape = RoundedCornerShape(14.dp),
@@ -1284,7 +1284,7 @@ private fun DayLifeTargetDialog(
                 OutlinedTextField(
                     value = maxText,
                     onValueChange = { maxText = it.filter { c -> c.isDigit() } },
-                    label = { Text("Maximum (mg/dL)") },
+                    label = { Text(stringResource(R.string.settings_target_max)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     shape = RoundedCornerShape(14.dp),
@@ -1302,7 +1302,7 @@ private fun DayLifeTargetDialog(
                 colors = ButtonDefaults.buttonColors(containerColor = Primary),
                 shape = RoundedCornerShape(14.dp)
             ) {
-                Text("Enregistrer")
+                Text(stringResource(R.string.common_register))
             }
         },
         dismissButton = {
@@ -1325,7 +1325,7 @@ private fun AppLockMethodChooser(
         onDismissRequest = onDismiss,
         containerColor = if (isDark) Color(0xFF1A1A2E) else Color.White,
         shape = RoundedCornerShape(20.dp),
-        title = { Text("Methode de verrouillage", fontWeight = FontWeight.Bold) },
+        title = { Text(stringResource(R.string.settings_lock_method_title), fontWeight = FontWeight.Bold) },
         text = {
             Column {
                 Text(
@@ -1465,7 +1465,7 @@ private fun AppLockSecretSetup(
                     onValueChange = { v ->
                         second = if (isPin) v.filter { it.isDigit() }.take(4) else v
                     },
-                    label = { Text("Confirmer") },
+                    label = { Text(stringResource(R.string.settings_confirm)) },
                     singleLine = true,
                     visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(
@@ -1500,10 +1500,10 @@ private fun AppLockSecretSetup(
             TextButton(
                 onClick = { if (canConfirm) onConfirm(first) },
                 enabled = canConfirm
-            ) { Text("Confirmer", fontWeight = FontWeight.SemiBold) }
+            ) { Text(stringResource(R.string.settings_confirm), fontWeight = FontWeight.SemiBold) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Annuler") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
         }
     )
 }

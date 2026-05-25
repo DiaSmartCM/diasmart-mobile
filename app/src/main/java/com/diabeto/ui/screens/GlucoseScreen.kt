@@ -114,7 +114,7 @@ fun GlucoseTrackingScreen(
             val glucoseSeen by onboardingVm.glucoseSeen.collectAsStateWithLifecycle()
             com.diabeto.ui.components.ContextualTooltip(
                 visible = !glucoseSeen,
-                title = "Suivi de glycemie",
+                title = stringResource(R.string.glucose_screen_title),
                 message = "Tap sur le bouton + en bas a droite pour saisir une nouvelle lecture. Onglet HbA1c pour ton historique trimestriel. Tu peux exporter en CSV depuis Reglages.",
                 onDismiss = onboardingVm::dismissGlucose
             )
@@ -229,9 +229,9 @@ private fun GlycemieContent(uiState: GlucoseUiState, viewModel: GlucoseViewModel
         uiState.hba1cEstimee?.let { est ->
             Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = viewModel.getHbA1cColor(est).copy(alpha = 0.1f))) {
                 Row(Modifier.fillMaxWidth().padding(12.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                    Column { Text("HbA1c estimée", style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant); Text("${est}%", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = viewModel.getHbA1cColor(est)) }
-                    Column(horizontalAlignment = Alignment.End) { Text("Glycémie moy.", style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant); Text("${uiState.statistics.moyenne.toInt()} mg/dL", fontWeight = FontWeight.SemiBold) }
-                    TextButton(onClick = { viewModel.setActiveTab(GlucoseTab.HBA1C) }) { Text("Détails", fontSize = 12.sp) }
+                    Column { Text(stringResource(R.string.glucose_hba1c_est), style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant); Text("${est}%", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = viewModel.getHbA1cColor(est)) }
+                    Column(horizontalAlignment = Alignment.End) { Text(stringResource(R.string.glucose_avg_short), style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant); Text("${uiState.statistics.moyenne.toInt()} mg/dL", fontWeight = FontWeight.SemiBold) }
+                    TextButton(onClick = { viewModel.setActiveTab(GlucoseTab.HBA1C) }) { Text(stringResource(R.string.glucose_details), fontSize = 12.sp) }
                 }
             }
             Spacer(Modifier.height(8.dp))
@@ -255,7 +255,7 @@ private fun HbA1cContent(uiState: GlucoseUiState, viewModel: GlucoseViewModel) {
         item {
             Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), elevation = CardDefaults.cardElevation(2.dp), colors = CardDefaults.cardColors(Surface)) {
                 Column(Modifier.padding(20.dp)) {
-                    Text("Hémoglobine Glyquée (HbA1c)", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextPrimary)
+                    Text(stringResource(R.string.glucose_hba1c_long), fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextPrimary)
                     Text("Reflète la glycémie moyenne des 2-3 derniers mois", style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
                     Spacer(Modifier.height(16.dp))
                     Row(Modifier.fillMaxWidth(), Arrangement.SpaceEvenly) {

@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -26,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.diabeto.R
 import com.diabeto.ui.theme.*
 import com.diabeto.ui.viewmodel.CommunityViewModel
 import com.diabeto.ui.viewmodel.CommunityMessage
@@ -72,7 +74,7 @@ fun CommunityScreen(
                         }
                         Spacer(Modifier.width(10.dp))
                         Column {
-                            Text("Communaute DiaSmart", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text(stringResource(R.string.community_title), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             Text(
                                 "${uiState.membersCount} membres",
                                 fontSize = 11.sp,
@@ -128,8 +130,8 @@ fun CommunityScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Default.Forum, null, Modifier.size(64.dp), tint = OnSurfaceVariant.copy(alpha = 0.4f))
                         Spacer(Modifier.height(12.dp))
-                        Text("Aucun message pour l'instant", color = OnSurfaceVariant)
-                        Text("Soyez le premier a ecrire !", fontSize = 13.sp, color = OnSurfaceVariant.copy(alpha = 0.6f))
+                        Text(stringResource(R.string.community_no_messages), color = OnSurfaceVariant)
+                        Text(stringResource(R.string.community_be_first), fontSize = 13.sp, color = OnSurfaceVariant.copy(alpha = 0.6f))
                     }
                 }
             } else {
@@ -161,7 +163,7 @@ fun CommunityScreen(
                     value = uiState.inputText,
                     onValueChange = viewModel::onInputChange,
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("Votre message...", fontSize = 14.sp) },
+                    placeholder = { Text(stringResource(R.string.msg_placeholder), fontSize = 14.sp) },
                     maxLines = 3,
                     shape = RoundedCornerShape(24.dp),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),

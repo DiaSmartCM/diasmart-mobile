@@ -20,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -30,6 +31,7 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.diabeto.R
 import com.diabeto.security.AppLockCredential
 import com.diabeto.security.AppLockMethod
 import com.diabeto.util.AppLockManager
@@ -121,7 +123,7 @@ fun AppLockGate(
                         locked = false
                         errorMessage = null
                     } else {
-                        errorMessage = "Code PIN incorrect"
+                        errorMessage = context.getString(R.string.lock_pin_incorrect)
                     }
                 },
                 onClose = { (context as? Activity)?.finishAffinity() }
@@ -134,7 +136,7 @@ fun AppLockGate(
                         locked = false
                         errorMessage = null
                     } else {
-                        errorMessage = "Mot de passe incorrect"
+                        errorMessage = context.getString(R.string.lock_password_incorrect)
                     }
                 },
                 onClose = { (context as? Activity)?.finishAffinity() }
@@ -205,7 +207,7 @@ private fun BiometricLockScreen(
         ) {
             Icon(Icons.Default.Fingerprint, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("Deverrouiller")
+            Text(stringResource(R.string.lock_unlock))
         }
     }
 }
@@ -313,7 +315,7 @@ private fun PasswordLockScreen(
                 IconButton(onClick = { visible = !visible }) {
                     Icon(
                         if (visible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                        contentDescription = if (visible) "Masquer" else "Afficher",
+                        contentDescription = if (visible) stringResource(R.string.lock_hide) else stringResource(R.string.lock_show),
                         tint = Color.White.copy(alpha = 0.85f)
                     )
                 }
@@ -341,7 +343,7 @@ private fun PasswordLockScreen(
             shape = RoundedCornerShape(14.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Deverrouiller")
+            Text(stringResource(R.string.lock_unlock))
         }
     }
 }

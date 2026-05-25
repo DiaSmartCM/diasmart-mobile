@@ -772,7 +772,7 @@ fun DashboardScreen(
             // ═══════════════════════════════════════════════════════
             item {
                 SectionHeader(
-                    title = "Patients récents",
+                    title = stringResource(R.string.dash_recent_patients),
                     action = "Voir tout",
                     onAction = onNavigateToPatients
                 )

@@ -521,4 +521,154 @@
     <string name="fam_invite_email_label">Imeil fo di pesin</string>
     <string name="fam_invite_relation_label">Wuna relashon (eg: pikin, hosban, papa)</string>
     <string name="fam_send">Sen</string>
+
+    <!-- v2.1.66 Phase D1 — Kamtok -->
+    <string name="settings_section_about">Abot</string>
+    <string name="settings_section_legal">Legol</string>
+    <string name="settings_about_version">Vajon</string>
+    <string name="settings_about_contact">Kontak</string>
+    <string name="settings_about_app_desc">Smat sugar app</string>
+    <string name="settings_legal_privacy_title">Praivasi rul</string>
+    <string name="settings_legal_privacy_subtitle">Data protekshon</string>
+    <string name="settings_legal_license_title">Laisens</string>
+    <string name="settings_legal_license_subtitle">Mai own laisens - NGOS THEODORE</string>
+    <string name="settings_legal_terms_title">Tem fo yuz</string>
+    <string name="settings_legal_terms_subtitle">Tem en kondishon</string>
+    <string name="settings_target_min">Min (mg/dL)</string>
+    <string name="settings_target_max">Max (mg/dL)</string>
+    <string name="settings_lock_method_title">Lok metod</string>
+    <string name="settings_method_biometric">Finga print</string>
+    <string name="settings_method_pin">PIN kod (4 nomba)</string>
+    <string name="settings_method_password">Paswod</string>
+    <string name="settings_method_none">No metod</string>
+    <string name="settings_lock_method_change">Cheinj metod</string>
+    <string name="settings_lock_method_change_sub">Pik finga, PIN o paswod</string>
+    <string name="settings_export_my_data">Ekspot mai data</string>
+    <string name="settings_export_my_data_sub">CSV, PDF — sugar, chop, mededisin</string>
+    <string name="settings_family_section">Famili mod</string>
+    <string name="settings_family_aidants">Mai helpa dem</string>
+    <string name="settings_family_aidants_sub">Kall famili fo si onli (1 fri)</string>
+    <string name="settings_receipt_share">Shea / Sef</string>
+    <string name="settings_receipt_saved">A don sef</string>
+    <string name="settings_confirm">Konfayam</string>
+
+    <string name="patients_title_my">Mai patient dem</string>
+    <string name="patients_title_add">Add patient</string>
+    <string name="patients_search_hint">Luk patient…</string>
+    <string name="patients_empty_none">No patient subskraib. Add patient fro hom.</string>
+    <string name="patients_empty_no_match">No patient mash</string>
+    <string name="patients_pending_requests">Akses riques we de wait</string>
+    <string name="patients_access_granted">Akses dey</string>
+    <string name="patients_request_access">Aks akses</string>
+    <string name="patients_accepted">Aksep</string>
+
+    <string name="patient_edit_screen_title">Cheinj patient</string>
+    <string name="pf_name">Las nem</string>
+    <string name="pf_firstname">Fes nem</string>
+    <string name="pf_birth">Dei fo bon</string>
+    <string name="pf_sex">Man/Woman</string>
+    <string name="pf_phone">Fon</string>
+    <string name="pf_email">Imeil</string>
+    <string name="pf_address">Adres</string>
+    <string name="pf_diabetes_type">Tipa sugar sik</string>
+    <string name="pf_diag_date">Dei fo diagnosis</string>
+
+    <string name="onb_next">Nex</string>
+    <string name="onb_lets_go">Wi go!</string>
+    <string name="onb_skip">Skip</string>
+    <string name="onb_glucose_title">Folo yua sugar</string>
+    <string name="onb_glucose_tip">Mesh 4 to 6 taim per dei fo bes folo-ap.</string>
+    <string name="onb_rolly_title">Tok wit ROLLY</string>
+    <string name="onb_rolly_tip">Fo emejensi, tip onli \"malez\" o \"dizi\".</string>
+    <string name="onb_doctor_title">Shea wit yua dokta</string>
+    <string name="onb_doctor_desc">Mek dokta si yua data fro \"Mai dokta\" screen.</string>
+    <string name="onb_community_title">Joyn di kommyuniti</string>
+    <string name="onb_med_view_title">Yua patient dem fo wan luk</string>
+    <string name="onb_med_view_desc">\"Mai patient\" list: oll we don sho yu di si dei sugar, HbA1c, chop en mededisin sink.</string>
+
+    <string name="emergency_title">Kamerun emejensi</string>
+    <string name="emergency_choose">Pik di savis fo kall:</string>
+    <string name="emergency_samu">SAMU (mededisin)</string>
+    <string name="emergency_police">Polis</string>
+    <string name="emergency_pompiers">Faia pesin</string>
+    <string name="emergency_call_desc">Emejensi kall</string>
+
+    <string name="voice_prompt">Tok wit ROLLY…</string>
+    <string name="voice_offline_unavailable">Yu no fit yuz voys fo no nettwok. Konekt internet fo yuz voys.</string>
+    <string name="voice_input_desc">Voys input</string>
+
+    <string name="lock_pin_incorrect">PIN no kara</string>
+    <string name="lock_password_incorrect">Paswod no kara</string>
+    <string name="lock_settings_security">Setin > Sekuriti.</string>
+    <string name="lock_unlock">Unlok</string>
+    <string name="lock_show">Sho</string>
+    <string name="lock_hide">Haid</string>
+
+    <string name="tooltip_close">Klosi</string>
+
+    <!-- v2.1.66 Phase D2 — Kamtok -->
+    <string name="common_send">Sen</string>
+    <string name="common_accept">Aksep</string>
+    <string name="common_refuse">No aksep</string>
+    <string name="common_authorize">Yiy</string>
+    <string name="common_validate">Konfayam</string>
+
+    <string name="glucose_screen_title">Sugar folo-ap</string>
+    <string name="glucose_avg_short">Avareyj sugar</string>
+    <string name="glucose_hba1c_est">HbA1c estimet</string>
+    <string name="glucose_estimation">Estimet</string>
+    <string name="glucose_insufficient_data">Data no enuf</string>
+    <string name="glucose_lab_result">Lab rizolt</string>
+
+    <string name="repas_rolly_analyzing">ROLLY di analayz yua chop…</string>
+    <string name="repas_confirm_save">Konfayam en sef</string>
+    <string name="repas_integrate_glucose">Add sugar?</string>
+    <string name="repas_yes_integrate">Yes, add</string>
+    <string name="repas_no_now">No, not nau</string>
+
+    <string name="rdv_cancel_request">Kansul di riques</string>
+    <string name="rdv_request_dialog">Aks fo apintment</string>
+    <string name="rdv_wanted_date">Dei we yu won</string>
+    <string name="rdv_wanted_time">Taim we yu won</string>
+
+    <string name="predict_title">Predikshon chart</string>
+    <string name="predict_subtitle">ROLLY - Sugar predikshon</string>
+    <string name="predict_analyzing">Di analayz data…</string>
+    <string name="predict_rolly">ROLLY predikshon</string>
+    <string name="predict_current">Sugar nau</string>
+    <string name="predict_6h_title">Nex 6 awa predikshon</string>
+    <string name="predict_6h_basis">Bes on yua resen data</string>
+    <string name="predict_add_measures">Add sugar mesh</string>
+
+    <string name="pd_info_weight">Weit</string>
+    <string name="pd_info_height">Hait</string>
+    <string name="pd_info_waist">Wast saiz</string>
+    <string name="pd_info_fat">Body fat</string>
+
+    <string name="onb_t1">Smat folo-ap</string>
+    <string name="onb_s1">Manach yua sugar sik evri dei</string>
+    <string name="onb_t2">ROLLY, yua AI helpa</string>
+    <string name="onb_s2">Mededisin chatbot 24/24</string>
+    <string name="onb_t3">Konekt en sekuriti</string>
+    <string name="onb_s3">Shea wit yua dokta tim</string>
+
+    <string name="shared_data_shared">Shea data</string>
+    <string name="shared_create_rdv">Mak apintment</string>
+    <string name="shared_refresh">Refresh</string>
+
+    <string name="community_title">DiaSmart kommyuniti</string>
+    <string name="community_no_messages">No mesej yet</string>
+    <string name="community_be_first">Bi di fes pesin fo rait!</string>
+
+    <string name="mesavis_title">Mai opinion dem</string>
+
+    <string name="chatbot_assistant">Yua ROLLY helpa</string>
+
+    <string name="reports_export_share_csv">Ekspot en shea CSV</string>
+    <string name="reports_history">Histori</string>
+
+    <string name="ds_review_placeholder">Yua eksperians, welkom, folo-ap…</string>
+    <string name="ds_no_review_published">No opinion publish yet.</string>
+
+    <string name="dash_recent_patients">Resen patient dem</string>
 </resources>

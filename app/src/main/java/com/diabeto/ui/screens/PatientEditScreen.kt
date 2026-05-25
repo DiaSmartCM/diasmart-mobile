@@ -12,12 +12,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.diabeto.R
 import com.diabeto.data.entity.Sexe
 import com.diabeto.data.entity.TypeDiabete
 import com.diabeto.ui.components.RequiredFieldLabel
@@ -61,12 +63,12 @@ fun PatientEditScreen(
         dialogState = dateNaissanceDialogState,
         buttons = {
             positiveButton("OK")
-            negativeButton("Annuler")
+            negativeButton(stringResource(R.string.action_cancel))
         }
     ) {
         datepicker(
             initialDate = uiState.dateNaissance,
-            title = "Date de naissance"
+            title = stringResource(R.string.pf_birth)
         ) { date ->
             viewModel.updateField("dateNaissance", date)
         }
@@ -77,12 +79,12 @@ fun PatientEditScreen(
         dialogState = dateDiagnosticDialogState,
         buttons = {
             positiveButton("OK")
-            negativeButton("Annuler")
+            negativeButton(stringResource(R.string.action_cancel))
         }
     ) {
         datepicker(
             initialDate = uiState.dateDiagnostic ?: LocalDate.now(),
-            title = "Date de diagnostic"
+            title = stringResource(R.string.pf_diag_date)
         ) { date ->
             viewModel.updateField("dateDiagnostic", date)
         }
@@ -91,7 +93,7 @@ fun PatientEditScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Édition Patient") },
+                title = { Text(stringResource(R.string.patient_edit_screen_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
@@ -114,7 +116,7 @@ fun PatientEditScreen(
             OutlinedTextField(
                 value = uiState.nom,
                 onValueChange = { viewModel.updateField("nom", it) },
-                label = { RequiredFieldLabel("Nom", required = true) },
+                label = { RequiredFieldLabel(stringResource(R.string.pf_name), required = true) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
@@ -124,7 +126,7 @@ fun PatientEditScreen(
             OutlinedTextField(
                 value = uiState.prenom,
                 onValueChange = { viewModel.updateField("prenom", it) },
-                label = { RequiredFieldLabel("Prenom", required = true) },
+                label = { RequiredFieldLabel(stringResource(R.string.pf_firstname), required = true) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
@@ -135,7 +137,7 @@ fun PatientEditScreen(
             OutlinedTextField(
                 value = uiState.dateNaissance.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
                 onValueChange = { },
-                label = { RequiredFieldLabel("Date de naissance", required = true) },
+                label = { RequiredFieldLabel(stringResource(R.string.pf_birth), required = true) },
                 modifier = Modifier.fillMaxWidth(),
                 readOnly = true,
                 trailingIcon = {
@@ -148,7 +150,7 @@ fun PatientEditScreen(
 
             // Sexe
             RequiredFieldLabel(
-                text = "Sexe",
+                text = stringResource(R.string.pf_sex),
                 required = true,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -180,7 +182,7 @@ fun PatientEditScreen(
             OutlinedTextField(
                 value = uiState.telephone,
                 onValueChange = { viewModel.updateField("telephone", it) },
-                label = { RequiredFieldLabel("Telephone") },
+                label = { RequiredFieldLabel(stringResource(R.string.pf_phone)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
@@ -193,7 +195,7 @@ fun PatientEditScreen(
             OutlinedTextField(
                 value = uiState.email,
                 onValueChange = { viewModel.updateField("email", it) },
-                label = { RequiredFieldLabel("Email") },
+                label = { RequiredFieldLabel(stringResource(R.string.pf_email)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
@@ -206,7 +208,7 @@ fun PatientEditScreen(
             OutlinedTextField(
                 value = uiState.adresse,
                 onValueChange = { viewModel.updateField("adresse", it) },
-                label = { RequiredFieldLabel("Adresse") },
+                label = { RequiredFieldLabel(stringResource(R.string.pf_address)) },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 2,
                 maxLines = 3,
@@ -215,7 +217,7 @@ fun PatientEditScreen(
 
             // Type de diabète
             RequiredFieldLabel(
-                text = "Type de diabete",
+                text = stringResource(R.string.pf_diabetes_type),
                 required = true,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -244,7 +246,7 @@ fun PatientEditScreen(
             OutlinedTextField(
                 value = uiState.dateDiagnostic?.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) ?: "",
                 onValueChange = { },
-                label = { RequiredFieldLabel("Date de diagnostic") },
+                label = { RequiredFieldLabel(stringResource(R.string.pf_diag_date)) },
                 modifier = Modifier.fillMaxWidth(),
                 readOnly = true,
                 trailingIcon = {
