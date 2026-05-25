@@ -248,11 +248,26 @@ fun ProfileScreen(
                 when (field) {
                     "name" -> {
                         user.updateProfile(userProfileChangeRequest { displayName = value }).await()
-                        db.collection("users").document(uid).set(mapOf("name" to value), SetOptions.merge()).await()
+                        // v2.1.69 : ecrit dans les 2 champs (name + nom) pour
+                        // matcher ProfileScreen.read + UserProfile.fromMap qui
+                        // accepte les deux.
+                        db.collection("users").document(uid).set(
+                            mapOf("name" to value, "nom" to value),
+                            SetOptions.merge()
+                        ).await()
                         name = value
                     }
                     "phone" -> {
-                        db.collection("users").document(uid).set(mapOf("phone" to value), SetOptions.merge()).await()
+                        // v2.1.69 BUG FIX : on ecrivait dans "phone", mais
+                        // UserProfile.fromMap (utilise par ReportsScreen
+                        // WhatsApp + tous les listings recipients) lit
+                        // "telephone". Resultat : WhatsApp affichait
+                        // "numero du destinataire absent" alors que le
+                        // numero etait bien saisi. Fix : ecrire dans les 2.
+                        db.collection("users").document(uid).set(
+                            mapOf("phone" to value, "telephone" to value),
+                            SetOptions.merge()
+                        ).await()
                         phone = value
                     }
                     "taille" -> {

@@ -103,7 +103,11 @@ data class UserProfile(
             } catch (e: Exception) {
                 UserRole.PATIENT
             },
-            telephone = map["telephone"] as? String ?: "",
+            // v2.1.69 : fallback "phone" pour les comptes qui ont saisi leur
+            // numero via ProfileScreen AVANT le fix (sauvegardait dans "phone"
+            // au lieu de "telephone"). Sans ce fallback, WhatsApp echouait
+            // avec "numero du destinataire absent".
+            telephone = (map["telephone"] as? String).orEmpty().ifBlank { (map["phone"] as? String).orEmpty() },
             createdAt = map["createdAt"] as? Timestamp ?: Timestamp.now(),
             poids = (map["poids"] as? Number)?.toDouble(),
             taille = (map["taille"] as? Number)?.toDouble(),
