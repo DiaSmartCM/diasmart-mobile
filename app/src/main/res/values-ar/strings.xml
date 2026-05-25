@@ -640,4 +640,23 @@
     <string name="ds_no_review_published">لا توجد تقييمات منشورة بعد.</string>
 
     <string name="dash_recent_patients">مرضى حديثون</string>
+
+    <!-- v2.1.68 -->
+    <string name="rpt_title_doctor">تقرير / وصفة طبية</string>
+    <string name="rpt_welcome_patient">اختر طبيبك المستقبِل، حدد الفترة، ثم أنشئ تقرير PDF. 3 قنوات إرسال: الرسائل داخل التطبيق، البريد، واتساب.</string>
+    <string name="rpt_welcome_doctor">أنشئ وصفة أو تقريرا مخصصا وأرسله مباشرة للمريض.</string>
+    <string name="rpt_contains">يحتوي التقرير على: قياسات السكر (ملخص + جدول)، وجبات Rolly AI، الأدوية، يوميات المزاج/النوم، خطوات عداد المشي.</string>
+    <string name="rpt_send_to_doctor">إرسال إلى طبيب</string>
+    <string name="rpt_send_to_patient">إرسال إلى المريض</string>
+    <string name="rpt_csv_description">صدّر قياساتك السكرية و HbA1c بصيغة CSV — متوافق مع Excel و LibreOffice و Google Sheets.</string>
+
+    <string name="dialog_choose_theme">اختيار المظهر</string>
+    <string name="dialog_choose_language">اختيار اللغة</string>
+    <string name="dialog_choose_glucose_unit">وحدة السكر</string>
+    <string name="dialog_choose_measure_type">نوع القياس</string>
+    <string name="theme_system_auto">النظام (تلقائي)</string>
+    <string name="theme_light_full">الوضع الفاتح</string>
+    <string name="theme_dark_full">الوضع الداكن</string>
+    <string name="unit_mgdl_full">mg/dL (ملغ لكل ديسيلتر)</string>
+    <string name="unit_mmoll_full">mmol/L (ملي مول لكل لتر)</string>
 </resources>

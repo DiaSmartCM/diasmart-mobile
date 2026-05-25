@@ -9,6 +9,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -542,12 +544,12 @@ fun SettingsScreen(
     // Theme Dialog
     if (showThemeDialog) {
         DayLifeSelectionDialog(
-            title = "Choisir le thème",
+            title = stringResource(R.string.dialog_choose_theme),
             options = ThemeMode.entries.map { mode ->
                 when (mode) {
-                    ThemeMode.SYSTEM -> "Système (automatique)" to (uiState.themeMode == mode)
-                    ThemeMode.LIGHT -> "Mode clair" to (uiState.themeMode == mode)
-                    ThemeMode.DARK -> "Mode sombre" to (uiState.themeMode == mode)
+                    ThemeMode.SYSTEM -> stringResource(R.string.theme_system_auto) to (uiState.themeMode == mode)
+                    ThemeMode.LIGHT -> stringResource(R.string.theme_light_full) to (uiState.themeMode == mode)
+                    ThemeMode.DARK -> stringResource(R.string.theme_dark_full) to (uiState.themeMode == mode)
                 }
             },
             onSelect = { index ->
@@ -561,7 +563,7 @@ fun SettingsScreen(
     // Language Dialog
     if (showLanguageDialog) {
         DayLifeSelectionDialog(
-            title = "Choisir la langue",
+            title = stringResource(R.string.dialog_choose_language),
             options = AppLanguage.entries.map { lang ->
                 lang.displayName to (uiState.language == lang)
             },
@@ -576,11 +578,11 @@ fun SettingsScreen(
     // Unit Dialog
     if (showUnitDialog) {
         DayLifeSelectionDialog(
-            title = "Unité de glycémie",
+            title = stringResource(R.string.dialog_choose_glucose_unit),
             options = GlucoseUnit.entries.map { unit ->
                 val desc = when (unit) {
-                    GlucoseUnit.MG_DL -> "mg/dL (milligrammes par décilitre)"
-                    GlucoseUnit.MMOL_L -> "mmol/L (millimoles par litre)"
+                    GlucoseUnit.MG_DL -> stringResource(R.string.unit_mgdl_full)
+                    GlucoseUnit.MMOL_L -> stringResource(R.string.unit_mmoll_full)
                 }
                 desc to (uiState.glucoseUnit == unit)
             },
@@ -595,7 +597,7 @@ fun SettingsScreen(
     // Measure Type Dialog
     if (showMeasureTypeDialog) {
         DayLifeSelectionDialog(
-            title = "Type de mesure",
+            title = stringResource(R.string.dialog_choose_measure_type),
             options = MeasureType.entries.map { type ->
                 type.displayName to (uiState.measureType == type)
             },
@@ -666,7 +668,11 @@ fun SettingsScreen(
                 )
             },
             text = {
-                Column {
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 380.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
                     Text(
                         "Cette action est DEFINITIVE et IRREVERSIBLE. Seront supprimes :",
                         fontSize = 14.sp,
@@ -1081,7 +1087,14 @@ private fun DayLifeSelectionDialog(
             )
         },
         text = {
-            Column {
+            // v2.1.68 : verticalScroll + hauteur max pour ecrans denses
+            // (Huawei Nova 3i / EMUI 6.3" zoomes : les 8 langues etaient
+            //  coupees, "Dii" et "Fermer" inaccessibles).
+            Column(
+                modifier = Modifier
+                    .heightIn(max = 420.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
                 options.forEachIndexed { index, (label, selected) ->
                     Row(
                         modifier = Modifier
@@ -1121,7 +1134,7 @@ private fun DayLifeSelectionDialog(
         confirmButton = {
             TextButton(onClick = onDismiss) {
                 Text(
-                    "Fermer",
+                    stringResource(R.string.common_close),
                     color = Primary,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -1327,7 +1340,11 @@ private fun AppLockMethodChooser(
         shape = RoundedCornerShape(20.dp),
         title = { Text(stringResource(R.string.settings_lock_method_title), fontWeight = FontWeight.Bold) },
         text = {
-            Column {
+            Column(
+                modifier = Modifier
+                    .heightIn(max = 380.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
                 Text(
                     "Choisissez comment vous souhaitez deverrouiller DiaSmart.",
                     fontSize = 13.sp,

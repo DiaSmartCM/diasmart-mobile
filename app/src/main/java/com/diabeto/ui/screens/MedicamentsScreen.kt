@@ -2,6 +2,8 @@ package com.diabeto.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -128,7 +130,11 @@ fun MedicamentsScreen(
             onDismissRequest = { viewModel.toggleAddDialog(false) },
             title = { Text(stringResource(R.string.med_new)) },
             text = {
+                // v2.1.68 : verticalScroll pour ecrans denses (Huawei 6.3")
                 Column(
+                    modifier = Modifier
+                        .heightIn(max = 400.dp)
+                        .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     OutlinedTextField(

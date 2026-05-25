@@ -75,7 +75,7 @@ fun ReportsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (isPatient) "Envoyer un rapport" else "Compte-rendu / Ordonnance") },
+                title = { Text(if (isPatient) stringResource(R.string.rpt_title) else stringResource(R.string.rpt_title_doctor)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back))
@@ -101,7 +101,7 @@ fun ReportsScreen(
             com.diabeto.ui.components.ContextualTooltip(
                 visible = !reportsSeen,
                 title = stringResource(R.string.rpt_title),
-                message = if (isPatient) "Selectionne ton medecin destinataire, choisis la periode, puis genere ton rapport PDF. 3 canaux d'envoi : messagerie in-app, email, WhatsApp." else "Genere une ordonnance ou un compte-rendu personnalise et envoie-le directement au patient.",
+                message = if (isPatient) stringResource(R.string.rpt_welcome_patient) else stringResource(R.string.rpt_welcome_doctor),
                 onDismiss = onboardingVm::dismissReports
             )
             // Bandeau d'erreur persistant (pas un simple snackbar) pour qu'on
@@ -192,8 +192,7 @@ private fun PatientReportSection(state: com.diabeto.ui.viewmodel.ReportUiState, 
                 )
             }
             Text(
-                "Le rapport contient : glycemies (resume + tableau), repas Rolly IA, " +
-                    "medicaments, journal humeur/sommeil, pas du podometre.",
+                stringResource(R.string.rpt_contains),
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -245,7 +244,7 @@ private fun RecipientSection(
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(
-                if (isPatient) "Envoyer a un medecin" else "Envoyer au patient",
+                if (isPatient) stringResource(R.string.rpt_send_to_doctor) else stringResource(R.string.rpt_send_to_patient),
                 fontWeight = FontWeight.SemiBold
             )
             if (state.recipients.isEmpty()) {
@@ -573,7 +572,7 @@ private fun ExportCsvSection(
                 Text(stringResource(R.string.rpt_export_csv), fontWeight = FontWeight.SemiBold)
             }
             Text(
-                "Exporte vos glycemies et HbA1c au format CSV — compatible Excel, LibreOffice, Google Sheets.",
+                stringResource(R.string.rpt_csv_description),
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

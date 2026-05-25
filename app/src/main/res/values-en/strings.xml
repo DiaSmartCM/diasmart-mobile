@@ -652,4 +652,23 @@
     <string name="ds_no_review_published">No reviews published yet.</string>
 
     <string name="dash_recent_patients">Recent patients</string>
+
+    <!-- v2.1.68 -->
+    <string name="rpt_title_doctor">Report / Prescription</string>
+    <string name="rpt_welcome_patient">Pick your recipient doctor, choose the period, then generate your PDF report. 3 send channels: in-app messaging, email, WhatsApp.</string>
+    <string name="rpt_welcome_doctor">Generate a custom prescription or report and send it directly to the patient.</string>
+    <string name="rpt_contains">The report contains: glucose (summary + table), Rolly AI meals, medications, mood/sleep log, pedometer steps.</string>
+    <string name="rpt_send_to_doctor">Send to a doctor</string>
+    <string name="rpt_send_to_patient">Send to patient</string>
+    <string name="rpt_csv_description">Export your glucose and HbA1c as CSV — compatible with Excel, LibreOffice, Google Sheets.</string>
+
+    <string name="dialog_choose_theme">Choose theme</string>
+    <string name="dialog_choose_language">Choose language</string>
+    <string name="dialog_choose_glucose_unit">Glucose unit</string>
+    <string name="dialog_choose_measure_type">Measurement type</string>
+    <string name="theme_system_auto">System (automatic)</string>
+    <string name="theme_light_full">Light mode</string>
+    <string name="theme_dark_full">Dark mode</string>
+    <string name="unit_mgdl_full">mg/dL (milligrams per deciliter)</string>
+    <string name="unit_mmoll_full">mmol/L (millimoles per liter)</string>
 </resources>

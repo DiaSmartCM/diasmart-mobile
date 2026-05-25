@@ -680,4 +680,23 @@
     <string name="ds_no_review_published">Aucun avis publié pour le moment.</string>
 
     <string name="dash_recent_patients">Patients récents</string>
+
+    <!-- v2.1.68 — îlots résiduels (rapports, dialogs) -->
+    <string name="rpt_title_doctor">Compte-rendu / Ordonnance</string>
+    <string name="rpt_welcome_patient">Sélectionne ton médecin destinataire, choisis la période, puis génère ton rapport PDF. 3 canaux d\'envoi : messagerie in-app, email, WhatsApp.</string>
+    <string name="rpt_welcome_doctor">Génère une ordonnance ou un compte-rendu personnalisé et envoie-le directement au patient.</string>
+    <string name="rpt_contains">Le rapport contient : glycémies (résumé + tableau), repas Rolly IA, médicaments, journal humeur/sommeil, pas du podomètre.</string>
+    <string name="rpt_send_to_doctor">Envoyer à un médecin</string>
+    <string name="rpt_send_to_patient">Envoyer au patient</string>
+    <string name="rpt_csv_description">Exporte vos glycémies et HbA1c au format CSV — compatible Excel, LibreOffice, Google Sheets.</string>
+
+    <string name="dialog_choose_theme">Choisir le thème</string>
+    <string name="dialog_choose_language">Choisir la langue</string>
+    <string name="dialog_choose_glucose_unit">Unité de glycémie</string>
+    <string name="dialog_choose_measure_type">Type de mesure</string>
+    <string name="theme_system_auto">Système (automatique)</string>
+    <string name="theme_light_full">Mode clair</string>
+    <string name="theme_dark_full">Mode sombre</string>
+    <string name="unit_mgdl_full">mg/dL (milligrammes par décilitre)</string>
+    <string name="unit_mmoll_full">mmol/L (millimoles par litre)</string>
 </resources>
