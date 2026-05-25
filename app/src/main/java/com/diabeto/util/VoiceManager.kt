@@ -7,6 +7,7 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import android.speech.tts.Voice
 import android.util.Log
 import java.util.Locale
 
@@ -36,7 +37,14 @@ object VoiceManager {
     @Volatile private var ttsReady: Boolean = false
     @Volatile private var currentLocale: Locale = Locale.FRENCH
 
-    /** Initialise TTS. Idempotent. Appelle ca au demarrage du Chat. */
+    /**
+     * Initialise TTS. Idempotent. Appelle ca au demarrage du Chat.
+     *
+     * v2.1.67 : selection auto de la voix de meilleure qualite disponible.
+     * Priorite : fr-CM > fr-CA > fr-FR > default. fr-CA est l'accent le
+     * plus proche du francais camerounais parmi les voix premium Google /
+     * Samsung TTS, et beaucoup plus chaleureux que fr-FR Parisien.
+     */
     fun initTts(context: Context, onReady: ((Boolean) -> Unit)? = null) {
         if (tts != null && ttsReady) { onReady?.invoke(true); return }
         tts = TextToSpeech(context.applicationContext) { status ->
@@ -48,11 +56,62 @@ object VoiceManager {
                     Log.w(TAG, "Locale $currentLocale not supported, fallback default")
                     tts?.setLanguage(Locale.getDefault())
                 }
-                tts?.setSpeechRate(0.9f)  // legerement plus lent pour usage medical
+                // v2.1.67 : selection de la meilleure voix dispo
+                pickBestVoice(currentLocale)
+                tts?.setSpeechRate(0.92f)  // legerement plus lent — clinique mais humain
+                tts?.setPitch(0.95f)        // pitch legerement plus chaud (defaut 1.0)
             } else {
                 Log.e(TAG, "TTS init failed: status=$status")
             }
             onReady?.invoke(ttsReady)
+        }
+    }
+
+    /**
+     * v2.1.67 : recherche la voix de qualite la plus elevee pour la locale
+     * demandee. Heuristique :
+     *   1. Voix Network (Neural / WaveNet) avec quality >= VERY_HIGH
+     *   2. Voix locale avec quality >= HIGH
+     *   3. Fallback : laisse setLanguage choisir
+     *
+     * Affinite d'accent : fr-CM (rare mais existe sur certains Samsung), puis
+     * fr-CA (plus chaleureux que fr-FR pour oreilles camerounaises), puis fr-FR.
+     */
+    private fun pickBestVoice(locale: Locale) {
+        val engine = tts ?: return
+        val lang = locale.language
+        val availableVoices = try { engine.voices?.toList().orEmpty() } catch (_: Throwable) { emptyList() }
+        if (availableVoices.isEmpty()) {
+            Log.w(TAG, "Pas de voices disponibles — engine TTS ${engine.defaultEngine}")
+            return
+        }
+
+        // Filtre les voix correspondant a la langue demandee
+        val sameLang = availableVoices.filter { it.locale?.language == lang && !it.isNetworkConnectionRequired.let { req -> req && lang == "ar" } }
+
+        // Ordre de preference par region (pour FR uniquement — pour les autres on prend juste la meilleure qualite)
+        val regionPriority = when (lang) {
+            "fr" -> listOf("CM", "CA", "FR", "BE", "CH")  // Cameroun > Canada > France > Belgique > Suisse
+            "en" -> listOf("GB", "US", "AU", "CA")
+            else -> emptyList()
+        }
+
+        val sorted = sameLang.sortedWith(
+            compareByDescending<Voice> { it.quality }   // VERY_HIGH (500) > HIGH (400) > NORMAL (300) > LOW (200) > VERY_LOW (100)
+                .thenBy { v -> regionPriority.indexOf(v.locale?.country).let { if (it == -1) Int.MAX_VALUE else it } }
+                .thenByDescending { !it.features.contains("notInstalled") }  // privilegie voix telechargees
+        )
+
+        val chosen = sorted.firstOrNull()
+        if (chosen != null) {
+            val result = engine.setVoice(chosen)
+            if (result == TextToSpeech.SUCCESS) {
+                Log.i(TAG, "Voix selectionnee: ${chosen.name} (${chosen.locale}, quality=${chosen.quality}, network=${chosen.isNetworkConnectionRequired})")
+            } else {
+                Log.w(TAG, "setVoice failed ($result), conservation voix par defaut")
+            }
+        } else {
+            Log.w(TAG, "Aucune voix $lang trouvee parmi ${availableVoices.size} voices")
         }
     }
 
@@ -77,6 +136,8 @@ object VoiceManager {
         if (locale != currentLocale) {
             engine.setLanguage(locale)
             currentLocale = locale
+            // v2.1.67 : re-selectionne la meilleure voix pour la nouvelle locale
+            pickBestVoice(locale)
         }
         val utteranceId = "rolly-${System.currentTimeMillis()}"
         engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
