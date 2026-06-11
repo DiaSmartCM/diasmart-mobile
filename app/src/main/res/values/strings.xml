@@ -699,4 +699,33 @@
     <string name="theme_dark_full">Mode sombre</string>
     <string name="unit_mgdl_full">mg/dL (milligrammes par décilitre)</string>
     <string name="unit_mmoll_full">mmol/L (millimoles par litre)</string>
+
+    <!-- v2.1.70 — Écran de consentement RGPD au premier lancement -->
+    <string name="consent_title">Bienvenue sur DiaSmart</string>
+    <string name="consent_subtitle">Avant de commencer, nous avons besoin de ton consentement</string>
+    <string name="consent_data_section">Données collectées</string>
+    <string name="consent_data_item_1">Profil : nom, email, téléphone, rôle (patient ou médecin)</string>
+    <string name="consent_data_item_2">Données médicales : glycémies, HbA1c, médicaments, repas, journal</string>
+    <string name="consent_data_item_3">Localisation : uniquement si tu actives le tri par proximité médecin</string>
+    <string name="consent_data_item_4">Statistiques d\'usage anonymes (Crashlytics, Analytics) pour améliorer l\'app</string>
+    <string name="consent_purpose_section">Pourquoi ?</string>
+    <string name="consent_purpose_item_1">Te permettre de suivre ton diabète au quotidien</string>
+    <string name="consent_purpose_item_2">Partager tes données avec ton médecin si tu l\'autorises explicitement</string>
+    <string name="consent_purpose_item_3">Personnaliser les recommandations de ROLLY (assistant IA)</string>
+    <string name="consent_purpose_item_4">Aucune publicité, aucune revente à des tiers</string>
+    <string name="consent_rights_section">Tes droits (RGPD + loi camerounaise 2024)</string>
+    <string name="consent_rights_item_1">Accès, rectification, effacement de tes données</string>
+    <string name="consent_rights_item_2">Suppression complète de ton compte (Settings → Compte → Supprimer)</string>
+    <string name="consent_rights_item_3">Export de tes données (CSV / PDF)</string>
+    <string name="consent_rights_item_4">Révocation du partage avec un médecin à tout moment</string>
+    <string name="consent_required_label">Pour utiliser DiaSmart, je dois accepter :</string>
+    <string name="consent_checkbox_cgu">Les Conditions Générales d\'Utilisation</string>
+    <string name="consent_checkbox_privacy">La Politique de Confidentialité (RGPD)</string>
+    <string name="consent_checkbox_health">Le traitement de mes données de santé (consentement explicite — Article 9 RGPD)</string>
+    <string name="consent_read_cgu">Lire les CGU</string>
+    <string name="consent_read_privacy">Lire la Politique de Confidentialité</string>
+    <string name="consent_button_accept">J\'accepte et je continue</string>
+    <string name="consent_button_decline">Refuser et quitter l\'application</string>
+    <string name="consent_age_disclaimer">En continuant, tu confirmes avoir au moins 16 ans (ou disposer du consentement parental).</string>
+    <string name="consent_contact">Questions ? Contact : ngostheo30@gmail.com</string>
 </resources>

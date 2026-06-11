@@ -659,4 +659,33 @@
     <string name="theme_dark_full">الوضع الداكن</string>
     <string name="unit_mgdl_full">mg/dL (ملغ لكل ديسيلتر)</string>
     <string name="unit_mmoll_full">mmol/L (ملي مول لكل لتر)</string>
+
+    <!-- v2.1.70 — GDPR consent -->
+    <string name="consent_title">مرحبا بك في DiaSmart</string>
+    <string name="consent_subtitle">قبل أن نبدأ، نحتاج إلى موافقتك</string>
+    <string name="consent_data_section">البيانات التي نجمعها</string>
+    <string name="consent_data_item_1">الملف الشخصي: الاسم، البريد الإلكتروني، الهاتف، الدور (مريض أو طبيب)</string>
+    <string name="consent_data_item_2">البيانات الطبية: قياسات السكر، HbA1c، الأدوية، الوجبات، الدفتر</string>
+    <string name="consent_data_item_3">الموقع: فقط إذا قمت بتفعيل ترتيب الأطباء حسب القرب</string>
+    <string name="consent_data_item_4">إحصاءات استخدام مجهولة (Crashlytics، Analytics) لتحسين التطبيق</string>
+    <string name="consent_purpose_section">لماذا؟</string>
+    <string name="consent_purpose_item_1">لمساعدتك على متابعة السكري يوميا</string>
+    <string name="consent_purpose_item_2">مشاركة بياناتك مع طبيبك فقط إذا أذنت بذلك صراحة</string>
+    <string name="consent_purpose_item_3">تخصيص توصيات ROLLY (مساعد الذكاء الاصطناعي)</string>
+    <string name="consent_purpose_item_4">لا إعلانات، لا بيع لأطراف ثالثة</string>
+    <string name="consent_rights_section">حقوقك (GDPR + قانون الكاميرون 2024)</string>
+    <string name="consent_rights_item_1">الوصول إلى بياناتك وتصحيحها وحذفها</string>
+    <string name="consent_rights_item_2">حذف الحساب بالكامل (الإعدادات ← الحساب ← حذف)</string>
+    <string name="consent_rights_item_3">تصدير بياناتك (CSV / PDF)</string>
+    <string name="consent_rights_item_4">إلغاء المشاركة مع الطبيب في أي وقت</string>
+    <string name="consent_required_label">لاستخدام DiaSmart، يجب أن أوافق على:</string>
+    <string name="consent_checkbox_cgu">الشروط والأحكام</string>
+    <string name="consent_checkbox_privacy">سياسة الخصوصية (GDPR)</string>
+    <string name="consent_checkbox_health">معالجة بياناتي الصحية (موافقة صريحة - المادة 9 من GDPR)</string>
+    <string name="consent_read_cgu">قراءة الشروط</string>
+    <string name="consent_read_privacy">قراءة سياسة الخصوصية</string>
+    <string name="consent_button_accept">أوافق وأتابع</string>
+    <string name="consent_button_decline">رفض والخروج من التطبيق</string>
+    <string name="consent_age_disclaimer">بمتابعتك، تؤكد أن عمرك 16 عاما على الأقل (أو لديك موافقة الوالدين).</string>
+    <string name="consent_contact">أسئلة؟ اتصل: ngostheo30@gmail.com</string>
 </resources>

@@ -690,4 +690,33 @@
     <string name="theme_dark_full">Dak mod</string>
     <string name="unit_mgdl_full">mg/dL (miligram pa desilita)</string>
     <string name="unit_mmoll_full">mmol/L (milimol pa lita)</string>
+
+    <!-- v2.1.70 — Kamtok -->
+    <string name="consent_title">Welkom fo DiaSmart</string>
+    <string name="consent_subtitle">Bifo wi stat, wi nid yua konsen</string>
+    <string name="consent_data_section">Data we wi di kolet</string>
+    <string name="consent_data_item_1">Profayl : nem, imeil, fon, rol (patient o dokta)</string>
+    <string name="consent_data_item_2">Mededisin data : sugar, HbA1c, mededisin, chop, dei book</string>
+    <string name="consent_data_item_3">Plas yu de : onli if yu on di dokta proximiti sotin</string>
+    <string name="consent_data_item_4">Anonima yuz statistik (Crashlytics, Analytics) fo betta di app</string>
+    <string name="consent_purpose_section">Whay?</string>
+    <string name="consent_purpose_item_1">Helep yu fo folo sugar sik evri dei</string>
+    <string name="consent_purpose_item_2">Shea yua data wit dokta onli if yu sho yi</string>
+    <string name="consent_purpose_item_3">Pesonalayz ROLLY (AI helpa) rekomendeshon</string>
+    <string name="consent_purpose_item_4">No advatayz, no sell fo nada pesin</string>
+    <string name="consent_rights_section">Yua raits (GDPR + Kamerun lo 2024)</string>
+    <string name="consent_rights_item_1">Akses, koret, komot yua data</string>
+    <string name="consent_rights_item_2">Komot akount finis (Setin → Akount → Komot)</string>
+    <string name="consent_rights_item_3">Ekspot yua data (CSV / PDF)</string>
+    <string name="consent_rights_item_4">Stop dokta shea eni taim</string>
+    <string name="consent_required_label">Fo yuz DiaSmart, a go aksep :</string>
+    <string name="consent_checkbox_cgu">Di Tem en Kondishon</string>
+    <string name="consent_checkbox_privacy">Di Praivasi rul (GDPR)</string>
+    <string name="consent_checkbox_health">Wokay fo mai helt data (eksplisit konsen — GDPR Atikul 9)</string>
+    <string name="consent_read_cgu">Rid di Tem</string>
+    <string name="consent_read_privacy">Rid di Praivasi rul</string>
+    <string name="consent_button_accept">A aksep en kontinyu</string>
+    <string name="consent_button_decline">Riject en komot fo app</string>
+    <string name="consent_age_disclaimer">If yu kontinyu, yu sho sai yu get 16 yia o moa (o yua papa-mama don gri).</string>
+    <string name="consent_contact">Kueschon? Kontak: ngostheo30@gmail.com</string>
 </resources>

@@ -671,4 +671,33 @@
     <string name="theme_dark_full">Dark mode</string>
     <string name="unit_mgdl_full">mg/dL (milligrams per deciliter)</string>
     <string name="unit_mmoll_full">mmol/L (millimoles per liter)</string>
+
+    <!-- v2.1.70 — GDPR consent screen -->
+    <string name="consent_title">Welcome to DiaSmart</string>
+    <string name="consent_subtitle">Before we start, we need your consent</string>
+    <string name="consent_data_section">Data we collect</string>
+    <string name="consent_data_item_1">Profile: name, email, phone, role (patient or doctor)</string>
+    <string name="consent_data_item_2">Medical data: glucose, HbA1c, medications, meals, journal</string>
+    <string name="consent_data_item_3">Location: only if you enable doctor-proximity sorting</string>
+    <string name="consent_data_item_4">Anonymous usage stats (Crashlytics, Analytics) to improve the app</string>
+    <string name="consent_purpose_section">Why?</string>
+    <string name="consent_purpose_item_1">Help you track diabetes daily</string>
+    <string name="consent_purpose_item_2">Share your data with your doctor only if you explicitly allow it</string>
+    <string name="consent_purpose_item_3">Personalize ROLLY (AI assistant) recommendations</string>
+    <string name="consent_purpose_item_4">No ads, no selling to third parties</string>
+    <string name="consent_rights_section">Your rights (GDPR + Cameroon Law 2024)</string>
+    <string name="consent_rights_item_1">Access, rectify, erase your data</string>
+    <string name="consent_rights_item_2">Full account deletion (Settings → Account → Delete)</string>
+    <string name="consent_rights_item_3">Export your data (CSV / PDF)</string>
+    <string name="consent_rights_item_4">Revoke doctor sharing at any time</string>
+    <string name="consent_required_label">To use DiaSmart, I must accept:</string>
+    <string name="consent_checkbox_cgu">The Terms and Conditions</string>
+    <string name="consent_checkbox_privacy">The Privacy Policy (GDPR)</string>
+    <string name="consent_checkbox_health">The processing of my health data (explicit consent — GDPR Article 9)</string>
+    <string name="consent_read_cgu">Read the Terms</string>
+    <string name="consent_read_privacy">Read the Privacy Policy</string>
+    <string name="consent_button_accept">I accept and continue</string>
+    <string name="consent_button_decline">Decline and quit the app</string>
+    <string name="consent_age_disclaimer">By continuing, you confirm you are at least 16 (or have parental consent).</string>
+    <string name="consent_contact">Questions? Contact: ngostheo30@gmail.com</string>
 </resources>

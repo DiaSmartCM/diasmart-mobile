@@ -75,6 +75,11 @@ class PreferencesRepository @Inject constructor(
         val ONBOARDING_MESSAGERIE_SEEN = booleanPreferencesKey("onboarding_messagerie_seen")
         val ONBOARDING_REPORTS_SEEN = booleanPreferencesKey("onboarding_reports_seen")
         val LAST_SYNC_AT = androidx.datastore.preferences.core.longPreferencesKey("last_sync_at")
+        // v2.1.70 : consentement RGPD avec versioning. Quand on modifie les
+        // CGU ou la politique de confidentialite, on bump CURRENT_CONSENT_VERSION
+        // et les utilisateurs sont re-promptes.
+        val CONSENT_VERSION = androidx.datastore.preferences.core.intPreferencesKey("consent_version")
+        val CONSENT_ACCEPTED_AT = androidx.datastore.preferences.core.longPreferencesKey("consent_accepted_at")
     }
 
     // v2.1.46 : tutoriels contextuels par ecran. Un flag DataStore par ecran.
@@ -95,6 +100,30 @@ class PreferencesRepository @Inject constructor(
      * Utilise par BatchSyncWorker pour ne push que les docs modifies depuis.
      * 0 = jamais sync (declenche un full backup au prochain run).
      */
+    // v2.1.70 : consentement RGPD versionne
+    val consentVersion: Flow<Int> = context.dataStore.data.map { prefs ->
+        prefs[Keys.CONSENT_VERSION] ?: 0
+    }
+
+    val consentAcceptedAt: Flow<Long> = context.dataStore.data.map { prefs ->
+        prefs[Keys.CONSENT_ACCEPTED_AT] ?: 0L
+    }
+
+    suspend fun acceptConsent(version: Int) {
+        context.dataStore.edit {
+            it[Keys.CONSENT_VERSION] = version
+            it[Keys.CONSENT_ACCEPTED_AT] = System.currentTimeMillis()
+        }
+    }
+
+    /** Revoque le consentement (pour le bouton "Supprimer mon compte" ou opt-out volontaire). */
+    suspend fun revokeConsent() {
+        context.dataStore.edit {
+            it.remove(Keys.CONSENT_VERSION)
+            it.remove(Keys.CONSENT_ACCEPTED_AT)
+        }
+    }
+
     val lastSyncAt: Flow<Long> = context.dataStore.data.map { prefs ->
         prefs[Keys.LAST_SYNC_AT] ?: 0L
     }

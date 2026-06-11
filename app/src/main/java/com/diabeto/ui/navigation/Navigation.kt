@@ -2,6 +2,9 @@ package com.diabeto.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.navigation.*
 import androidx.navigation.compose.*
@@ -17,6 +20,7 @@ import kotlinx.coroutines.delay
  */
 object Routes {
     const val SPLASH           = "splash"
+    const val CONSENT          = "consent"   // v2.1.70 : RGPD au premier lancement
     const val ONBOARDING       = "onboarding"
     const val LOGIN            = "login"
     const val DASHBOARD        = "dashboard"
@@ -138,23 +142,59 @@ fun DiabetoNavigation(
 
         // ── Splash Screen anime ─────────────────────────────────────────────
         composable(Routes.SPLASH) {
-            // isLoggedIn = Auth user present ET email verifie (sinon on force le passage par
-            // la page de connexion pour saisir le code OTP)
+            // v2.1.70 : on lit le consentement RGPD AVANT de decider de la
+            // destination. Si pas accepte (ou version perimee), on force le
+            // passage par ConsentScreen — sinon flux normal Login/Dashboard.
+            // PreferencesRepository est cree localement ici (le constructor
+            // ne demande qu'un @ApplicationContext, et DataStore est process-
+            // level donc une nouvelle instance pointe sur le meme fichier).
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val prefRepo = remember {
+                com.diabeto.data.repository.PreferencesRepository(context.applicationContext)
+            }
+            val consentVersion by prefRepo.consentVersion.collectAsState(initial = -1)
+
             val fbUser = FirebaseAuth.getInstance().currentUser
             val hasEmail = !fbUser?.email.isNullOrBlank()
             val isLoggedIn = fbUser != null && (!hasEmail || fbUser.isEmailVerified)
             SplashScreen(
                 isUserLoggedIn = isLoggedIn,
                 onSplashFinished = { loggedIn ->
-                    if (loggedIn) {
-                        navController.navigate(Routes.DASHBOARD) {
+                    val needsConsent = consentVersion >= 0 &&
+                        consentVersion < com.diabeto.ui.screens.CURRENT_CONSENT_VERSION
+                    when {
+                        needsConsent -> navController.navigate(Routes.CONSENT) {
                             popUpTo(Routes.SPLASH) { inclusive = true }
                         }
-                    } else {
-                        navController.navigate(Routes.ONBOARDING) {
+                        loggedIn -> navController.navigate(Routes.DASHBOARD) {
+                            popUpTo(Routes.SPLASH) { inclusive = true }
+                        }
+                        else -> navController.navigate(Routes.ONBOARDING) {
                             popUpTo(Routes.SPLASH) { inclusive = true }
                         }
                     }
+                }
+            )
+        }
+
+        // ── Consent RGPD (v2.1.70) ─────────────────────────────────────────
+        composable(Routes.CONSENT) {
+            val activity = androidx.compose.ui.platform.LocalContext.current as? android.app.Activity
+            val fbUser = FirebaseAuth.getInstance().currentUser
+            val hasEmail = !fbUser?.email.isNullOrBlank()
+            val isLoggedIn = fbUser != null && (!hasEmail || fbUser.isEmailVerified)
+            com.diabeto.ui.screens.ConsentScreen(
+                onAccepted = {
+                    val next = if (isLoggedIn) Routes.DASHBOARD else Routes.ONBOARDING
+                    navController.navigate(next) {
+                        popUpTo(Routes.CONSENT) { inclusive = true }
+                    }
+                },
+                onDeclined = {
+                    // L'utilisateur refuse — on ferme l'app. Conforme RGPD :
+                    // donnees sante necessitent consentement explicite, sinon
+                    // pas d'utilisation possible.
+                    activity?.finishAffinity()
                 }
             )
         }
