@@ -10,7 +10,7 @@
 [![Compose](https://img.shields.io/badge/Jetpack%20Compose-2025.02-4285F4?logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
 [![License](https://img.shields.io/badge/Licence-Propri%C3%A9taire-EF4444)](#-licence)
 
-[📲 Télécharger l'APK](https://github.com/DiaSmartCM/diasmart-mobile/releases/latest) · [🌐 Web App](https://diasmartcm.vercel.app) · [🐛 Signaler un bug](https://github.com/DiaSmartCM/diasmart-mobile/issues) · [📧 Contact](mailto:ngostheo30@gmail.com)
+[📲 Télécharger l'APK](https://github.com/DiaSmartCM/diasmart-mobile/releases/latest) · [🌐 Web App](https://diasmart-mobile.vercel.app) · [🐛 Signaler un bug](https://github.com/DiaSmartCM/diasmart-mobile/issues) · [📧 Contact](mailto:ngostheo30@gmail.com)
 
 </div>
 
