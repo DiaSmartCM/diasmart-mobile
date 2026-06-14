@@ -1,147 +1,177 @@
-# DiaSmart - Diabétologie Intelligente
+<div align="center">
 
-## 📱 Description
+# DiaSmart — Diabétologie Intelligente 🇨🇲
 
-DiaSmart est une application Android moderne et complète pour la gestion du diabète. Elle permet aux professionnels de santé et aux patients de suivre efficacement la glycémie, les médicaments, les rendez-vous et bien plus.
+**Application mobile gratuite de gestion du diabète, conçue pour le Cameroun et l'Afrique Sub-Saharienne.**
 
-**Développeur** : NGOS THEODORE
-**Contact** : ngostheo30@gmail.com
-**Site web** : https://project-d-r1997t.web.app
+[![Latest release](https://img.shields.io/github/v/release/DiaSmartCM/diasmart-mobile?label=Derni%C3%A8re%20version&color=6771E4)](https://github.com/DiaSmartCM/diasmart-mobile/releases/latest)
+[![Platform](https://img.shields.io/badge/Android-8.0%2B%20(API%2026)-3DDC84?logo=android&logoColor=white)](https://github.com/DiaSmartCM/diasmart-mobile/releases/latest)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org)
+[![Compose](https://img.shields.io/badge/Jetpack%20Compose-2025.02-4285F4?logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
+[![License](https://img.shields.io/badge/Licence-Propri%C3%A9taire-EF4444)](#-licence)
+
+[📲 Télécharger l'APK](https://github.com/DiaSmartCM/diasmart-mobile/releases/latest) · [🐛 Signaler un bug](https://github.com/DiaSmartCM/diasmart-mobile/issues) · [📧 Contact](mailto:ngostheo30@gmail.com)
+
+</div>
+
+---
+
+## 📱 Présentation
+
+**DiaSmart** aide les patients diabétiques et leurs médecins à suivre la maladie au quotidien, même avec une connexion limitée. Pensée pour le terrain africain : **offline-first**, **multilingue**, et adaptée aux réalités locales (aliments, prix en FCFA, langues camerounaises).
+
+> 100 % gratuite · Aucune publicité · Aucune revente de données
+
+---
+
+## ✨ Fonctionnalités
+
+### 🩸 Suivi médical
+- **Glycémie + HbA1c** : enregistrement, graphiques, statistiques (moyenne, min/max, temps dans la cible), classification automatique hypo/hyperglycémie
+- **Médicaments** : posologie, rappels de prise, activation/désactivation
+- **Rendez-vous** : planification, demandes patient↔médecin, rappels 1 h avant
+- **Carnet de bord** : humeur, sommeil, activité physique, podomètre
+
+### 🤖 ROLLY — Assistant IA
+- Spécialisé **exclusivement en diabétologie** (Gemini 2.5 Flash via proxy sécurisé)
+- **Ton camerounais** + connaissance des **aliments locaux** (ndolè, plantain, eru, manioc, igname…) avec leur index glycémique
+- Analyse de repas **par photo**
+- Adaptation automatique à la **langue de l'utilisateur**
+- Voix (synthèse vocale locale, hors-ligne)
+
+### 👨‍⚕️ Côté médecin
+- Tableau de bord patients liés
+- Partage de données **avec consentement explicite** du patient (révocable à tout moment)
+- Génération d'**ordonnances** et de **comptes-rendus** PDF
+- Envoi via messagerie in-app, e-mail ou **WhatsApp**
+- Validations des réponses de ROLLY
+
+### 👨‍👩‍👧 Mode famille
+- Inviter un proche en lecture seule pour suivre un patient (1 aidant gratuit)
+
+### 🌍 Accessibilité
+- **8 langues** : Français, English, العربية, Pidgin Kamtok, Duala, Bassa, Fulfulde, Dii
+- **Offline-first** : tout fonctionne sans réseau, synchronisation automatique au retour
+- **Dark mode**, Material Design 3
+- **App Lock** : empreinte / PIN / mot de passe
+
+### 🔒 Confidentialité & conformité
+- Écran de **consentement RGPD** au premier lancement (Article 9 — données de santé)
+- **Suppression complète** du compte avec reçu RGPD signé
+- Conforme **RGPD + loi camerounaise 2024** sur les données personnelles
+- Base locale **chiffrée** (SQLCipher)
+
+---
 
 ## 🏗️ Architecture
 
-L'application suit les meilleures pratiques Android avec :
-
-- **Architecture MVVM** : Séparation claire des responsabilités
-- **Jetpack Compose** : UI moderne et déclarative
-- **Room Database** : Persistance des données locale
-- **Hilt** : Injection de dépendances
-- **Navigation Compose** : Navigation fluide entre les écrans
-- **Coroutines & Flow** : Programmation asynchrone réactive
-- **Material Design 3** : Interface utilisateur moderne
-
-## 📁 Structure du Projet
+Application **MVVM** moderne, 100 % Kotlin + Jetpack Compose.
 
 ```
 com.diabeto/
 ├── data/
-│   ├── database/       # Configuration Room
-│   ├── dao/            # Data Access Objects
-│   ├── entity/         # Entités de la base de données
-│   └── repository/     # Repositories pour l'accès aux données
-├── di/                 # Injection de dépendances (Hilt)
+│   ├── database/       # Room + SQLCipher (chiffré)
+│   ├── dao/ entity/    # Persistance locale
+│   ├── model/          # Modèles métier (Firestore)
+│   └── repository/     # Source unique de vérité
+├── di/                 # Hilt (injection de dépendances)
+├── monitoring/         # Crashlytics
+├── notifications/      # FCM + rappels (WorkManager)
+├── security/           # App Lock (biométrie / PIN)
+├── sync/               # Synchronisation Firestore offline-first
 ├── ui/
 │   ├── components/     # Composants réutilisables
-│   ├── navigation/     # Configuration de la navigation
-│   ├── screens/        # Écrans de l'application
-│   ├── theme/          # Thème Material3
+│   ├── navigation/     # Navigation Compose
+│   ├── screens/        # Écrans (Dashboard, Glucose, ROLLY…)
+│   ├── theme/          # Material 3 + thèmes
 │   └── viewmodel/      # ViewModels
-└── utils/              # Utilitaires
+├── util/               # VoiceManager, WhatsAppShare…
+└── voip/               # Appels audio/vidéo (WebRTC)
 ```
 
-## ✨ Fonctionnalités
+**Backend serverless** (`/website/api`) : proxy Vercel pour ROLLY (Gemini), OTP e-mail, rapports, suppression RGPD — sans clé API dans l'APK.
 
-### 👥 Gestion des Patients
-- Ajout, modification et suppression de patients
-- Informations complètes (nom, contact, type de diabète, etc.)
-- Recherche et filtrage
+---
 
-### 📊 Suivi Glycémique
-- Enregistrement des lectures de glucose
-- Graphique d'évolution
-- Statistiques détaillées (moyenne, min/max, temps dans la cible)
-- Classification automatique (hypo/hyperglycémie)
-- Contexte de mesure (à jeun, après repas, etc.)
+## 🛠️ Stack technique
 
-### 💊 Gestion des Médicaments
-- Liste des médicaments par patient
-- Dosage et fréquence
-- Rappels de prise
-- Activation/désactivation
+| Domaine | Technologies |
+|---|---|
+| **Langage / UI** | Kotlin 2.0.21 · Jetpack Compose (BOM 2025.02) · Material 3 |
+| **Architecture** | MVVM · Hilt 2.52 · Coroutines & Flow · Navigation Compose |
+| **Données locales** | Room 2.6 + SQLCipher · DataStore |
+| **Cloud (Free tier)** | Firebase Spark (Auth, Firestore, FCM, Crashlytics) · Vercel · Supabase Storage |
+| **IA** | Google Gemini 2.5 Flash (via proxy Vercel) |
+| **Temps réel** | WebRTC (appels audio/vidéo) |
+| **Tests** | JUnit 4 · kotlinx-coroutines-test · Maestro (E2E) |
 
-### 📅 Rendez-vous
-- Planification des consultations
-- Types de rendez-vous (consultation, examen, téléconsultation)
-- Confirmation des rendez-vous
-- Rappels automatiques
+> 💡 Architecture pensée pour rester **100 % gratuite à héberger** (Firebase Spark + Vercel + Supabase Free).
 
-### 📈 Tableau de Bord
-- Vue d'ensemble des patients
-- Statistiques globales
-- Prochains rendez-vous
-- Rappels de médicaments
+---
 
-## 🎨 Design
-
-- **Thème Material Design 3** avec couleurs personnalisées
-- **Responsive** : Adapté aux téléphones et tablettes
-- **Dark mode** supporté
-- **Animations fluides** avec Compose
-
-## 🛠️ Technologies Utilisées
-
-| Technologie | Version |
-|------------|---------|
-| Kotlin | 1.9.20 |
-| Android SDK | 34 |
-| Jetpack Compose | BOM 2024.02.00 |
-| Room | 2.6.1 |
-| Hilt | 2.48 |
-| Navigation Compose | 2.7.7 |
-
-## 🚀 Installation
+## 🚀 Build depuis les sources
 
 ### Prérequis
-- Android Studio Hedgehog (2023.1.1) ou supérieur
-- JDK 17
-- Android SDK 34
+- Android Studio Ladybug (2024.2) ou supérieur
+- JDK 17 · Android SDK 35
 
 ### Étapes
-
-1. Cloner le projet :
 ```bash
-git clone https://github.com/theongos/diasmart-mobile.git
+git clone https://github.com/DiaSmartCM/diasmart-mobile.git
+cd diasmart-mobile
 ```
 
-2. Ouvrir dans Android Studio
+Crée un `local.properties` avec tes secrets (jamais commité) :
+```properties
+KEYSTORE_PASSWORD=...
+KEY_ALIAS=...
+KEY_PASSWORD=...
+TURN_USERNAME=...
+TURN_PASSWORD=...
+```
 
-3. Synchroniser le projet avec Gradle
-
-4. Lancer l'application sur un émulateur ou appareil physique
-
-## 📦 Construction
-
-### Debug
+Puis :
 ```bash
+# Build debug
 ./gradlew assembleDebug
-```
 
-### Release
-```bash
+# Build release signé
 ./gradlew assembleRelease
-```
 
-## 🧪 Tests
-
-```bash
 # Tests unitaires
 ./gradlew test
-
-# Tests instrumentés
-./gradlew connectedAndroidTest
 ```
+
+L'APK release est généré dans `app/build/outputs/apk/release/`.
+
+---
+
+## 📲 Installation (utilisateurs)
+
+1. Télécharge la [**dernière APK**](https://github.com/DiaSmartCM/diasmart-mobile/releases/latest)
+2. Autorise « Installer depuis des sources inconnues » sur ton Android
+3. Ouvre le fichier `.apk` téléchargé
+4. Accepte le consentement RGPD au premier lancement
+
+---
 
 ## 📝 Licence
 
-Ce projet est sous licence propriétaire. Voir le fichier [LICENSE](LICENSE) pour plus de détails.
+Projet sous **licence propriétaire** © NGOS THEODORE. Voir [LICENSE](LICENSE).
 
-## 🔒 Politique de Confidentialité
+## 🔒 Confidentialité
 
-Voir [PRIVACY_POLICY.md](PRIVACY_POLICY.md) ou https://project-d-r1997t.web.app/privacy.html
+[Politique de confidentialité](https://public-one-omega-88.vercel.app/privacy.html) · [CGU](https://public-one-omega-88.vercel.app/terms.html)
 
-## 👨‍💻 Auteur
+---
 
-**NGOS THEODORE**
-ngostheo30@gmail.com
+<div align="center">
 
-Développé avec ❤️ pour améliorer la gestion du diabète.
+**NGOS THEODORE** — Développeur & fondateur
+📧 ngostheo30@gmail.com · 📍 Yaoundé, Cameroun 🇨🇲
+
+Développé avec ❤️ pour améliorer la gestion du diabète en Afrique.
+
+<sub>DiaSmart · Diabétologie Intelligente · Cameroun · Diabetes management · mHealth Africa · Glucose · HbA1c · ROLLY AI</sub>
+
+</div>
