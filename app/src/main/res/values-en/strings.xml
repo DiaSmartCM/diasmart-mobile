@@ -700,4 +700,8 @@
     <string name="consent_button_decline">Decline and quit the app</string>
     <string name="consent_age_disclaimer">By continuing, you confirm you are at least 16 (or have parental consent).</string>
     <string name="consent_contact">Questions? Contact: ngostheo30@gmail.com</string>
+    <string name="dash_glucose_tap_add">Tap to add</string>
+    <string name="msg_new_conversation_patient">Contact a patient</string>
+    <string name="msg_pick_patient">Choose a patient</string>
+    <string name="msg_no_patient">No linked patient yet.</string>
 </resources>

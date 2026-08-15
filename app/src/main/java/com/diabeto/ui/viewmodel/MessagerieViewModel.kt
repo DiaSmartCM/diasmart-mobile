@@ -21,6 +21,8 @@ data class MessagerieUiState(
     val error: String? = null,
     val currentProfile: UserProfile? = null,
     val medecins: List<UserProfile> = emptyList(),
+    // v2.1.71 : patients lies (cote medecin) pour le FAB "Contacter un patient"
+    val patients: List<UserProfile> = emptyList(),
     val showNouvelleConversation: Boolean = false
 )
 
@@ -52,10 +54,17 @@ class ConversationsViewModel @Inject constructor(
             val profile = authRepository.getCurrentUserProfile()
             _uiState.update { it.copy(currentProfile = profile) }
 
-            // Si patient, charger la liste des médecins disponibles
-            if (profile?.role == UserRole.PATIENT) {
-                val medecins = authRepository.getMedecins()
-                _uiState.update { it.copy(medecins = medecins) }
+            // Patient -> liste des medecins ; Medecin -> liste de ses patients lies.
+            when (profile?.role) {
+                UserRole.PATIENT -> {
+                    val medecins = authRepository.getMedecins()
+                    _uiState.update { it.copy(medecins = medecins) }
+                }
+                UserRole.MEDECIN -> {
+                    val patients = messagerieRepository.getMesPatients()
+                    _uiState.update { it.copy(patients = patients) }
+                }
+                else -> {}
             }
 
             messagerieRepository.getConversationsFlow()

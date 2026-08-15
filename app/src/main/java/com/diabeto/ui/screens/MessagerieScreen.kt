@@ -91,12 +91,19 @@ fun MessagerieScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            // Seuls les patients peuvent initier une conversation avec un médecin
-            if (uiState.currentProfile?.role == UserRole.PATIENT) {
+            // v2.1.71 : patient ET medecin peuvent initier une conversation.
+            // Patient -> contacte un medecin ; medecin -> contacte un patient lie.
+            val role = uiState.currentProfile?.role
+            if (role == UserRole.PATIENT || role == UserRole.MEDECIN) {
                 ExtendedFloatingActionButton(
                     onClick = { viewModel.toggleNouvelleConversation(true) },
                     icon = { Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_new_conv)) },
-                    text = { Text(stringResource(R.string.msg_new_conversation)) },
+                    text = {
+                        Text(
+                            if (role == UserRole.MEDECIN) stringResource(R.string.msg_new_conversation_patient)
+                            else stringResource(R.string.msg_new_conversation)
+                        )
+                    },
                     containerColor = Primary
                 )
             }
@@ -166,21 +173,32 @@ fun MessagerieScreen(
         }  // v2.1.46 : closes outer Column for tooltip
     }
 
-    // Dialog choix médecin
+    // Dialog choix interlocuteur (medecin pour un patient / patient pour un medecin)
     if (uiState.showNouvelleConversation) {
+        val isMedecin = uiState.currentProfile?.role == UserRole.MEDECIN
+        val contacts = if (isMedecin) uiState.patients else uiState.medecins
         AlertDialog(
             onDismissRequest = { viewModel.toggleNouvelleConversation(false) },
-            title = { Text(stringResource(R.string.msg_pick_doctor), fontWeight = FontWeight.Bold) },
+            title = {
+                Text(
+                    if (isMedecin) stringResource(R.string.msg_pick_patient)
+                    else stringResource(R.string.msg_pick_doctor),
+                    fontWeight = FontWeight.Bold
+                )
+            },
             text = {
-                if (uiState.medecins.isEmpty()) {
-                    Text(stringResource(R.string.msg_no_doctor))
+                if (contacts.isEmpty()) {
+                    Text(
+                        if (isMedecin) stringResource(R.string.msg_no_patient)
+                        else stringResource(R.string.msg_no_doctor)
+                    )
                 } else {
                     LazyColumn(modifier = Modifier.heightIn(max = 300.dp)) {
-                        items(uiState.medecins, key = { it.uid }) { medecin ->
+                        items(contacts, key = { it.uid }) { contact ->
                             MedecinItem(
-                                medecin = medecin,
+                                medecin = contact,
                                 onClick = {
-                                    viewModel.creerConversationAvec(medecin) { convId ->
+                                    viewModel.creerConversationAvec(contact) { convId ->
                                         viewModel.toggleNouvelleConversation(false)
                                         onNavigateToConversation(convId)
                                     }

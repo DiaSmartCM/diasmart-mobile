@@ -26,6 +26,10 @@ data class DashboardUiState(
     val upcomingMedicaments: Int = 0,
     val upcomingRendezVous: List<RendezVousAvecPatient> = emptyList(),
     val recentPatients: List<PatientEntity> = emptyList(),
+    // v2.1.71 : id du dossier Room "self" du patient — sert a ouvrir l'ecran
+    // glycemie depuis le dashboard (la carte glycemie du header devient
+    // cliquable cote patient). null si aucun dossier local encore.
+    val selfPatientId: Long? = null,
     val isLoading: Boolean = false,
     val isOnline: Boolean = true,
     val pendingSyncCount: Int = 0,
@@ -212,6 +216,16 @@ class DashboardViewModel @Inject constructor(
                         upcomingMedicaments = upcomingMeds.size,
                         upcomingRendezVous = upcomingRdvs,
                         recentPatients = patients.take(5),
+                        // v2.1.71 : cote patient, garantit un dossier "self"
+                        // (cree si absent) pour que la saisie glycemie / carnet /
+                        // podometre / predictions fonctionnent.
+                        selfPatientId = if (role == UserRole.PATIENT) {
+                            val prof = authRepository.getCurrentUserProfile()
+                            patientRepository.getOrCreateSelfPatientId(
+                                nom = prof?.nom.orEmpty(),
+                                prenom = prof?.prenom.orEmpty()
+                            )
+                        } else null,
                         isLoading = false
                     )
                 }

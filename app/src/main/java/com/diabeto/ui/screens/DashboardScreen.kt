@@ -61,13 +61,14 @@ fun DashboardScreen(
     onNavigateToMonMedecin: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
-    onNavigateToJournal: () -> Unit = {},
-    onNavigateToPedometer: () -> Unit = {},
-    onNavigateToPredictive: () -> Unit = {},
+    onNavigateToJournal: (Long) -> Unit = {},
+    onNavigateToPedometer: (Long) -> Unit = {},
+    onNavigateToPredictive: (Long) -> Unit = {},
     onNavigateToValidations: () -> Unit = {},
     onNavigateToCommunity: () -> Unit = {},
     onNavigateToReports: () -> Unit = {},
     onNavigateToMesAvis: () -> Unit = {},
+    onNavigateToGlucose: (Long) -> Unit = {},
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -341,8 +342,18 @@ fun DashboardScreen(
                         Spacer(modifier = Modifier.height(20.dp))
 
                         // ── Carte glycémie principale (dans le header) ──
+                        // v2.1.71 : cliquable cote PATIENT -> ouvre l'ecran de
+                        // saisie glycemie/HbA1c (seul point d'entree pour le
+                        // patient ; il n'a pas de carte dediee ni d'onglet).
+                        val canOpenGlucose = uiState.userRole == UserRole.PATIENT && uiState.selfPatientId != null
                         Card(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .then(
+                                    if (canOpenGlucose)
+                                        Modifier.clickable { onNavigateToGlucose(uiState.selfPatientId!!) }
+                                    else Modifier
+                                ),
                             shape = RoundedCornerShape(20.dp),
                             colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.15f)),
                             elevation = CardDefaults.cardElevation(0.dp)
@@ -371,6 +382,19 @@ fun DashboardScreen(
                                             color = Color.White.copy(alpha = 0.7f),
                                             modifier = Modifier.padding(bottom = 6.dp)
                                         )
+                                    }
+                                    // v2.1.71 : indice tappable cote patient
+                                    if (canOpenGlucose) {
+                                        Spacer(Modifier.height(4.dp))
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(Icons.Default.Add, null, tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(14.dp))
+                                            Spacer(Modifier.width(4.dp))
+                                            Text(
+                                                stringResource(R.string.dash_glucose_tap_add),
+                                                fontSize = 11.sp,
+                                                color = Color.White.copy(alpha = 0.85f)
+                                            )
+                                        }
                                     }
                                 }
                                 // Indicateur circulaire
@@ -570,7 +594,7 @@ fun DashboardScreen(
                             icon = Icons.Outlined.MenuBook,
                             cardColor = Color(0xFFF0E6FF),
                             iconTint = Color(0xFF8E24AA),
-                            onClick = onNavigateToJournal,
+                            onClick = { uiState.selfPatientId?.let(onNavigateToJournal) },
                             modifier = Modifier.weight(1f)
                         )
                         FeatureCard(
@@ -579,7 +603,7 @@ fun DashboardScreen(
                             icon = Icons.Outlined.DirectionsWalk,
                             cardColor = CardAppointment,
                             iconTint = Tertiary,
-                            onClick = onNavigateToPedometer,
+                            onClick = { uiState.selfPatientId?.let(onNavigateToPedometer) },
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -598,7 +622,7 @@ fun DashboardScreen(
                             icon = Icons.Outlined.TrendingUp,
                             cardColor = CardMedication,
                             iconTint = Secondary,
-                            onClick = onNavigateToPredictive,
+                            onClick = { uiState.selfPatientId?.let(onNavigateToPredictive) },
                             modifier = Modifier.weight(1f)
                         )
                         FeatureCard(
@@ -768,37 +792,40 @@ fun DashboardScreen(
             item { Spacer(modifier = Modifier.height(20.dp)) }
 
             // ═══════════════════════════════════════════════════════
-            //  PATIENTS RECENTS
+            //  PATIENTS RECENTS — medecin uniquement (v2.1.71)
+            //  Le patient n'a pas de patients : section masquee cote patient.
             // ═══════════════════════════════════════════════════════
-            item {
-                SectionHeader(
-                    title = stringResource(R.string.dash_recent_patients),
-                    action = "Voir tout",
-                    onAction = onNavigateToPatients
-                )
-            }
-            item {
-                if (uiState.recentPatients.isEmpty()) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = cardSurface),
-                        elevation = CardDefaults.cardElevation(0.dp),
-                        border = BorderStroke(1.dp, outlineCol)
-                    ) {
-                        EmptyStateMessage("Aucun patient enregistré", Icons.Outlined.People, textSec = textSec, textTer = textTer, surfaceVar = if (isDark) DarkOutline else SurfaceVariant)
-                    }
-                } else {
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 20.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(uiState.recentPatients, key = { it.id }) { patient ->
-                            PatientChip(
-                                name = patient.nomComplet,
-                                subtitle = "${patient.age} ans",
-                                onClick = { onNavigateToPatientDetail(patient.id) }
-                            )
+            if (uiState.userRole == UserRole.MEDECIN) {
+                item {
+                    SectionHeader(
+                        title = stringResource(R.string.dash_recent_patients),
+                        action = "Voir tout",
+                        onAction = onNavigateToPatients
+                    )
+                }
+                item {
+                    if (uiState.recentPatients.isEmpty()) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(containerColor = cardSurface),
+                            elevation = CardDefaults.cardElevation(0.dp),
+                            border = BorderStroke(1.dp, outlineCol)
+                        ) {
+                            EmptyStateMessage("Aucun patient enregistré", Icons.Outlined.People, textSec = textSec, textTer = textTer, surfaceVar = if (isDark) DarkOutline else SurfaceVariant)
+                        }
+                    } else {
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 20.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(uiState.recentPatients, key = { it.id }) { patient ->
+                                PatientChip(
+                                    name = patient.nomComplet,
+                                    subtitle = "${patient.age} ans",
+                                    onClick = { onNavigateToPatientDetail(patient.id) }
+                                )
+                            }
                         }
                     }
                 }

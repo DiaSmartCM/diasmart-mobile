@@ -26,18 +26,36 @@ class DiaSmartFCMService : FirebaseMessagingService() {
         private const val CALL_NOTIFICATION_ID = 8888
 
         /**
-         * S'abonner au topic "updates" pour recevoir les notifications de mise à jour
-         * et au topic "community" pour les messages communautaires.
-         * Appelé au démarrage de l'app.
+         * S'abonner au topic "updates" (tous) et, POUR LES PATIENTS UNIQUEMENT,
+         * au topic "community" (messages communautaires des patients).
+         * v2.1.71 : le medecin ne doit PAS recevoir les notifications de la
+         * communaute patients -> on lit son role dans Firestore et on
+         * (des)abonne en consequence. Le desabonnement gere aussi les medecins
+         * deja abonnes avant ce fix.
          */
         fun subscribeToUpdatesTopic() {
             val fm = FirebaseMessaging.getInstance()
             fm.subscribeToTopic("updates")
                 .addOnSuccessListener { Log.d(TAG, "Abonné au topic 'updates'") }
                 .addOnFailureListener { e -> Log.e(TAG, "Erreur abonnement 'updates'", e) }
-            fm.subscribeToTopic("community")
-                .addOnSuccessListener { Log.d(TAG, "Abonné au topic 'community'") }
-                .addOnFailureListener { e -> Log.e(TAG, "Erreur abonnement 'community'", e) }
+
+            val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+            FirebaseFirestore.getInstance().collection("users").document(uid).get()
+                .addOnSuccessListener { doc ->
+                    val role = (doc.getString("role") ?: "PATIENT").uppercase()
+                    if (role == "MEDECIN") {
+                        fm.unsubscribeFromTopic("community")
+                            .addOnSuccessListener { Log.d(TAG, "Medecin : desabonne du topic 'community'") }
+                    } else {
+                        fm.subscribeToTopic("community")
+                            .addOnSuccessListener { Log.d(TAG, "Patient : abonne au topic 'community'") }
+                    }
+                }
+                .addOnFailureListener { e ->
+                    // En cas d'echec de lecture du role, on ne s'abonne PAS a
+                    // community par defaut (evite d'inonder un medecin).
+                    Log.w(TAG, "Role inconnu, pas d'abonnement 'community'", e)
+                }
         }
 
         /**

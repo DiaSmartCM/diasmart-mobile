@@ -653,7 +653,13 @@ class ChatbotRepository @Inject constructor(
                 Exception("Accès au service IA refusé. Vérifiez la configuration de l'application.")
             msg.contains("network") || msg.contains("timeout") || msg.contains("connect") || msg.contains("Unable to resolve host") ->
                 Exception("Erreur de connexion. Vérifiez votre accès Internet et réessayez.")
-            else -> Exception("Erreur d'analyse IA. Veuillez réessayer.")
+            // v2.1.71 : on expose le detail brut du serveur pour les erreurs
+            // non reconnues (ex: generation_failed, gemini_not_configured, 500,
+            // 502) — indispensable pour diagnostiquer, plutot qu'un message
+            // opaque qui empeche tout debug.
+            else -> Exception(
+                "Erreur d'analyse IA." + if (msg.isNotBlank()) " Détail : ${msg.take(180)}" else " Veuillez réessayer."
+            )
         }
     }
 }

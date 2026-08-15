@@ -688,4 +688,8 @@
     <string name="consent_button_decline">رفض والخروج من التطبيق</string>
     <string name="consent_age_disclaimer">بمتابعتك، تؤكد أن عمرك 16 عاما على الأقل (أو لديك موافقة الوالدين).</string>
     <string name="consent_contact">أسئلة؟ اتصل: ngostheo30@gmail.com</string>
+    <string name="dash_glucose_tap_add">اضغط للإدخال</string>
+    <string name="msg_new_conversation_patient">التواصل مع مريض</string>
+    <string name="msg_pick_patient">اختيار مريض</string>
+    <string name="msg_no_patient">لا يوجد مريض مرتبط حاليا.</string>
 </resources>

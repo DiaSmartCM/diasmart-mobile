@@ -235,13 +235,14 @@ fun DiabetoNavigation(
                 onNavigateToMonMedecin     = { navController.navigate(Routes.dataSharing(1)) },
                 onNavigateToSettings       = { navController.navigate(Routes.SETTINGS) },
                 onNavigateToProfile        = { navController.navigate(Routes.PROFILE) },
-                onNavigateToJournal        = { navController.navigate(Routes.journal()) },
-                onNavigateToPedometer      = { navController.navigate(Routes.pedometer()) },
-                onNavigateToPredictive     = { navController.navigate(Routes.predictive()) },
+                onNavigateToJournal        = { id -> navController.navigate(Routes.journal(id)) },
+                onNavigateToPedometer      = { id -> navController.navigate(Routes.pedometer(id)) },
+                onNavigateToPredictive     = { id -> navController.navigate(Routes.predictive(id)) },
                 onNavigateToValidations    = { navController.navigate(Routes.VALIDATIONS) },
                 onNavigateToCommunity      = { navController.navigate(Routes.COMMUNITY) },
                 onNavigateToReports        = { navController.navigate(Routes.REPORTS) },
-                onNavigateToMesAvis        = { navController.navigate(Routes.MES_AVIS) }
+                onNavigateToMesAvis        = { navController.navigate(Routes.MES_AVIS) },
+                onNavigateToGlucose        = { id -> navController.navigate(Routes.glucoseTracking(id)) }
             )
         }
 

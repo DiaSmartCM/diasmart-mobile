@@ -728,4 +728,8 @@
     <string name="consent_button_decline">Refuser et quitter l\'application</string>
     <string name="consent_age_disclaimer">En continuant, tu confirmes avoir au moins 16 ans (ou disposer du consentement parental).</string>
     <string name="consent_contact">Questions ? Contact : ngostheo30@gmail.com</string>
+    <string name="dash_glucose_tap_add">Appuyez pour saisir</string>
+    <string name="msg_new_conversation_patient">Contacter un patient</string>
+    <string name="msg_pick_patient">Choisir un patient</string>
+    <string name="msg_no_patient">Aucun patient lié pour le moment.</string>
 </resources>

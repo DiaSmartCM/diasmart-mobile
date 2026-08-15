@@ -199,6 +199,27 @@ class MessagerieRepository @Inject constructor(
     }
 
     /**
+     * v2.1.71 : liste des patients lies au medecin courant (data_sharing
+     * medecinUid == moi, actif). Sert au FAB "Contacter un patient" cote
+     * medecin dans la messagerie (avant, seul le patient pouvait initier).
+     */
+    suspend fun getMesPatients(): List<UserProfile> {
+        val uid = authRepository.currentUserId ?: return emptyList()
+        return try {
+            val snap = firestore.collection("data_sharing")
+                .whereEqualTo("medecinUid", uid)
+                .whereEqualTo("isActive", true)
+                .get()
+                .await()
+            val patientUids = snap.documents.mapNotNull { it.getString("patientUid") }.distinct()
+            patientUids.mapNotNull { runCatching { authRepository.getUserProfile(it) }.getOrNull() }
+                .filter { it.uid.isNotBlank() }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    /**
      * Cree ou retrouve une conversation entre `currentUser` et `otherUser`,
      * en placant CHACUN dans le bon champ (patientId / medecinId) selon son
      * role. Utilise par les flows ou l'appelant peut etre patient OU medecin
