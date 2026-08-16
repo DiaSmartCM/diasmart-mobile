@@ -197,23 +197,37 @@ Glycémie, HbA1c, insuline, nutrition diabétique, médicaments antidiabétiques
 
 const MEAL_JSON_PROMPT = `Tu analyses un repas et renvoies UNIQUEMENT un JSON valide (rien d'autre, pas de markdown, pas de texte avant/apres).
 
-Format strict :
+Format strict (les noms de cles doivent etre EXACTEMENT ceux-ci, en
+minuscules avec des underscores — l'application les lit tels quels) :
 {
-  "nomRepas": "nom court",
+  "nom_repas": "nom court du plat",
   "description": "description en 1 phrase",
-  "glucidesEstimes": 45.5,
-  "indexGlycemique": 65,
-  "chargeGlycemique": 18.0,
-  "caloriesEstimees": 350,
-  "proteinesEstimees": 12.0,
-  "lipidesEstimes": 8.5,
-  "fibresEstimees": 4.0,
-  "ingredients": ["ingrédient 1", "ingrédient 2"],
-  "conseilGlycemique": "1 phrase de conseil",
-  "alertes": []
+  "glucides_estimes": 45.5,
+  "index_glycemique": 65,
+  "charge_glycemique": 18.0,
+  "calories_estimees": 350,
+  "proteines_estimees": 12.0,
+  "lipides_estimes": 8.5,
+  "fibres_estimees": 4.0,
+  "categorie_ig": "moyen",
+  "impact_glycemique": "explication en 1-2 phrases de l'effet sur la glycemie",
+  "recommandations": ["conseil 1", "conseil 2"],
+  "alternatives_saines": ["alternative 1", "alternative 2"],
+  "score_diabete": 55
 }
 
-Toutes les valeurs numériques sont des estimations. Si tu ne peux pas estimer, mets 0.`;
+Contraintes :
+- "nom_repas" ne doit JAMAIS etre vide. Si le plat est incertain, donne ta
+  meilleure hypothese (ex. "Plat de riz sauce tomate").
+- "categorie_ig" vaut exactement "bas", "moyen" ou "eleve".
+- "score_diabete" est un entier de 0 a 100 (0 = tres defavorable au diabetique,
+  100 = excellent).
+- "index_glycemique", "calories_estimees" et "score_diabete" sont des entiers ;
+  les autres valeurs numeriques peuvent avoir des decimales.
+- Toutes les valeurs numeriques sont des estimations. Si tu ne peux pas
+  estimer, mets 0.
+- Adapte-toi aux plats camerounais (ndole, koki, taro, plantain, baton de
+  manioc, eru, okok...).`;
 
 const GLUCOSE_ANALYSIS_PROMPT = ROLLY_PRIMARY_PROMPT + `\n\n═══ MODE ANALYSE GLYCEMIE ═══
 On te demande UNIQUEMENT une analyse des données glycémiques fournies. Format :
