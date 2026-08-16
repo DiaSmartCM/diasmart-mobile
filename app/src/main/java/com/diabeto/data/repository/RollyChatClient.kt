@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -83,7 +84,14 @@ class RollyChatClient @Inject constructor(
         history: String = "",
         imageBitmap: Bitmap? = null,
         useFallback: Boolean = false
-    ): Result<String> = runCatching {
+    // v2.1.73 : withContext(Dispatchers.IO) OBLIGATOIRE. `suspend` ne change pas
+    // de thread par lui-meme : appelee depuis viewModelScope.launch (Main),
+    // cette fonction executait l'appel OkHttp bloquant sur le fil d'interface,
+    // qu'Android tue par NetworkOnMainThreadException — une exception SANS
+    // message, d'ou l'ancien "Erreur d'analyse IA" sans aucun detail.
+    // streamText etait epargnee car elle se termine par .flowOn(Dispatchers.IO).
+    ): Result<String> = withContext(Dispatchers.IO) {
+        runCatching {
         val idToken = auth.currentUser?.getIdToken(false)?.await()?.token
             ?: throw IllegalStateException("Aucun utilisateur connecte (Rolly)")
         val body = buildBody(mode, message, context, history, imageBitmap, useFallback, stream = false)
@@ -103,6 +111,7 @@ class RollyChatClient @Inject constructor(
                 json.optJSONObject("json")?.toString().orEmpty()
             }
         }
+        }
     }
 
     /**
@@ -114,7 +123,11 @@ class RollyChatClient @Inject constructor(
         message: String,
         imageBitmap: Bitmap? = null,
         useFallback: Boolean = false
-    ): Result<String> = runCatching {
+    // v2.1.73 : meme correction que sendText — l'analyse repas (meal_image /
+    // meal_json) passait par ici et crashait sur NetworkOnMainThreadException.
+    // Le redimensionnement de l'image se fait aussi hors du fil principal.
+    ): Result<String> = withContext(Dispatchers.IO) {
+        runCatching {
         val idToken = auth.currentUser?.getIdToken(false)?.await()?.token
             ?: throw IllegalStateException("Aucun utilisateur connecte (Rolly)")
         val body = buildBody(mode, message, "", "", imageBitmap, useFallback, stream = false)
@@ -131,6 +144,7 @@ class RollyChatClient @Inject constructor(
             val json = JSONObject(raw)
             val structured = json.optJSONObject("json")
             structured?.toString() ?: json.optString("text", raw)
+        }
         }
     }
 

@@ -461,11 +461,15 @@ class AuthRepository @Inject constructor(
      * par l'utilisateur (article 17 GDPR / loi camerounaise 2024 sur les donnees
      * personnelles).
      */
-    suspend fun deleteAccount(): Result<String> {
-        val user = auth.currentUser ?: return Result.failure(Exception("Non connecte"))
-        return try {
+    // v2.1.73 : withContext(Dispatchers.IO) ajoute. Contrairement a
+    // sendEmailOtp/verifyEmailOtp, cette fonction executait son appel OkHttp
+    // bloquant sur le thread de l'appelant : depuis viewModelScope (Main), la
+    // suppression de compte echouait par NetworkOnMainThreadException.
+    suspend fun deleteAccount(): Result<String> = withContext(Dispatchers.IO) {
+        val user = auth.currentUser ?: return@withContext Result.failure(Exception("Non connecte"))
+        try {
             val token = user.getIdToken(false).await()?.token
-                ?: return Result.failure(Exception("ID token indisponible"))
+                ?: return@withContext Result.failure(Exception("ID token indisponible"))
             val body = """{"confirm":"DELETE_${user.uid}"}"""
             val req = okhttp3.Request.Builder()
                 .url("https://website-omega-umber-20.vercel.app/api/delete-account")
@@ -475,7 +479,7 @@ class AuthRepository @Inject constructor(
             val receipt: String = httpClient.newCall(req).execute().use { resp ->
                 val respBody = resp.body?.string().orEmpty()
                 if (!resp.isSuccessful) {
-                    return Result.failure(Exception("Delete HTTP ${resp.code}: ${respBody.take(120)}"))
+                    return@withContext Result.failure(Exception("Delete HTTP ${resp.code}: ${respBody.take(120)}"))
                 }
                 // Parse minimal JSON pour extraire receipt (evite d'ajouter une dependance)
                 val match = Regex("\"receipt\"\\s*:\\s*\"([^\"]+)\"").find(respBody)
