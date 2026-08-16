@@ -314,9 +314,20 @@ service cloud.firestore {
     // ════════════════════════════════════════════════════════════════
     //  BACKUPS PATIENT
     // ════════════════════════════════════════════════════════════════
+    //  v2.1.72 : le backup cloud ecrit dans des SOUS-collections
+    //  (backups/{uid}/metadata/info, backups/{uid}/glucose/...). Un
+    //  `match /backups/{userId}` seul ne couvre PAS les sous-collections :
+    //  il faut un `{document=**}` explicite, sinon toute sauvegarde /
+    //  restauration est refusee. Le medecin lie lit les donnees patient
+    //  depuis backups/{uid}/glucose (cf. DataSharingRepository).
     match /backups/{userId} {
-      allow read: if isOwner(userId);
+      allow read: if isOwner(userId) || isLinkedDoctorOf(userId);
       allow write: if isOwner(userId) && request.resource.size() < 100000;
+
+      match /{document=**} {
+        allow read: if isOwner(userId) || isLinkedDoctorOf(userId);
+        allow write: if isOwner(userId);
+      }
     }
 
     // ════════════════════════════════════════════════════════════════
@@ -331,6 +342,69 @@ service cloud.firestore {
         allow create: if isOwner(ownerUid);
         allow update, delete: if isOwner(ownerUid);
       }
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    //  DEMANDES DE RDV patient -> medecin (v2.1.72)
+    //  Collection /rdv_requests/{id} (AppointmentRequestRepository).
+    //  Utilisee depuis longtemps par l'app mais JAMAIS declaree ici :
+    //  le catch-all la refusait => "PERMISSION_DENIED" a la prise de RDV.
+    //  - read   : les 2 parties (les requetes filtrent sur patientUid
+    //             ou medecinUid, donc compatible avec les listeners)
+    //  - create : le patient, pour lui-meme
+    //  - update : le medecin destinataire (accepte/refuse) ou le patient
+    //             (annulation)
+    // ════════════════════════════════════════════════════════════════
+    match /rdv_requests/{requestId} {
+      allow read: if isSignedIn() && (
+                     resource.data.patientUid == request.auth.uid ||
+                     resource.data.medecinUid == request.auth.uid
+                   );
+      allow create: if isSignedIn() &&
+                       request.resource.data.patientUid == request.auth.uid;
+      allow update: if isSignedIn() && (
+                       resource.data.patientUid == request.auth.uid ||
+                       resource.data.medecinUid == request.auth.uid
+                     );
+      allow delete: if isSignedIn() &&
+                       resource.data.patientUid == request.auth.uid;
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    //  RDV PARTAGES (v2.1.72)
+    //  /rdv_shared/{patientUid}/rendezvous/{rdvId}
+    //  Ecrit par le MEDECIN quand il accepte une demande, lu par le
+    //  patient concerne. Egalement jamais declaree jusqu'ici.
+    //  - read  : le patient proprietaire ou son medecin lie
+    //  - write : le patient proprietaire, ou le medecin qui se declare
+    //            comme auteur du RDV (medecinUid == son uid)
+    // ════════════════════════════════════════════════════════════════
+    match /rdv_shared/{patientUid} {
+      allow read: if isOwner(patientUid) || isLinkedDoctorOf(patientUid);
+
+      match /rendezvous/{rdvId} {
+        allow read: if isOwner(patientUid) || isLinkedDoctorOf(patientUid);
+        allow create: if isOwner(patientUid) ||
+                         (isSignedIn() &&
+                          request.resource.data.medecinUid == request.auth.uid);
+        allow update: if isOwner(patientUid) ||
+                         (isSignedIn() &&
+                          resource.data.medecinUid == request.auth.uid);
+        allow delete: if isOwner(patientUid) ||
+                         (isSignedIn() &&
+                          resource.data.medecinUid == request.auth.uid);
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    //  QUOTA IA (v2.1.72)
+    //  L'app utilise la collection `user_quotas` (QuotaRepository), alors
+    //  que seule `quota` etait declaree : le compteur journalier etait
+    //  donc toujours refuse. Sans consequence visible (QuotaRepository
+    //  echoue en mode ouvert) mais le quota n'etait jamais applique.
+    // ════════════════════════════════════════════════════════════════
+    match /user_quotas/{userId} {
+      allow read, write: if isOwner(userId);
     }
 
     // ════════════════════════════════════════════════════════════════
