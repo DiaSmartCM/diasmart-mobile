@@ -89,8 +89,6 @@ fun EmailOtpDialog(
         }
     }
 
-    LaunchedEffect(Unit) { focusRequester.requestFocus() }
-
     Dialog(
         onDismissRequest = { /* non-dismissable, on utilise Annuler */ },
         properties = DialogProperties(
@@ -187,6 +185,19 @@ fun EmailOtpDialog(
                         }
                     }
                 )
+
+                // v2.1.74 : focus demande ICI, a l'interieur du Dialog et APRES
+                // que le champ soit dans la composition. Place avant le Dialog,
+                // l'effet partait alors que le contenu vivait encore dans une
+                // fenetre non attachee -> "FocusRequester is not initialized"
+                // (crash fatal, systematique sur EMUI/Android 10).
+                // withFrameNanos attend la fin de la passe de layout ; le
+                // runCatching garantit qu'un echec ne coute qu'un clavier non
+                // ouvert, jamais un plantage.
+                LaunchedEffect(Unit) {
+                    withFrameNanos { }
+                    runCatching { focusRequester.requestFocus() }
+                }
 
                 if (!infoMessage.isNullOrBlank()) {
                     Spacer(modifier = Modifier.height(12.dp))
