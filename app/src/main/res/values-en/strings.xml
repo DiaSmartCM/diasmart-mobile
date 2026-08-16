@@ -311,6 +311,8 @@
     <string name="card_my_reviews_subtitle">Average rating</string>
     <string name="card_send_report_title">Send a report</string>
     <string name="card_send_report_subtitle">PDF to my doctor</string>
+    <string name="card_glucose_title">Glucose &amp; HbA1c</string>
+    <string name="card_glucose_subtitle">Enter my results</string>
 
     <string name="settings_section_appearance">Appearance</string>
     <string name="settings_section_measures">Measurements &amp; Units</string>

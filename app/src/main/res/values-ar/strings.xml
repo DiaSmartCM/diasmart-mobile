@@ -299,6 +299,8 @@
     <string name="card_my_reviews_subtitle">المعدل</string>
     <string name="card_send_report_title">إرسال تقرير</string>
     <string name="card_send_report_subtitle">PDF لطبيبي</string>
+    <string name="card_glucose_title">السكر و HbA1c</string>
+    <string name="card_glucose_subtitle">إدخال نتائجي</string>
 
     <string name="settings_section_appearance">المظهر</string>
     <string name="settings_section_measures">القياسات والوحدات</string>

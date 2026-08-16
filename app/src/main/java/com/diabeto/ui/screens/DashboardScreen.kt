@@ -737,7 +737,20 @@ fun DashboardScreen(
                             onClick = onNavigateToReports,
                             modifier = Modifier.weight(1f)
                         )
-                        Spacer(modifier = Modifier.weight(1f))
+                        // v2.1.72 : carte dediee a la saisie des parametres
+                        // biologiques (glycemie glucometre + HbA1c labo).
+                        // Depuis v2.1.71 seule la carte glycemie de l'en-tete
+                        // ouvrait cet ecran : trop discret, les patients ne
+                        // trouvaient pas ou saisir leurs resultats.
+                        FeatureCard(
+                            title = stringResource(R.string.card_glucose_title),
+                            subtitle = stringResource(R.string.card_glucose_subtitle),
+                            icon = Icons.Outlined.Bloodtype,
+                            cardColor = CardGlucose,
+                            iconTint = Primary,
+                            onClick = { uiState.selfPatientId?.let(onNavigateToGlucose) },
+                            modifier = Modifier.weight(1f)
+                        )
                     }
                 }
             }

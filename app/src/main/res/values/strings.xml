@@ -311,6 +311,11 @@
     <string name="card_my_reviews_subtitle">Note moyenne</string>
     <string name="card_send_report_title">Envoyer un rapport</string>
     <string name="card_send_report_subtitle">PDF à mon médecin</string>
+    <!-- v2.1.72 : acces direct a la saisie des parametres biologiques
+         (glycemie glucometre + HbA1c labo). La carte glycemie de l'en-tete
+         etait deja cliquable depuis v2.1.71 mais restait introuvable. -->
+    <string name="card_glucose_title">Glycémie &amp; HbA1c</string>
+    <string name="card_glucose_subtitle">Saisir mes résultats</string>
 
     <!-- Settings sections + items -->
     <string name="settings_section_appearance">Apparence</string>

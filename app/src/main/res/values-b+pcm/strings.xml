@@ -330,6 +330,8 @@
     <string name="card_my_reviews_subtitle">Avareyj mak</string>
     <string name="card_send_report_title">Sen ripot</string>
     <string name="card_send_report_subtitle">PDF for ma dokta</string>
+    <string name="card_glucose_title">Sugar &amp; HbA1c</string>
+    <string name="card_glucose_subtitle">Put ma rezult</string>
 
     <string name="settings_section_appearance">Hau yi go luk</string>
     <string name="settings_section_measures">Mesh &amp; yunit</string>
