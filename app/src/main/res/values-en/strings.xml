@@ -313,6 +313,9 @@
     <string name="card_send_report_subtitle">PDF to my doctor</string>
     <string name="card_glucose_title">Glucose &amp; HbA1c</string>
     <string name="card_glucose_subtitle">Enter my results</string>
+    <string name="pedometer_history_title">Daily history</string>
+    <string name="pedometer_history_subtitle">Your steps day by day, kept 90 days on the phone.</string>
+    <string name="pedometer_history_steps">%1$d steps</string>
 
     <string name="settings_section_appearance">Appearance</string>
     <string name="settings_section_measures">Measurements &amp; Units</string>

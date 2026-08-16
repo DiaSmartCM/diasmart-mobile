@@ -35,6 +35,52 @@ class StepCounterService : Service(), SensorEventListener {
         const val KEY_IS_TRACKING = "is_tracking"
         const val KEY_DAILY_STEPS = "daily_steps"
         const val KEY_LAST_DATE = "last_date"
+        // v2.1.72 : pas cumules par les sessions DEJA terminees aujourd'hui.
+        const val KEY_DAILY_BASE = "daily_base"
+        // v2.1.72 : historique journalier, format "AAAA-MM-JJ:pas;AAAA-MM-JJ:pas"
+        const val KEY_DAILY_HISTORY = "daily_history"
+        const val HISTORY_MAX_DAYS = 90
+
+        private fun todayKey(): String =
+            java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+                .format(java.util.Date())
+
+        /**
+         * Historique des pas par jour, du plus recent au plus ancien.
+         * Stocke en SharedPreferences : disponible hors ligne, sans compte.
+         */
+        fun getDailyHistory(context: Context): List<Pair<String, Int>> {
+            val raw = context.getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                .getString(KEY_DAILY_HISTORY, "") ?: ""
+            return raw.split(';')
+                .mapNotNull { entry ->
+                    val parts = entry.split(':')
+                    if (parts.size != 2) return@mapNotNull null
+                    val steps = parts[1].toIntOrNull() ?: return@mapNotNull null
+                    parts[0] to steps
+                }
+                .sortedByDescending { it.first }
+        }
+
+        /** Insere ou met a jour le total d'un jour, puis elague l'historique. */
+        private fun upsertHistory(
+            prefs: android.content.SharedPreferences,
+            date: String,
+            steps: Int
+        ) {
+            val raw = prefs.getString(KEY_DAILY_HISTORY, "") ?: ""
+            val map = LinkedHashMap<String, Int>()
+            raw.split(';').forEach { entry ->
+                val parts = entry.split(':')
+                if (parts.size == 2) parts[1].toIntOrNull()?.let { map[parts[0]] = it }
+            }
+            map[date] = steps
+            val trimmed = map.entries
+                .sortedByDescending { it.key }
+                .take(HISTORY_MAX_DAYS)
+                .joinToString(";") { "${it.key}:${it.value}" }
+            prefs.edit().putString(KEY_DAILY_HISTORY, trimmed).apply()
+        }
 
         const val ACTION_START = "com.diabeto.service.START_TRACKING"
         const val ACTION_STOP = "com.diabeto.service.STOP_TRACKING"
@@ -51,10 +97,11 @@ class StepCounterService : Service(), SensorEventListener {
 
         fun getDailySteps(context: Context): Int {
             val prefs = context.getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-            val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
-                .format(java.util.Date())
+            // v2.1.72 : todayKey() force Locale.US. Avec Locale.getDefault() en
+            // arabe, la date sortait en chiffres arabes et ne correspondait
+            // jamais a la date stockee : le total du jour restait a 0.
             val lastDate = prefs.getString(KEY_LAST_DATE, "") ?: ""
-            return if (lastDate == today) prefs.getInt(KEY_DAILY_STEPS, 0) else 0
+            return if (lastDate == todayKey()) prefs.getInt(KEY_DAILY_STEPS, 0) else 0
         }
     }
 
@@ -94,8 +141,23 @@ class StepCounterService : Service(), SensorEventListener {
         }
 
         val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-        initialSteps = prefs.getInt(KEY_INITIAL_STEPS, -1)
-        sessionSteps = prefs.getInt(KEY_SESSION_STEPS, 0)
+        // v2.1.72 : distinguer une NOUVELLE session d'un simple redemarrage du
+        // service par le systeme (START_STICKY). Avant, KEY_INITIAL_STEPS
+        // survivait a toutes les sessions : le compteur repartait au cumul
+        // depuis la toute premiere session (ex. 992 pas) au lieu de 0.
+        val reprisedeSession = prefs.getBoolean(KEY_IS_TRACKING, false)
+        if (reprisedeSession) {
+            initialSteps = prefs.getInt(KEY_INITIAL_STEPS, -1)
+            sessionSteps = prefs.getInt(KEY_SESSION_STEPS, 0)
+        } else {
+            // Nouvelle session : la reference sera fixee au premier evenement.
+            initialSteps = -1
+            sessionSteps = 0
+            prefs.edit()
+                .remove(KEY_INITIAL_STEPS)
+                .putInt(KEY_SESSION_STEPS, 0)
+                .apply()
+        }
 
         sensorManager.registerListener(
             this,
@@ -109,44 +171,63 @@ class StepCounterService : Service(), SensorEventListener {
 
     private fun stopTracking() {
         sensorManager.unregisterListener(this)
-        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+        // v2.1.72 : on clot la session -> ses pas rejoignent le cumul du jour,
+        // pour que la session suivante s'ajoute au lieu de l'ecraser.
+        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        val today = todayKey()
+        val lastDate = prefs.getString(KEY_LAST_DATE, "") ?: ""
+        val dailyBase = (if (lastDate == today) prefs.getInt(KEY_DAILY_BASE, 0) else 0) + sessionSteps
+        prefs.edit()
             .putBoolean(KEY_IS_TRACKING, false)
+            .putInt(KEY_DAILY_BASE, dailyBase)
+            .putInt(KEY_DAILY_STEPS, dailyBase)
+            .putString(KEY_LAST_DATE, today)
             .apply()
-        Log.d(TAG, "Suivi des pas arrêté (total=$sessionSteps)")
+        upsertHistory(prefs, today, dailyBase)
+        Log.d(TAG, "Suivi des pas arrêté (session=$sessionSteps, jour=$dailyBase)")
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
         if (event?.sensor?.type != Sensor.TYPE_STEP_COUNTER) return
 
         val totalStepsFromSensor = event.values[0].toInt()
+        val prefsRef = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
 
-        if (initialSteps < 0) {
+        // v2.1.72 : TYPE_STEP_COUNTER compte depuis le DERNIER DEMARRAGE du
+        // telephone et repart de 0 apres un reboot. Si la reference sauvegardee
+        // est superieure a la valeur lue, elle est perimee (reboot) : sans ce
+        // garde, sessionSteps devenait negatif.
+        if (initialSteps < 0 || totalStepsFromSensor < initialSteps) {
             initialSteps = totalStepsFromSensor
-            getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+            prefsRef.edit()
                 .putInt(KEY_INITIAL_STEPS, initialSteps)
                 .apply()
         }
 
-        sessionSteps = totalStepsFromSensor - initialSteps
+        sessionSteps = (totalStepsFromSensor - initialSteps).coerceAtLeast(0)
         val distance = String.format("%.2f", sessionSteps * 0.00075)
         val calories = String.format("%.0f", sessionSteps * 0.04)
 
         // Save to prefs
-        val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
-            .format(java.util.Date())
-        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        val today = todayKey()
+        val prefs = prefsRef
         val lastDate = prefs.getString(KEY_LAST_DATE, "") ?: ""
-        val dailySteps = if (lastDate == today) {
-            prefs.getInt(KEY_DAILY_STEPS, 0).coerceAtLeast(sessionSteps)
-        } else {
-            sessionSteps
-        }
+        // v2.1.72 : total du jour = pas des sessions DEJA terminees aujourd'hui
+        // + session en cours. Avant, un `coerceAtLeast` gardait le maximum des
+        // sessions au lieu de les additionner (500 pas puis 300 => 500 au lieu
+        // de 800), ce qui faussait le total journalier.
+        val dailyBase = if (lastDate == today) prefs.getInt(KEY_DAILY_BASE, 0) else 0
+        val dailySteps = dailyBase + sessionSteps
 
         prefs.edit()
             .putInt(KEY_SESSION_STEPS, sessionSteps)
+            .putInt(KEY_DAILY_BASE, dailyBase)
             .putInt(KEY_DAILY_STEPS, dailySteps)
             .putString(KEY_LAST_DATE, today)
             .apply()
+
+        // Historique journalier consultable (conserve HISTORY_MAX_DAYS jours).
+        upsertHistory(prefs, today, dailySteps)
 
         // Update notification
         val notification = createNotification(sessionSteps, distance, calories)

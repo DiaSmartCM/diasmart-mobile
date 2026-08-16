@@ -316,6 +316,10 @@
          etait deja cliquable depuis v2.1.71 mais restait introuvable. -->
     <string name="card_glucose_title">Glycémie &amp; HbA1c</string>
     <string name="card_glucose_subtitle">Saisir mes résultats</string>
+    <!-- v2.1.72 : historique journalier du podometre (local, hors ligne) -->
+    <string name="pedometer_history_title">Historique journalier</string>
+    <string name="pedometer_history_subtitle">Vos pas jour par jour, conservés 90 jours sur le téléphone.</string>
+    <string name="pedometer_history_steps">%1$d pas</string>
 
     <!-- Settings sections + items -->
     <string name="settings_section_appearance">Apparence</string>

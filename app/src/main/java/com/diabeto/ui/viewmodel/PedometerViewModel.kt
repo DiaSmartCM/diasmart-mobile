@@ -31,7 +31,11 @@ data class PedometerUiState(
     val isTracking: Boolean = false,
     val sensorAvailable: Boolean = true,
     val avgGlycemie: Double? = null,
-    val glycemieImpact: String? = null
+    val glycemieImpact: String? = null,
+    // v2.1.72 : total du jour (toutes sessions cumulees) + historique
+    // journalier consultable, conserve 90 jours en local (donc hors ligne).
+    val dailyTotal: Int = 0,
+    val history: List<Pair<String, Int>> = emptyList()
 )
 
 @HiltViewModel
@@ -56,6 +60,7 @@ class PedometerViewModel @Inject constructor(
 
     init {
         loadGlucoseCorrelation()
+        refreshHistory()
         // Restore state from service if it's already running
         if (StepCounterService.isTracking(context)) {
             val steps = StepCounterService.getSessionSteps(context)
@@ -95,9 +100,12 @@ class PedometerViewModel @Inject constructor(
     fun startTracking() {
         if (stepSensor == null) return
 
-        // Also register locally for immediate UI updates
-        sensorManager.registerListener(this, stepSensor, SensorManager.SENSOR_DELAY_UI)
-        _uiState.update { it.copy(isTracking = true) }
+        // v2.1.72 : on n'ecoute PLUS le capteur ici. Le service est la seule
+        // source de verite. Avant, ce ViewModel comptait en parallele avec sa
+        // propre reference (repartant de 0) pendant que le sondage lisait celle
+        // du service : les deux valeurs s'ecrasaient mutuellement et l'affichage
+        // restait bloque sur la plus grande.
+        _uiState.update { it.copy(isTracking = true, steps = 0, distanceKm = 0.0, caloriesBurned = 0.0) }
 
         // Start foreground service for background tracking
         val intent = Intent(context, StepCounterService::class.java).apply {
@@ -124,6 +132,13 @@ class PedometerViewModel @Inject constructor(
 
         pollingJob?.cancel()
         pollingJob = null
+
+        // v2.1.72 : le service vient de clore la session dans les prefs ;
+        // on recharge pour que le total du jour et l'historique soient a jour.
+        viewModelScope.launch {
+            delay(300)
+            refreshHistory()
+        }
     }
 
     /**
@@ -134,41 +149,43 @@ class PedometerViewModel @Inject constructor(
         pollingJob?.cancel()
         pollingJob = viewModelScope.launch {
             while (true) {
-                delay(1000) // Update every second
                 if (!StepCounterService.isTracking(context) && !_uiState.value.isTracking) break
+                // v2.1.72 : on reflete la valeur du service telle quelle. Le
+                // garde `steps > valeur actuelle` rendait le compteur monotone
+                // et collant : il empechait tout retour a 0 en debut de session.
                 val steps = StepCounterService.getSessionSteps(context)
-                if (steps > _uiState.value.steps) {
+                if (steps != _uiState.value.steps) {
                     _uiState.update {
                         it.copy(
                             steps = steps,
                             distanceKm = steps * 0.00075,
-                            caloriesBurned = steps * 0.04
+                            caloriesBurned = steps * 0.04,
+                            dailyTotal = StepCounterService.getDailySteps(context)
                         )
                     }
                 }
+                delay(1000)
             }
         }
     }
 
-    override fun onSensorChanged(event: SensorEvent?) {
-        if (event?.sensor?.type == Sensor.TYPE_STEP_COUNTER) {
-            val totalSteps = event.values[0].toInt()
-            if (initialSteps == null) {
-                initialSteps = totalSteps
-            }
-            val sessionSteps = totalSteps - (initialSteps ?: totalSteps)
-            val distance = sessionSteps * 0.00075 // ~0.75m per step
-            val calories = sessionSteps * 0.04 // ~0.04 cal per step
-
-            _uiState.update {
-                it.copy(
-                    steps = sessionSteps,
-                    distanceKm = distance,
-                    caloriesBurned = calories
-                )
-            }
+    /**
+     * v2.1.72 : recharge le total du jour et l'historique depuis le stockage
+     * local. Aucun reseau : consultable hors ligne.
+     */
+    fun refreshHistory() {
+        _uiState.update {
+            it.copy(
+                dailyTotal = StepCounterService.getDailySteps(context),
+                history = StepCounterService.getDailyHistory(context)
+            )
         }
     }
+
+    // v2.1.72 : le comptage est entierement delegue a StepCounterService (il
+    // continue meme app fermee). Ce callback reste vide pour ne pas creer un
+    // second compteur concurrent.
+    override fun onSensorChanged(event: SensorEvent?) {}
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 

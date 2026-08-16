@@ -301,6 +301,9 @@
     <string name="card_send_report_subtitle">PDF لطبيبي</string>
     <string name="card_glucose_title">السكر و HbA1c</string>
     <string name="card_glucose_subtitle">إدخال نتائجي</string>
+    <string name="pedometer_history_title">السجل اليومي</string>
+    <string name="pedometer_history_subtitle">خطواتك يوماً بيوم، محفوظة 90 يوماً على الهاتف.</string>
+    <string name="pedometer_history_steps">%1$d خطوة</string>
 
     <string name="settings_section_appearance">المظهر</string>
     <string name="settings_section_measures">القياسات والوحدات</string>

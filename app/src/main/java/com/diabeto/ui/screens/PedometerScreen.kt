@@ -257,6 +257,58 @@ fun PedometerScreen(
                 }
             }
 
+            // ── Historique journalier (v2.1.72) ─────────────
+            // Stocke en local : consultable hors ligne, 90 jours glissants.
+            if (uiState.history.isNotEmpty()) {
+                item {
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.CalendarMonth, null,
+                                    tint = Primary, modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    stringResource(R.string.pedometer_history_title),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                stringResource(R.string.pedometer_history_subtitle),
+                                fontSize = 12.sp,
+                                color = OnSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            uiState.history.take(30).forEach { (date, steps) ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        formatHistoryDate(date),
+                                        fontSize = 13.sp,
+                                        color = OnSurfaceVariant
+                                    )
+                                    Text(
+                                        stringResource(R.string.pedometer_history_steps, steps),
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (steps >= uiState.dailyGoal) GlucoseNormal else Primary
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // ── Info card ───────────────────────────────────
             item {
                 Card(
@@ -278,6 +330,15 @@ fun PedometerScreen(
             item { Spacer(modifier = Modifier.height(16.dp)) }
         }
     }
+}
+
+/**
+ * v2.1.72 : "2026-08-16" -> "16/08/2026". Purement local, sans dependance
+ * reseau ni locale (les cles d'historique sont toujours en AAAA-MM-JJ).
+ */
+private fun formatHistoryDate(iso: String): String {
+    val p = iso.split('-')
+    return if (p.size == 3) "${p[2]}/${p[1]}/${p[0]}" else iso
 }
 
 @Composable
