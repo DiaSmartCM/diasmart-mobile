@@ -651,15 +651,39 @@ class ChatbotRepository @Inject constructor(
                 Exception("L'image n'a pas pu être analysée. Essayez avec une photo plus nette ou plus petite.")
             msg.contains("403") || msg.contains("PERMISSION_DENIED") ->
                 Exception("Accès au service IA refusé. Vérifiez la configuration de l'application.")
-            msg.contains("network") || msg.contains("timeout") || msg.contains("connect") || msg.contains("Unable to resolve host") ->
-                Exception("Erreur de connexion. Vérifiez votre accès Internet et réessayez.")
+            // v2.1.73 : on teste aussi le TYPE de l'exception. Une coupure
+            // reseau remonte souvent une SocketTimeoutException / UnknownHost
+            // dont le message est vide ou ne contient pas "timeout" (ex.
+            // "Read timed out"), et l'utilisateur recevait alors un message
+            // generique sans aucune piste.
+            e is java.net.SocketTimeoutException ||
+            e is java.net.UnknownHostException ||
+            e is javax.net.ssl.SSLException ||
+            msg.contains("network") || msg.contains("timeout") || msg.contains("timed out") ||
+            msg.contains("connect") || msg.contains("Unable to resolve host") ->
+                Exception(
+                    "Connexion trop lente ou interrompue pendant l'envoi. " +
+                        "Rapprochez-vous du réseau et réessayez."
+                )
             // v2.1.71 : on expose le detail brut du serveur pour les erreurs
             // non reconnues (ex: generation_failed, gemini_not_configured, 500,
             // 502) — indispensable pour diagnostiquer, plutot qu'un message
             // opaque qui empeche tout debug.
-            else -> Exception(
-                "Erreur d'analyse IA." + if (msg.isNotBlank()) " Détail : ${msg.take(180)}" else " Veuillez réessayer."
-            )
+            // v2.1.73 : quand l'exception n'a AUCUN message (cas frequent des
+            // erreurs reseau bas niveau), on affiche au moins son type. Sans
+            // ca, l'ecran ne disait que "Veuillez reessayer" et le probleme
+            // etait impossible a diagnostiquer a distance.
+            else -> {
+                val detail = when {
+                    msg.isNotBlank() -> msg.take(180)
+                    e != null -> e.javaClass.simpleName
+                    else -> ""
+                }
+                Exception(
+                    "Erreur d'analyse IA." +
+                        if (detail.isNotBlank()) " Détail : $detail" else " Veuillez réessayer."
+                )
+            }
         }
     }
 }

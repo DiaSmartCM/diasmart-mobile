@@ -51,13 +51,23 @@ class RollyChatClient @Inject constructor(
         private const val PROXY_URL =
             "https://website-omega-umber-20.vercel.app/api/rolly-chat"
         private val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
+
+        // v2.1.73 : plafond du plus grand cote d'une image envoyee a ROLLY
+        // Vision. Gemini retaille en tuiles ~768 px : au-dela on paie de la
+        // bande passante (rare et chere ici) sans gagner en precision.
+        private const val IMAGE_MAX_SIDE = 1024
+        private const val IMAGE_JPEG_QUALITY = 80
     }
 
     private val httpClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(120, TimeUnit.SECONDS)  // Gemini peut prendre du temps
-            .writeTimeout(30, TimeUnit.SECONDS)
+            // v2.1.73 : 30 s ne suffisaient pas pour televerser une photo sur
+            // une 4G camerounaise instable -> SocketTimeoutException sans
+            // message. L'image est desormais bien plus legere, mais on garde
+            // une marge pour les reseaux tres lents.
+            .writeTimeout(90, TimeUnit.SECONDS)
             .build()
     }
 
@@ -199,13 +209,38 @@ class RollyChatClient @Inject constructor(
             val tag = currentAppLanguageTag()
             if (tag.isNotBlank()) put("userLanguage", tag)
             if (imageBitmap != null) {
+                // v2.1.73 : l'image etait envoyee en pleine resolution. Une photo
+                // de telephone (3000x4000) donne 2-5 Mo en JPEG, que le Base64
+                // gonfle encore de ~33 % : 3 a 7 Mo pousses sur une 4G lente.
+                // L'envoi depassait le writeTimeout et remontait une
+                // SocketTimeoutException SANS message, d'ou un "Erreur d'analyse
+                // IA" sans detail. On redimensionne a IMAGE_MAX_SIDE : Gemini
+                // Vision retaille de toute facon en tuiles ~768 px, donc aucune
+                // perte de qualite d'analyse, et la charge tombe a ~100-200 Ko.
+                val reduit = downscaleForUpload(imageBitmap)
                 val baos = ByteArrayOutputStream()
-                imageBitmap.compress(Bitmap.CompressFormat.JPEG, 85, baos)
+                reduit.compress(Bitmap.CompressFormat.JPEG, IMAGE_JPEG_QUALITY, baos)
+                if (reduit !== imageBitmap) reduit.recycle()
                 val b64 = Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP)
+                Log.d(TAG, "Image Rolly : ${baos.size() / 1024} Ko compresses, ${b64.length / 1024} Ko en base64")
                 put("imageBase64", b64)
             }
         }
         return obj.toString()
+    }
+
+    /**
+     * v2.1.73 : ramene le plus grand cote de l'image a IMAGE_MAX_SIDE en
+     * conservant les proportions. Renvoie le bitmap d'origine s'il est deja
+     * assez petit (l'appelant ne doit alors pas le recycler).
+     */
+    private fun downscaleForUpload(source: Bitmap): Bitmap {
+        val plusGrandCote = maxOf(source.width, source.height)
+        if (plusGrandCote <= IMAGE_MAX_SIDE) return source
+        val ratio = IMAGE_MAX_SIDE.toFloat() / plusGrandCote
+        val largeur = (source.width * ratio).toInt().coerceAtLeast(1)
+        val hauteur = (source.height * ratio).toInt().coerceAtLeast(1)
+        return Bitmap.createScaledBitmap(source, largeur, hauteur, true)
     }
 
     /**

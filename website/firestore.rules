@@ -162,8 +162,16 @@ service cloud.firestore {
                      resource.data.medecinUid == request.auth.uid ||
                      resource.data.patientUid == request.auth.uid
                    );
+      // v2.1.73 : c'est le PATIENT qui soumet une reponse ROLLY a son medecin
+      // (ValidationRepository.createValidation ecrit patientUid = son propre
+      // uid). La regle exigeait medecinUid == auth.uid, donc seul le medecin
+      // pouvait creer : l'envoi du patient etait toujours refuse.
+      // La validation elle-meme (approbation/commentaire) reste reservee au
+      // medecin destinataire via `update`.
       allow create: if isSignedIn() &&
-                       request.resource.data.medecinUid == request.auth.uid;
+                       request.resource.data.patientUid == request.auth.uid &&
+                       request.resource.data.medecinUid is string &&
+                       request.resource.data.medecinUid.size() > 0;
       allow update: if isSignedIn() && resource.data.medecinUid == request.auth.uid;
       allow delete: if false;
     }
