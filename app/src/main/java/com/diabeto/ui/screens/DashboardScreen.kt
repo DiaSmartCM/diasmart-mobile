@@ -951,7 +951,11 @@ private fun FeatureCard(
     val featureBorderCol = if (isSystemDark) DarkOutline else OutlineVariant
     Card(
         modifier = modifier
-            .height(110.dp)
+            // v2.1.75 : hauteur MINIMALE et non fixe. A 110.dp figes, un titre
+            // long (arabe, pidgin) ou une grande taille de police systeme
+            // (accessibilite) rognait le texte. La carte garde son gabarit
+            // habituel et ne s'etire que si le contenu l'exige.
+            .heightIn(min = 110.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = actualCardColor),
@@ -1222,10 +1226,15 @@ private fun DiaSmartBottomBar(
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         border = BorderStroke(1.dp, navBorderCol)
     ) {
+        // v2.1.75 : plus de hauteur figee. Material3 ajoute lui-meme la marge
+        // de securite de la barre systeme A L'INTERIEUR de la hauteur donnee :
+        // avec 72.dp imposes, un telephone a navigation gestuelle (barre de
+        // 24-48 dp) ne laissait qu'une trentaine de dp aux icones et libelles,
+        // qui se retrouvaient ecrases. On laisse la barre se dimensionner et
+        // absorber les insets, ce qui l'adapte a chaque appareil.
         NavigationBar(
             containerColor = Color.Transparent,
-            tonalElevation = 0.dp,
-            modifier = Modifier.height(72.dp)
+            tonalElevation = 0.dp
         ) {
             data class NavItem(val label: String, val outlined: ImageVector, val filled: ImageVector, val isRolly: Boolean = false)
 

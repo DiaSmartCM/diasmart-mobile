@@ -10,6 +10,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -108,6 +110,12 @@ fun EmailOtpDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    // v2.1.75 : le contenu (icone + titre + cadran + 3 boutons)
+                    // depasse la hauteur utile des petits ecrans, surtout clavier
+                    // ouvert ou avec une grande police systeme. Sans defilement,
+                    // le bouton "Valider" devenait inatteignable.
+                    .heightIn(max = 560.dp)
+                    .verticalScroll(rememberScrollState())
                     .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
