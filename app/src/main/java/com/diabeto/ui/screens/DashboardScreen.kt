@@ -69,6 +69,9 @@ fun DashboardScreen(
     onNavigateToReports: () -> Unit = {},
     onNavigateToMesAvis: () -> Unit = {},
     onNavigateToGlucose: (Long) -> Unit = {},
+    // v2.1.75 : ecran Medicaments (rappels de traitement), ouvert depuis
+    // l'onglet "Rappels" de la barre du bas.
+    onNavigateToMedicaments: (Long) -> Unit = {},
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -250,7 +253,12 @@ fun DashboardScreen(
                 onNavigateToPatients = { selectedNavIndex = 1; onNavigateToPatients() },
                 onNavigateToDataSharing = { selectedNavIndex = 1; onNavigateToDataSharing() },
                 onNavigateToRendezVous = { selectedNavIndex = 2; onNavigateToRendezVous() },
-                onNavigateToChatbot = { selectedNavIndex = 3; onNavigateToChatbot() },
+                // v2.1.75 : onglet 3 = Rappels de traitement (ecran Medicaments),
+                // qui n'etait plus atteignable cote patient.
+                onNavigateToRappels = {
+                    selectedNavIndex = 3
+                    uiState.selfPatientId?.let(onNavigateToMedicaments)
+                },
                 onNavigateToMessagerie = { selectedNavIndex = 4; onNavigateToMessagerie() },
                 onDashboard = { selectedNavIndex = 0 },
                 isMedecin = uiState.userRole == UserRole.MEDECIN,
@@ -539,26 +547,8 @@ fun DashboardScreen(
                             onClick = { if (uiState.isOnline) onNavigateToChatbot() },
                             modifier = Modifier.weight(1f)
                         )
-                        FeatureCard(
-                            title = stringResource(R.string.card_messaging_title),
-                            subtitle = stringResource(R.string.card_messaging_subtitle),
-                            icon = Icons.Outlined.Forum,
-                            cardColor = CardGlucose,
-                            iconTint = Primary,
-                            isOnline = uiState.isOnline,
-                            onClick = { if (uiState.isOnline) onNavigateToMessagerie() },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-                item { Spacer(modifier = Modifier.height(12.dp)) }
-
-                // Ligne 2
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
+                        // v2.1.75 : Analyse Repas remonte en ligne 1 (usage
+                        // quotidien), Messagerie descend en ligne 3.
                         FeatureCard(
                             title = stringResource(R.string.card_meal_title),
                             subtitle = stringResource(R.string.card_meal_subtitle),
@@ -569,13 +559,35 @@ fun DashboardScreen(
                             onClick = { if (uiState.isOnline) onNavigateToRepasAnalyse() },
                             modifier = Modifier.weight(1f)
                         )
+                    }
+                }
+                item { Spacer(modifier = Modifier.height(12.dp)) }
+
+                // Ligne 2 — le duo de suivi glycemique.
+                // v2.1.75 : couleurs permutees a la demande — la saisie
+                // Glycemie/HbA1c prend le rose/rouge (donnee vitale, doit
+                // sauter aux yeux), les Courbes heritent du lavande indigo.
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
                         FeatureCard(
-                            title = stringResource(R.string.card_my_doctor_title),
-                            subtitle = stringResource(R.string.card_my_doctor_subtitle),
-                            icon = Icons.Outlined.MedicalServices,
-                            cardColor = CardInsulin,
-                            iconTint = Warning,
-                            onClick = onNavigateToMonMedecin,
+                            title = stringResource(R.string.card_glucose_title),
+                            subtitle = stringResource(R.string.card_glucose_subtitle),
+                            icon = Icons.Outlined.Bloodtype,
+                            cardColor = CardMedication,
+                            iconTint = Secondary,
+                            onClick = { uiState.selfPatientId?.let(onNavigateToGlucose) },
+                            modifier = Modifier.weight(1f)
+                        )
+                        FeatureCard(
+                            title = stringResource(R.string.card_curves_title),
+                            subtitle = stringResource(R.string.card_curves_subtitle),
+                            icon = Icons.Outlined.TrendingUp,
+                            cardColor = CardGlucose,
+                            iconTint = Primary,
+                            onClick = { uiState.selfPatientId?.let(onNavigateToPredictive) },
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -583,6 +595,37 @@ fun DashboardScreen(
                 item { Spacer(modifier = Modifier.height(12.dp)) }
 
                 // Ligne 3
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // v2.1.75 : Messagerie descend ici. Teinte menthe pour
+                        // ne pas dupliquer le lavande des Courbes juste au-dessus.
+                        FeatureCard(
+                            title = stringResource(R.string.card_messaging_title),
+                            subtitle = stringResource(R.string.card_messaging_subtitle),
+                            icon = Icons.Outlined.Forum,
+                            cardColor = CardAppointment,
+                            iconTint = Tertiary,
+                            isOnline = uiState.isOnline,
+                            onClick = { if (uiState.isOnline) onNavigateToMessagerie() },
+                            modifier = Modifier.weight(1f)
+                        )
+                        FeatureCard(
+                            title = stringResource(R.string.card_community_title),
+                            subtitle = stringResource(R.string.card_community_subtitle),
+                            icon = Icons.Outlined.Groups,
+                            cardColor = CardActivity,
+                            iconTint = Color(0xFF0288D1),
+                            onClick = onNavigateToCommunity,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+                item { Spacer(modifier = Modifier.height(12.dp)) }
+
+                // Ligne 4 — suivi quotidien
                 item {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
@@ -601,37 +644,9 @@ fun DashboardScreen(
                             title = stringResource(R.string.card_pedometer_title),
                             subtitle = stringResource(R.string.card_pedometer_subtitle),
                             icon = Icons.Outlined.DirectionsWalk,
-                            cardColor = CardAppointment,
-                            iconTint = Tertiary,
+                            cardColor = CardInsulin,
+                            iconTint = Warning,
                             onClick = { uiState.selfPatientId?.let(onNavigateToPedometer) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-                item { Spacer(modifier = Modifier.height(12.dp)) }
-
-                // Ligne 4
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        FeatureCard(
-                            title = stringResource(R.string.card_curves_title),
-                            subtitle = stringResource(R.string.card_curves_subtitle),
-                            icon = Icons.Outlined.TrendingUp,
-                            cardColor = CardMedication,
-                            iconTint = Secondary,
-                            onClick = { uiState.selfPatientId?.let(onNavigateToPredictive) },
-                            modifier = Modifier.weight(1f)
-                        )
-                        FeatureCard(
-                            title = stringResource(R.string.card_community_title),
-                            subtitle = stringResource(R.string.card_community_subtitle),
-                            icon = Icons.Outlined.Groups,
-                            cardColor = CardActivity,
-                            iconTint = Color(0xFF0288D1),
-                            onClick = onNavigateToCommunity,
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -737,18 +752,16 @@ fun DashboardScreen(
                             onClick = onNavigateToReports,
                             modifier = Modifier.weight(1f)
                         )
-                        // v2.1.72 : carte dediee a la saisie des parametres
-                        // biologiques (glycemie glucometre + HbA1c labo).
-                        // Depuis v2.1.71 seule la carte glycemie de l'en-tete
-                        // ouvrait cet ecran : trop discret, les patients ne
-                        // trouvaient pas ou saisir leurs resultats.
+                        // v2.1.75 : "Mon medecin" descend en fin de grille
+                        // (action ponctuelle) ; la saisie Glycemie/HbA1c, elle,
+                        // remonte en ligne 2 avec les Courbes.
                         FeatureCard(
-                            title = stringResource(R.string.card_glucose_title),
-                            subtitle = stringResource(R.string.card_glucose_subtitle),
-                            icon = Icons.Outlined.Bloodtype,
+                            title = stringResource(R.string.card_my_doctor_title),
+                            subtitle = stringResource(R.string.card_my_doctor_subtitle),
+                            icon = Icons.Outlined.MedicalServices,
                             cardColor = CardGlucose,
                             iconTint = Primary,
-                            onClick = { uiState.selfPatientId?.let(onNavigateToGlucose) },
+                            onClick = onNavigateToMonMedecin,
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -1194,7 +1207,8 @@ private fun DiaSmartBottomBar(
     onNavigateToPatients: () -> Unit,
     onNavigateToDataSharing: () -> Unit,
     onNavigateToRendezVous: () -> Unit,
-    onNavigateToChatbot: () -> Unit,
+    // v2.1.75 : l'onglet ROLLY devient "Rappels" (ROLLY a deja sa carte).
+    onNavigateToRappels: () -> Unit,
     onNavigateToMessagerie: () -> Unit,
     isMedecin: Boolean = false,
     navBarBg: Color = NavBarBackground
@@ -1221,7 +1235,7 @@ private fun DiaSmartBottomBar(
             val labelRdv = stringResource(R.string.nav_rdv_short)
             val labelMessages = stringResource(R.string.nav_messages)
             val labelDoctor = stringResource(R.string.nav_doctor)
-            val labelRolly = stringResource(R.string.nav_rolly)
+            val labelRappels = stringResource(R.string.nav_rappels)
             val items = if (isMedecin) {
                 listOf(
                     NavItem(labelHome, Icons.Outlined.Dashboard, Icons.Filled.Dashboard),
@@ -1234,15 +1248,26 @@ private fun DiaSmartBottomBar(
                     NavItem(labelHome, Icons.Outlined.Dashboard, Icons.Filled.Dashboard),
                     NavItem(labelDoctor, Icons.Outlined.MedicalServices, Icons.Filled.MedicalServices),
                     NavItem(labelRdv, Icons.Outlined.CalendarMonth, Icons.Filled.CalendarMonth),
-                    NavItem(labelRolly, Icons.Outlined.Dashboard, Icons.Filled.Dashboard, isRolly = true),
+                    // v2.1.75 : ROLLY a deja sa carte en tete des actions
+                    // rapides ; l'onglet devient "Rappels" et ouvre l'ecran
+                    // Medicaments (saisie des traitements + heures de prise),
+                    // qui n'avait plus aucun point d'entree cote patient.
+                    NavItem(labelRappels, Icons.Outlined.Alarm, Icons.Filled.Alarm),
                     NavItem(labelMessages, Icons.Outlined.Forum, Icons.Filled.Forum)
                 )
             }
             val actions = if (isMedecin) {
                 listOf(onDashboard, onNavigateToPatients, onNavigateToRendezVous, onNavigateToMessagerie)
             } else {
-                // Cote patient : l'onglet 2 ouvre l'ecran "Mon medecin" (DataSharing).
-                listOf(onDashboard, onNavigateToDataSharing, onNavigateToRendezVous, onNavigateToChatbot, onNavigateToMessagerie)
+                // Cote patient : l'onglet 2 ouvre l'ecran "Mon medecin" (DataSharing),
+                // l'onglet 4 les rappels de traitement (v2.1.75, remplace ROLLY).
+                listOf(
+                    onDashboard,
+                    onNavigateToDataSharing,
+                    onNavigateToRendezVous,
+                    onNavigateToRappels,
+                    onNavigateToMessagerie
+                )
             }
 
             items.forEachIndexed { index, item ->

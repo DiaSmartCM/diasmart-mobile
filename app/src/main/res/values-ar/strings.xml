@@ -334,6 +334,7 @@
     <string name="nav_messages">الرسائل</string>
     <string name="nav_doctor">طبيب</string>
     <string name="nav_rolly">ROLLY</string>
+    <string name="nav_rappels">تذكيرات</string>
     <string name="nav_rdv_short">مواعيد</string>
     <string name="cd_profile">الملف الشخصي</string>
     <string name="cd_settings">الإعدادات</string>

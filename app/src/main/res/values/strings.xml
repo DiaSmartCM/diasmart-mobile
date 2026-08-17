@@ -352,6 +352,7 @@
     <string name="nav_messages">Messages</string>
     <string name="nav_doctor">Médecin</string>
     <string name="nav_rolly">ROLLY</string>
+    <string name="nav_rappels">Rappels</string>
     <string name="nav_rdv_short">RDV</string>
     <string name="cd_profile">Profil</string>
     <string name="cd_settings">Paramètres</string>

@@ -242,7 +242,8 @@ fun DiabetoNavigation(
                 onNavigateToCommunity      = { navController.navigate(Routes.COMMUNITY) },
                 onNavigateToReports        = { navController.navigate(Routes.REPORTS) },
                 onNavigateToMesAvis        = { navController.navigate(Routes.MES_AVIS) },
-                onNavigateToGlucose        = { id -> navController.navigate(Routes.glucoseTracking(id)) }
+                onNavigateToGlucose        = { id -> navController.navigate(Routes.glucoseTracking(id)) },
+                onNavigateToMedicaments    = { id -> navController.navigate(Routes.medicaments(id)) }
             )
         }
 
