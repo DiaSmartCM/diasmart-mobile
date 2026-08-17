@@ -68,12 +68,26 @@ const LANGUAGE_NAMES = {
 };
 
 function buildLanguagePreamble(userLanguage, mode) {
-  // Modes JSON structures (meal_json, meal_image) : pas de langue libre,
-  // c'est du JSON pur — on skip le preambule pour ne pas perturber le format.
-  if (mode === "meal_json" || mode === "meal_image") return null;
-
   const tag = (userLanguage || "").toLowerCase().split("-")[0];
   const name = LANGUAGE_NAMES[tag] || null;
+
+  // Modes JSON structures (meal_json, meal_image) : le preambule complet
+  // perturberait le format, mais les VALEURS du JSON (nom du plat,
+  // description, recommandations) sont lues par le patient et doivent donc
+  // suivre la langue de l'app. On envoie une directive ciblee qui distingue
+  // les cles (contrat technique, jamais traduites) des valeurs (texte libre).
+  if (mode === "meal_json" || mode === "meal_image") {
+    if (!name) return null; // langue inconnue -> laisse Gemini decider
+    return `═══ LANGUE DU CONTENU ═══
+Les NOMS DE CLES du JSON restent EXACTEMENT ceux du schema demande (minuscules
+avec underscores, en francais). Ne les traduis JAMAIS, ne les renomme pas.
+En revanche, le TEXTE contenu dans les valeurs — "nom_repas", "description",
+"impact_glycemique", "recommandations", "alternatives_saines" — doit etre
+redige en ${name} (code ${tag}), car il est lu directement par le patient.
+"categorie_ig" garde ses valeurs techniques : "bas", "moyen" ou "eleve".
+Ne produis rien d'autre que l'objet JSON.`;
+  }
+
   if (!name) return null; // langue inconnue / non transmise -> comportement par defaut (detection auto)
 
   return `═══ LANGUE DE REPONSE ═══
