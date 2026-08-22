@@ -163,7 +163,12 @@ class RepasViewModel @Inject constructor(
             }
 
             try {
-                val jsonBrut = chatbotRepository.analyserRepasImage(bitmap)
+                // Si le patient a decrit son plat avant de photographier, on
+                // transmet ce nom : il sait ce qu'il mange mieux que le modele.
+                val jsonBrut = chatbotRepository.analyserRepasImage(
+                    bitmap = bitmap,
+                    nomIndique = _uiState.value.descriptionRepas.trim().ifBlank { null }
+                )
                 val parseResult = repasRepository.parseAnalyseJson(jsonBrut)
 
                 parseResult.fold(
@@ -195,6 +200,59 @@ class RepasViewModel @Inject constructor(
                         isAnalysing = false,
                         error = e.message ?: "Erreur inattendue lors de l'analyse."
                     )
+                }
+            }
+        }
+    }
+
+    /**
+     * Relance l'estimation nutritionnelle a partir du nom corrige par le
+     * patient.
+     *
+     * Jusqu'ici, corriger le nom ne changeait que l'etiquette enregistree :
+     * glucides, index glycemique et calories restaient ceux du plat mal
+     * reconnu. Le patient croyait avoir corrige son repas alors que les
+     * chiffres, eux, decrivaient toujours autre chose — et c'est sur ces
+     * chiffres qu'il ajuste son traitement.
+     */
+    fun recalculerAvecNomCorrige() {
+        val nom = _uiState.value.nomRepasEdite.trim()
+        if (nom.isBlank()) {
+            _uiState.update { it.copy(error = "Indiquez d'abord le nom du plat.") }
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isAnalysing = true, error = null, savedSuccessfully = false) }
+            try {
+                val jsonBrut = chatbotRepository.analyserRepasJson(nom)
+                repasRepository.parseAnalyseJson(jsonBrut).fold(
+                    onSuccess = { analyse ->
+                        _uiState.update {
+                            it.copy(
+                                isAnalysing = false,
+                                analyseResult = analyse,
+                                descriptionRepas = analyse.description,
+                                // Le nom du patient fait foi, on ne le reecrit pas.
+                                nomRepasEdite = nom,
+                                glucidesEdites = analyse.glucidesEstimes.toString(),
+                                indexGlycemiqueEdite = analyse.indexGlycemique.toString(),
+                                caloriesEditees = analyse.caloriesEstimees.toString(),
+                                proteinesEditees = analyse.proteinesEstimees.toString(),
+                                lipidesEdites = analyse.lipidesEstimes.toString(),
+                                fibresEditees = analyse.fibresEstimees.toString()
+                            )
+                        }
+                    },
+                    onFailure = { e ->
+                        _uiState.update {
+                            it.copy(isAnalysing = false, error = "Erreur parsing: ${e.message}")
+                        }
+                    }
+                )
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(isAnalysing = false, error = e.message ?: "Erreur lors du recalcul.")
                 }
             }
         }

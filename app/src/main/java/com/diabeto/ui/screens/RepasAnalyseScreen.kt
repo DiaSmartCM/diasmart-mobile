@@ -228,6 +228,10 @@ fun RepasAnalyseScreen(
                     DarkNomRepasEditableCard(
                         nomRepas = uiState.nomRepasEdite,
                         onNomChange = viewModel::onNomRepasChange,
+                        nomModifie = uiState.nomRepasEdite.trim()
+                            .equals(analyse.nomRepas.trim(), ignoreCase = true).not(),
+                        isAnalysing = uiState.isAnalysing,
+                        onRecalculer = viewModel::recalculerAvecNomCorrige,
                         isDark = isDark,
                         cardBg = cardBg,
                         inputBg = inputBg,
@@ -863,6 +867,9 @@ private fun MiniNutrient(label: String, value: String, color: Color) {
 private fun DarkNomRepasEditableCard(
     nomRepas: String,
     onNomChange: (String) -> Unit,
+    nomModifie: Boolean = false,
+    isAnalysing: Boolean = false,
+    onRecalculer: () -> Unit = {},
     isDark: Boolean = true,
     cardBg: Color = DarkCard,
     inputBg: Color = DarkInput,
@@ -891,6 +898,38 @@ private fun DarkNomRepasEditableCard(
                 supportingText = { Text("Modifiez si le nom ne correspond pas", fontSize = 11.sp, color = mutedColor) },
                 colors = themedFieldColors(isDark, inputBg)
             )
+
+            // Corriger le nom ne suffisait pas : les valeurs nutritionnelles
+            // restaient celles du plat mal reconnu. On propose de refaire
+            // l'estimation sur le nom que le patient vient de donner.
+            if (nomModifie) {
+                Text(
+                    "Les valeurs ci-dessous decrivent encore le plat propose par ROLLY.",
+                    fontSize = 11.sp,
+                    color = mutedColor
+                )
+                Button(
+                    onClick = onRecalculer,
+                    enabled = !isAnalysing,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentCyan)
+                ) {
+                    if (isAnalysing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = Color.White
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("Calcul en cours…")
+                    } else {
+                        Icon(Icons.Default.Refresh, null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Recalculer avec ce nom")
+                    }
+                }
+            }
         }
     }
 }

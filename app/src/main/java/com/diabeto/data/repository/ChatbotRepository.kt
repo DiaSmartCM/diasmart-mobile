@@ -55,6 +55,11 @@ class ChatbotRepository @Inject constructor(
     // HMAC key derived from app package — prevents cache tampering
     private val hmacKey: ByteArray = "diasmart-ai-cache-integrity-key".toByteArray(Charsets.UTF_8)
 
+    companion object {
+        /** A incrementer a chaque revision du prompt repas cote serveur. */
+        const val PROMPT_REPAS_VERSION = 3
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // CACHE HELPERS
     // ─────────────────────────────────────────────────────────────────────────
@@ -255,7 +260,12 @@ class ChatbotRepository @Inject constructor(
         descriptionRepas: String,
         patient: PatientEntity? = null
     ): String {
-        val cacheKey = "repas:$descriptionRepas"
+        // v2.1.77 : la version du prompt entre dans la cle de cache. Sans elle,
+        // une analyse erronee restait servie 6 h apres une correction du prompt
+        // cote serveur — on croyait le correctif sans effet alors qu'on relisait
+        // simplement l'ancienne reponse. Incrementer PROMPT_REPAS_VERSION a
+        // chaque revision du prompt repas suffit a purger les entrees perimees.
+        val cacheKey = "repas:v$PROMPT_REPAS_VERSION:$descriptionRepas"
         val cached = getCachedResponse(cacheKey)
         if (cached != null) return cached
 
@@ -467,9 +477,18 @@ class ChatbotRepository @Inject constructor(
     // VISION — RECONNAISSANCE D'IMAGE DE REPAS
     // ─────────────────────────────────────────────────────────────────────────
 
+    /**
+     * @param nomIndique nom du plat saisi par le patient, s'il en a donne un.
+     *   Un modele de vision confond des plats visuellement proches (eru et
+     *   ndole, couscous de tapioca et baton de manioc) la ou le patient, lui,
+     *   sait ce qu'il a dans son assiette. Quand il l'indique, on lui laisse
+     *   l'identification et on ne demande au modele que ce qu'il fait bien :
+     *   estimer les quantites.
+     */
     suspend fun analyserRepasImage(
         bitmap: Bitmap,
-        patient: PatientEntity? = null
+        patient: PatientEntity? = null,
+        nomIndique: String? = null
     ): String {
         val contextePatient = patient?.let {
             "Patient : ${it.nomComplet}, ${it.age} ans, Diabète ${it.typeDiabete.name.replace("_", " ")}"
@@ -477,6 +496,19 @@ class ChatbotRepository @Inject constructor(
         val userMessage = buildString {
             if (contextePatient.isNotBlank()) {
                 appendLine(contextePatient)
+                appendLine()
+            }
+            val nom = nomIndique?.trim().orEmpty()
+            if (nom.isNotEmpty()) {
+                appendLine("Le patient indique que ce plat est : \"$nom\".")
+                appendLine(
+                    "Cette information est CERTAINE : reprends ce nom tel quel dans " +
+                        "\"nom_repas\" et mets \"confiance_identification\" a \"elevee\". " +
+                        "Ne le remplace pas par un autre plat, meme s'il te semble plus " +
+                        "probable au vu de la photo. Sers-toi de l'image uniquement pour " +
+                        "estimer les portions, les accompagnements et les valeurs " +
+                        "nutritionnelles."
+                )
                 appendLine()
             }
             append("Analyse cette photo de repas et estime la charge en glucides.")
