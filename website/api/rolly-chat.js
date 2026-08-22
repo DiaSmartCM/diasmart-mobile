@@ -38,7 +38,17 @@ const MAX_INPUT_LENGTH = 16000;
 const MAX_REQUESTS_PER_DAY = 200; // par UID
 
 function pickSystemPrompt(mode, useFallback) {
-  if (useFallback) return ROLLY_FALLBACK_PROMPT;
+  // v2.1.76 — correction d'un vrai bug, pas d'un reglage.
+  // `useFallback` sert a basculer de gemini-2.5-flash vers gemini-2.0-flash
+  // quand la premiere tentative echoue. Il ne devrait JAMAIS changer le prompt.
+  // Or on renvoyait ici le prompt de discussion generique : sur la 2e tentative,
+  // l'analyse repas partait sans schema JSON, sans lexique et sans regle
+  // anti-invention — le modele recevait une photo et improvisait. Les modes
+  // structures gardent donc toujours leur propre prompt.
+  const structure = mode === "meal_json" || mode === "meal_image" ||
+                    mode === "glucose_analysis" || mode === "nutrition_advice" ||
+                    mode === "risk_prediction" || mode === "predictive_7days";
+  if (useFallback && !structure) return ROLLY_FALLBACK_PROMPT;
   switch (mode) {
     case "meal_json": return MEAL_JSON_PROMPT;
     case "meal_image": return MEAL_IMAGE_PROMPT;
@@ -207,27 +217,58 @@ module.exports = async (req, res) => {
   const modelName = pickModelName(useFallback);
   const userPrompt = buildUserPrompt(mode, message, context, history);
 
+  // Construire le contenu (texte + image eventuelle).
+  //
+  // v2.1.76 — retour a la structure d'avant la v2.1.37, celle qui identifiait
+  // correctement les plats. Deux points comptent, et on les avait perdus tous
+  // les deux en migrant vers le proxy :
+  //
+  //  1. L'IMAGE PASSE EN PREMIER. L'appel d'origine etait `content { image(...);
+  //     text(prompt) }`. Pour une requete a une seule image, Google recommande
+  //     de placer l'image avant le texte : le modele decrit alors ce qu'il voit
+  //     puis applique la consigne, au lieu de chercher a confirmer une attente
+  //     deja formulee.
+  //  2. LA CONSIGNE DETAILLEE VOYAGE AVEC L'IMAGE, dans le tour utilisateur.
+  //     Avant, le systemInstruction ne portait que l'identite de ROLLY et tout
+  //     le schema arrivait colle a la photo. Depuis le proxy, le schema etait
+  //     relegue au systemInstruction, ou un modele de vision lui accorde moins
+  //     de poids qu'a un texte adjacent a l'image.
+  const modeImage = imageBase64 && imageBase64.length > 0;
+  let parts;
+  if (modeImage) {
+    const imagePart = {
+      inlineData: { mimeType: "image/jpeg", data: imageBase64 },
+    };
+    if (mode === "meal_image") {
+      // La consigne repas complete accompagne la photo ; le systemInstruction
+      // est ramene a l'identite de ROLLY comme avant la v2.1.37.
+      const consigne = (langPreamble || "") + MEAL_IMAGE_PROMPT;
+      systemInstruction = ROLLY_FALLBACK_PROMPT;
+      parts = [imagePart, { text: `${consigne}\n\n${userPrompt}` }];
+    } else {
+      parts = [imagePart, { text: userPrompt }];
+    }
+  } else {
+    parts = [{ text: userPrompt }];
+  }
+
+  // Le modele est instancie APRES la construction des parts : le mode image
+  // peut redefinir systemInstruction juste au-dessus.
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({
     model: modelName,
     systemInstruction,
     generationConfig: {
-      temperature: 0.4,
-      topP: 0.85,
+      // Identifier un plat est une tache d'observation, pas de creation. La
+      // version d'avant la v2.1.37 tournait a 0,4 et identifiait correctement :
+      // la temperature n'etait donc pas la cause du probleme. On la baisse
+      // quand meme pour les modes repas, ou elle ne peut que reduire le tirage
+      // d'un nom de plat alternatif.
+      temperature: (mode === "meal_image" || mode === "meal_json") ? 0.15 : 0.4,
+      topP: (mode === "meal_image" || mode === "meal_json") ? 0.7 : 0.85,
       maxOutputTokens: 8192,
     },
   });
-
-  // Construire le contenu (texte + image eventuelle).
-  const parts = [{ text: userPrompt }];
-  if (imageBase64 && imageBase64.length > 0) {
-    parts.push({
-      inlineData: {
-        mimeType: "image/jpeg",
-        data: imageBase64,
-      },
-    });
-  }
 
   // ── Mode SSE streaming ──────────────────────────────────────
   if (stream) {

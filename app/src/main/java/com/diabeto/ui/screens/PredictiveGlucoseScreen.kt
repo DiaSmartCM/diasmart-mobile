@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.diabeto.ui.components.AiRichText
 import com.diabeto.ui.components.RollyIcon
 import com.diabeto.ui.theme.*
 import com.diabeto.ui.viewmodel.PredictiveGlucoseViewModel
@@ -118,20 +119,19 @@ fun PredictiveGlucoseScreen(
                 }
             },
             text = {
-                Column(Modifier.heightIn(max = 400.dp)) {
-                    LazyColumn {
-                        item {
-                            Text(
-                                uiState.rollyAnalysis ?: "",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
+                LazyColumn(Modifier.heightIn(max = 420.dp)) {
+                    item {
+                        AiRichText(
+                            texte = uiState.rollyAnalysis ?: "",
+                            couleurAccent = Primary,
+                        )
                     }
                 }
             },
             confirmButton = {
                 Button(onClick = viewModel::dismissAnalysis) { Text(stringResource(R.string.common_close)) }
-            }
+            },
+            shape = RoundedCornerShape(24.dp)
         )
     }
 }
