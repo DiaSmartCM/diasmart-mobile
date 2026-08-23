@@ -72,6 +72,13 @@ fun SettingsScreen(
     var pendingMethod by remember { mutableStateOf<com.diabeto.security.AppLockMethod?>(null) }
     var showTargetDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
+    // v2.1.85 : recuperation des dossiers orphelins
+    var showClaimOrphansDialog by remember { mutableStateOf(false) }
+    var messageRecuperation by remember { mutableStateOf<String?>(null) }
+
+    // Le comptage se fait a chaque ouverture de l'ecran : apres une
+    // recuperation, la carte doit disparaitre sans redemarrage.
+    LaunchedEffect(Unit) { viewModel.refreshOrphanCount() }
     var isBackingUp by remember { mutableStateOf(false) }
     var isDeletingAccount by remember { mutableStateOf(false) }
     // v2.1.60 : recu RGPD genere a la suppression. Affiche dans un dialog avant
@@ -334,6 +341,83 @@ fun SettingsScreen(
                         )
                     }
                 }
+            }
+
+            // ═══════════════════════════════════════════════════════════
+            //  v2.1.85 — Dossiers a recuperer
+            //
+            //  La migration du cloisonnement a laisse sans proprietaire les
+            //  dossiers anterieurs. Ils sont conserves mais invisibles, avec
+            //  leurs rendez-vous, traitements et mesures — et aucune alarme
+            //  n'est posee pour eux. Cette carte n'apparait que s'il en reste.
+            // ═══════════════════════════════════════════════════════════
+            if (uiState.orphanCount > 0) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFF59E0B).copy(alpha = 0.12f)
+                        ),
+                        elevation = CardDefaults.cardElevation(0.dp)
+                    ) {
+                        Column(Modifier.padding(18.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.Restore, null,
+                                    tint = Color(0xFFF59E0B),
+                                    modifier = Modifier.size(22.dp)
+                                )
+                                Spacer(Modifier.width(10.dp))
+                                Text(
+                                    "${uiState.orphanCount} dossier(s) à récupérer",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp,
+                                    color = if (isDark) DarkTextPrimary else TextPrimary
+                                )
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "Ces dossiers ont été créés avant que les données ne " +
+                                "soient séparées par compte. Ils sont conservés mais " +
+                                "masqués, ainsi que leurs rendez-vous, traitements et " +
+                                "mesures — les rappels associés ne sonnent pas.",
+                                fontSize = 13.sp,
+                                lineHeight = 18.sp,
+                                color = if (isDark) DarkTextSecondary else TextSecondary
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                "Ne les récupérez que s'ils vous appartiennent : ils " +
+                                "seront rattachés au compte actuellement connecté.",
+                                fontSize = 12.5.sp,
+                                lineHeight = 17.sp,
+                                color = OnSurfaceVariant
+                            )
+                            Spacer(Modifier.height(14.dp))
+                            Button(
+                                onClick = { showClaimOrphansDialog = true },
+                                enabled = !uiState.isClaimingOrphans,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFFF59E0B)
+                                )
+                            ) {
+                                if (uiState.isClaimingOrphans) {
+                                    CircularProgressIndicator(
+                                        Modifier.size(16.dp), strokeWidth = 2.dp, color = Color.White
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Récupération…")
+                                } else {
+                                    Text("Récupérer mes dossiers")
+                                }
+                            }
+                        }
+                    }
+                }
+                item { Spacer(Modifier.height(8.dp)) }
             }
 
             item {
@@ -649,6 +733,51 @@ fun SettingsScreen(
                 pendingMethod = null
             },
             onDismiss = { pendingMethod = null }
+        )
+    }
+
+    // ── Recuperation des dossiers orphelins ──
+    if (showClaimOrphansDialog) {
+        AlertDialog(
+            onDismissRequest = { showClaimOrphansDialog = false },
+            shape = RoundedCornerShape(24.dp),
+            icon = { Icon(Icons.Default.Restore, null, tint = Color(0xFFF59E0B)) },
+            title = { Text("Récupérer ces dossiers ?", fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    "${uiState.orphanCount} dossier(s) seront rattachés au compte " +
+                    "connecté, avec leurs rendez-vous, traitements et mesures. " +
+                    "Les rappels correspondants seront reprogrammés. " +
+                    "Ne confirmez que si ces dossiers sont les vôtres : un compte " +
+                    "médecin récupérerait sinon des données saisies par un patient " +
+                    "sur ce téléphone."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showClaimOrphansDialog = false
+                    viewModel.claimOrphans(context) { n ->
+                        messageRecuperation = "$n dossier(s) récupéré(s)"
+                    }
+                }) { Text("Récupérer") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClaimOrphansDialog = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
+        )
+    }
+
+    messageRecuperation?.let { msg ->
+        AlertDialog(
+            onDismissRequest = { messageRecuperation = null },
+            icon = { Icon(Icons.Default.CheckCircle, null, tint = StatusGreen) },
+            title = { Text("Dossiers récupérés") },
+            text = { Text("$msg. Vos rendez-vous et traitements réapparaissent, et les rappels sont reprogrammés.") },
+            confirmButton = {
+                TextButton(onClick = { messageRecuperation = null }) { Text("OK") }
+            }
         )
     }
 

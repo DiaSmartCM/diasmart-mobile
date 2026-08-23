@@ -1,1 +1,7 @@
 .vercel
+
+# Secrets : ne doivent jamais entrer dans git.
+# Ajoute apres qu'un fichier .env.diag a failli etre commite lors d'un diagnostic.
+.env
+.env.*
+!.env.example

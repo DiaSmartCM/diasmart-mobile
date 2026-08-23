@@ -35,6 +35,12 @@ data class SettingsUiState(
     val measureType: MeasureType = MeasureType.CAPILLARY,
     val targetMin: Double = 70.0,
     val targetMax: Double = 180.0,
+    // v2.1.85 : dossiers laisses sans proprietaire par la migration de la
+    // v2.1.82. Ils sont conserves mais invisibles — ainsi que leurs rendez-vous,
+    // traitements et mesures. Tant qu'ils ne sont pas reattribues, aucune alarme
+    // n'est posee pour eux : la requete qui les alimente ne renvoie rien.
+    val orphanCount: Int = 0,
+    val isClaimingOrphans: Boolean = false,
     // Securite : verrouillage app
     val appLockEnabled: Boolean = false,
     val appLockMethod: com.diabeto.security.AppLockMethod = com.diabeto.security.AppLockMethod.NONE,
@@ -306,6 +312,45 @@ class SettingsViewModel @Inject constructor(
             } catch (e: Exception) {
                 Log.w("SettingsVM", "Export failed", e)
             }
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // v2.1.85 : recuperation des dossiers orphelins
+    // ─────────────────────────────────────────────────────────────────────
+
+    /** Compte les dossiers sans proprietaire, pour n'afficher la carte que s'il y en a. */
+    fun refreshOrphanCount() {
+        viewModelScope.launch {
+            val n = runCatching { patientRepository.getOrphanCount() }.getOrDefault(0)
+            _uiState.update { it.copy(orphanCount = n) }
+        }
+    }
+
+    /**
+     * Rattache tous les dossiers orphelins au compte connecte.
+     *
+     * L'operation est declenchee par l'utilisateur, jamais automatiquement :
+     * c'est lui seul qui sait si ces dossiers sont les siens. Une attribution
+     * automatique pendant la migration aurait pu donner a un compte medecin les
+     * dossiers saisis par un patient sur le meme telephone.
+     *
+     * Les alarmes sont reposees dans la foulee : sans cela, les traitements
+     * redevenus visibles resteraient muets jusqu'au prochain lancement.
+     */
+    fun claimOrphans(context: android.content.Context, onDone: (Int) -> Unit) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isClaimingOrphans = true) }
+            val n = runCatching {
+                val orphelins = patientRepository.getOrphanPatients()
+                orphelins.forEach { patientRepository.claimOrphan(it.id) }
+                orphelins.size
+            }.getOrDefault(0)
+
+            com.diabeto.notifications.reprogrammerToutesLesAlarmes(context)
+
+            _uiState.update { it.copy(isClaimingOrphans = false, orphanCount = 0) }
+            onDone(n)
         }
     }
 }

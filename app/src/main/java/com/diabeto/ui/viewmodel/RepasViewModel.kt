@@ -18,6 +18,7 @@ import com.diabeto.data.repository.GlucoseRepository
 import com.diabeto.data.repository.MessagerieRepository
 import com.diabeto.data.repository.PatientRepository
 import com.diabeto.data.repository.RepasRepository
+import com.diabeto.data.repository.ValidationRepository
 import com.diabeto.domain.prediction.GlucosePrediction
 import com.diabeto.notifications.ExcursionScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -88,7 +89,8 @@ class RepasViewModel @Inject constructor(
     private val glucoseRepository: GlucoseRepository,
     private val patientRepository: PatientRepository,
     private val dataSharingRepository: DataSharingRepository,
-    private val messagerieRepository: MessagerieRepository
+    private val messagerieRepository: MessagerieRepository,
+    private val validationRepository: ValidationRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RepasUiState())
@@ -370,6 +372,10 @@ class RepasViewModel @Inject constructor(
                     // Notifier le(s) médecin(s) traitant(s) (non-critique)
                     notifierMedecinRepas(analyseCorrigee.nomRepas, analyseCorrigee.scoreDiabete)
 
+                    // v2.1.85 : soumettre l'estimation au medecin pour
+                    // qu'il puisse la valider ou signaler une erreur.
+                    soumettreAValidation(analyseCorrigee)
+
                     // Déterminer si on doit proposer l'intégration glycémie
                     val hasGlycemie = glycemieAvant != null || glycemieApres != null
                     val glycemieAffichee = glycemieApres ?: glycemieAvant
@@ -516,6 +522,60 @@ class RepasViewModel @Inject constructor(
      * pour l'informer qu'un nouveau repas a ete analyse.
      * Non-critique : les erreurs sont absorbees silencieusement.
      */
+    /**
+     * v2.1.85 : soumet l'analyse au medecin traitant pour validation.
+     *
+     * Jusqu'ici, seul le chat ROLLY creait des demandes de validation.
+     * L'analyse de repas — celle qui produit une estimation de GLUCIDES sur
+     * laquelle le patient ajuste son alimentation — n'etait soumise a personne.
+     * Le medecin recevait une simple notification en messagerie, sans moyen de
+     * corriger l'estimation ni de signaler une erreur.
+     *
+     * L'estimation est desormais transmise telle qu'elle a ete enregistree,
+     * corrections du patient comprises : c'est cette version-la qui compte,
+     * pas la proposition initiale du modele.
+     *
+     * Non bloquant : un echec ici ne doit jamais empecher l'enregistrement du
+     * repas. Sans medecin lie, il n'y a personne a solliciter.
+     */
+    private suspend fun soumettreAValidation(analyse: RepasAnalyse) {
+        try {
+            val medecins = dataSharingRepository.getMyConsents()
+                .filter { it.isActive && it.status == ConsentStatus.ACCEPTED }
+            if (medecins.isEmpty()) return
+
+            val resume = buildString {
+                appendLine("Plat identifie : ${analyse.nomRepas}")
+                if (analyse.description.isNotBlank()) appendLine(analyse.description)
+                appendLine()
+                appendLine("Glucides : ${analyse.glucidesEstimes} g")
+                appendLine("Index glycemique : ${analyse.indexGlycemique}")
+                appendLine("Charge glycemique : ${analyse.chargeGlycemique}")
+                appendLine("Calories : ${analyse.caloriesEstimees} kcal")
+                appendLine("Proteines : ${analyse.proteinesEstimees} g")
+                appendLine("Lipides : ${analyse.lipidesEstimes} g")
+                appendLine("Fibres : ${analyse.fibresEstimees} g")
+                appendLine("Score diabete : ${analyse.scoreDiabete}/100")
+                if (analyse.impactGlycemique.isNotBlank()) {
+                    appendLine()
+                    appendLine("Impact annonce : ${analyse.impactGlycemique}")
+                }
+            }
+
+            medecins.forEach { consent ->
+                val medecinProfile = authRepository.getUserProfile(consent.medecinUid)
+                    ?: return@forEach
+                validationRepository.createValidation(
+                    question = "Analyse de repas — ${analyse.nomRepas}",
+                    rollyResponse = resume,
+                    medecin = medecinProfile
+                )
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Soumission a validation echouee (non-critique)", e)
+        }
+    }
+
     private suspend fun notifierMedecinRepas(nomRepas: String, score: Int) {
         try {
             val consents = dataSharingRepository.getMyConsents()
