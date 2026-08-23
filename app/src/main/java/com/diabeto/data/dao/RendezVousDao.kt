@@ -23,14 +23,29 @@ interface RendezVousDao {
     @Query("SELECT * FROM rendez_vous WHERE id = :id")
     suspend fun getRendezVousById(id: Long): RendezVousEntity?
     
+    /**
+     * v2.1.84 : le cloisonnement s'etend aux rendez-vous.
+     *
+     * Cette requete ne portait aucun filtre de compte : sur un appareil ayant
+     * servi a plusieurs comptes, un patient voyait l'agenda complet du medecin,
+     * donc les rendez-vous des AUTRES patients. La v2.1.82 n'avait cloisonne
+     * que la table `patients`.
+     *
+     * On ne rajoute pas de colonne ici : un rendez-vous appartient a qui
+     * possede le dossier patient auquel il se rattache. La sous-requete reutilise
+     * donc la propriete deja etablie sur `patients`, ce qui evite une migration
+     * de schema supplementaire et garde une seule source de verite.
+     */
     @Transaction
     @Query("""
         SELECT * FROM rendez_vous
         WHERE dateHeure >= :fromDate
+        AND patientId IN (SELECT id FROM patients WHERE ownerUid = :owner)
         ORDER BY dateHeure ASC
         LIMIT :limit
     """)
     suspend fun getUpcomingRendezVous(
+        owner: String,
         fromDate: LocalDateTime = LocalDateTime.now(),
         limit: Int = 50
     ): List<RendezVousAvecPatient>
@@ -140,6 +155,6 @@ interface RendezVousDao {
     suspend fun getUpcomingRendezVousAfter(fromDate: LocalDateTime, toDate: LocalDateTime): List<RendezVousEntity>
 
     /** v2.1.44 : sync delta. */
-    @Query("SELECT * FROM rendez_vous WHERE lastModified > :since ORDER BY lastModified ASC LIMIT :limit")
-    suspend fun getRendezVousModifiedSince(since: Long, limit: Int = 2000): List<RendezVousEntity>
+    @Query("SELECT * FROM rendez_vous WHERE lastModified > :since AND patientId IN (SELECT id FROM patients WHERE ownerUid = :owner) ORDER BY lastModified ASC LIMIT :limit")
+    suspend fun getRendezVousModifiedSince(since: Long, owner: String, limit: Int = 2000): List<RendezVousEntity>
 }

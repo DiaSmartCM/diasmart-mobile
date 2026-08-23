@@ -153,6 +153,38 @@ class DataSharingRepository @Inject constructor(
      * v2.1.43 : medecin se desabonne d'un patient (cote medecin). Met
      * isActive=false. Le doc reste pour traçabilite + reactivation future.
      */
+    /**
+     * v2.1.84 : le medecin annule une demande d'acces encore EN ATTENTE.
+     *
+     * `unlinkAsDoctor` ne convenait pas : il passe le document en REJECTED, ce
+     * qui range la demande parmi les « acces revoques » et propose de la
+     * reactiver. Or une demande jamais acceptee n'a rien a revoquer — le
+     * medecin veut la retirer, pas la marquer refusee au nom du patient.
+     *
+     * On supprime donc le document. Les regles Firestore l'autorisent : le
+     * medecin est partie au consentement. Le patient cesse aussitot de voir la
+     * demande, ce qui est le comportement attendu quand on se retracte.
+     */
+    suspend fun cancelPendingRequest(patientUid: String): Result<Unit> {
+        val medecinUid = authRepository.currentUserId
+            ?: return Result.failure(Exception("Non connecté"))
+        val docId = "${patientUid}_${medecinUid}"
+        return try {
+            val snap = firestore.collection(COLLECTION_SHARING).document(docId).get().await()
+            val statut = snap.getString("status")
+            // Garde-fou : on ne supprime jamais un consentement accorde par
+            // inadvertance. Retirer un acces accepte passe par unlinkAsDoctor,
+            // qui laisse une trace horodatee de la revocation.
+            if (statut == ConsentStatus.ACCEPTED.name) {
+                return Result.failure(Exception("Ce partage est actif : utilisez « Retirer l'accès »."))
+            }
+            firestore.collection(COLLECTION_SHARING).document(docId).delete().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun unlinkAsDoctor(patientUid: String): Result<Unit> {
         val medecinUid = authRepository.currentUserId ?: return Result.failure(Exception("Non connecté"))
         val docId = "${patientUid}_${medecinUid}"

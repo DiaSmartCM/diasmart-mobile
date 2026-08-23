@@ -118,6 +118,6 @@ interface GlucoseDao {
     /**
      * v2.1.44 : sync delta — toutes les lectures modifiees depuis `since`.
      */
-    @Query("SELECT * FROM lectures_glucose WHERE lastModified > :since ORDER BY lastModified ASC LIMIT :limit")
-    suspend fun getLecturesModifiedSince(since: Long, limit: Int = 5000): List<LectureGlucoseEntity>
+    @Query("SELECT * FROM lectures_glucose WHERE lastModified > :since AND patientId IN (SELECT id FROM patients WHERE ownerUid = :owner) ORDER BY lastModified ASC LIMIT :limit")
+    suspend fun getLecturesModifiedSince(since: Long, owner: String, limit: Int = 5000): List<LectureGlucoseEntity>
 }

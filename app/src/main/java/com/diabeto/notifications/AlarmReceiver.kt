@@ -82,7 +82,7 @@ class AlarmReceiver : BroadcastReceiver() {
     /** Repose la prochaine occurrence de chaque traitement actif. */
     private suspend fun reprogrammerTraitements(context: Context) {
         val db = DiabetoDatabase.getInstance(context)
-        db.medicamentDao().getAllActiveMedicaments().forEach { med ->
+        db.medicamentDao().getAllActiveMedicaments(owner = uidCourantAlarme()).forEach { med ->
             if (!med.rappelActive) return@forEach
             AlarmScheduler.programmerMedicament(
                 context = context,
@@ -99,3 +99,11 @@ class AlarmReceiver : BroadcastReceiver() {
         const val TAG = "AlarmReceiver"
     }
 }
+
+/**
+ * v2.1.84 : une alarme ne replanifie que les traitements du compte connecte.
+ * Sans ce filtre, un appareil ayant servi a plusieurs comptes reposait — et
+ * faisait sonner — les prises d'un autre utilisateur.
+ */
+private fun uidCourantAlarme(): String =
+    com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: "__aucun__"

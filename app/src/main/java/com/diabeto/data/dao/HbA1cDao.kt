@@ -48,6 +48,6 @@ interface HbA1cDao {
     suspend fun deleteHbA1cById(id: Long)
 
     /** v2.1.44 : sync delta. */
-    @Query("SELECT * FROM hba1c_lectures WHERE lastModified > :since ORDER BY lastModified ASC LIMIT :limit")
-    suspend fun getHbA1cModifiedSince(since: Long, limit: Int = 2000): List<HbA1cEntity>
+    @Query("SELECT * FROM hba1c_lectures WHERE lastModified > :since AND patientId IN (SELECT id FROM patients WHERE ownerUid = :owner) ORDER BY lastModified ASC LIMIT :limit")
+    suspend fun getHbA1cModifiedSince(since: Long, owner: String, limit: Int = 2000): List<HbA1cEntity>
 }

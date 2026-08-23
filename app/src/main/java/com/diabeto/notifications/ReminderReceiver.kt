@@ -121,7 +121,7 @@ fun reprogrammerToutesLesAlarmes(context: android.content.Context) {
         try {
             val db = com.diabeto.data.database.DiabetoDatabase.getInstance(context)
 
-            db.medicamentDao().getAllActiveMedicaments().forEach { med ->
+            db.medicamentDao().getAllActiveMedicaments(owner = uidCourant()).forEach { med ->
                 if (med.rappelActive) {
                     AlarmScheduler.programmerMedicament(
                         context, med.id, med.nom, med.dosage, med.heurePrise, med.dateFin
@@ -131,7 +131,7 @@ fun reprogrammerToutesLesAlarmes(context: android.content.Context) {
 
             // getUpcomingRendezVous renvoie un RendezVousAvecPatient : le
             // rendez-vous lui-meme est dans le champ `rendezVous`.
-            db.rendezVousDao().getUpcomingRendezVous(limit = 50).forEach { item ->
+            db.rendezVousDao().getUpcomingRendezVous(owner = uidCourant(), limit = 50).forEach { item ->
                 val rdv = item.rendezVous
                 AlarmScheduler.programmerRendezVous(
                     context, rdv.id, rdv.titre, rdv.dateHeure, rdv.lieu

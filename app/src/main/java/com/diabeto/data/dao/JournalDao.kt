@@ -36,6 +36,6 @@ interface JournalDao {
     suspend fun getEntryCount(patientId: Long): Int
 
     /** v2.1.44 : sync delta. */
-    @Query("SELECT * FROM journal_entries WHERE lastModified > :since ORDER BY lastModified ASC LIMIT :limit")
-    suspend fun getEntriesModifiedSince(since: Long, limit: Int = 2000): List<JournalEntity>
+    @Query("SELECT * FROM journal_entries WHERE lastModified > :since AND patientId IN (SELECT id FROM patients WHERE ownerUid = :owner) ORDER BY lastModified ASC LIMIT :limit")
+    suspend fun getEntriesModifiedSince(since: Long, owner: String, limit: Int = 2000): List<JournalEntity>
 }

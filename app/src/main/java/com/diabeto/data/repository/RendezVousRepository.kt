@@ -15,8 +15,16 @@ import javax.inject.Singleton
 @Singleton
 class RendezVousRepository @Inject constructor(
     private val rendezVousDao: RendezVousDao,
-    private val cloudBackup: CloudBackupRepository
+    private val cloudBackup: CloudBackupRepository,
+    private val auth: com.google.firebase.auth.FirebaseAuth
 ) {
+
+    /**
+     * v2.1.84 : compte courant, meme convention que PatientRepository.
+     * "__aucun__" plutot que la chaine vide, qui designe les dossiers
+     * orphelins : les confondre les rendrait visibles hors session.
+     */
+    private fun owner(): String = auth.currentUser?.uid ?: "__aucun__"
     fun getRendezVousByPatient(patientId: Long): Flow<List<RendezVousEntity>> = 
         rendezVousDao.getRendezVousByPatient(patientId)
     
@@ -27,7 +35,7 @@ class RendezVousRepository @Inject constructor(
         rendezVousDao.getRendezVousById(id)
     
     suspend fun getUpcomingRendezVous(limit: Int = 50): List<RendezVousAvecPatient> = 
-        rendezVousDao.getUpcomingRendezVous(limit = limit)
+        rendezVousDao.getUpcomingRendezVous(owner = owner(), limit = limit)
     
     fun getUpcomingRendezVousFlow(limit: Int = 50): Flow<List<RendezVousAvecPatient>> = 
         rendezVousDao.getUpcomingRendezVousFlow(limit = limit)

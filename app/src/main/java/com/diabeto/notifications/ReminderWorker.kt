@@ -24,7 +24,7 @@ class MedicationReminderWorker @AssistedInject constructor(
 
     override suspend fun doWork(): Result {
         return try {
-            val medicaments = medicamentDao.getAllActiveMedicaments()
+            val medicaments = medicamentDao.getAllActiveMedicaments(owner = uidCourant())
 
             for (med in medicaments) {
                 if (!med.rappelActive) continue

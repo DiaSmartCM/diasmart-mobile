@@ -93,11 +93,18 @@ interface MedicamentDao {
         SELECT * FROM medicaments
         WHERE estActif = 1
         AND (dateFin IS NULL OR dateFin >= :today)
+        AND patientId IN (SELECT id FROM patients WHERE ownerUid = :owner)
         ORDER BY heurePrise ASC
     """)
-    suspend fun getAllActiveMedicaments(today: LocalDate = LocalDate.now()): List<MedicamentEntity>
+    // v2.1.84 : alimente les alarmes de traitement. Sans filtre, un appareil
+    // ayant servi a plusieurs comptes faisait sonner — et NOMMAIT sur l'ecran
+    // verrouille — le medicament d'un autre utilisateur.
+    suspend fun getAllActiveMedicaments(
+        owner: String,
+        today: LocalDate = LocalDate.now()
+    ): List<MedicamentEntity>
 
     /** v2.1.44 : sync delta. */
-    @Query("SELECT * FROM medicaments WHERE lastModified > :since ORDER BY lastModified ASC LIMIT :limit")
-    suspend fun getMedicamentsModifiedSince(since: Long, limit: Int = 2000): List<MedicamentEntity>
+    @Query("SELECT * FROM medicaments WHERE lastModified > :since AND patientId IN (SELECT id FROM patients WHERE ownerUid = :owner) ORDER BY lastModified ASC LIMIT :limit")
+    suspend fun getMedicamentsModifiedSince(since: Long, owner: String, limit: Int = 2000): List<MedicamentEntity>
 }

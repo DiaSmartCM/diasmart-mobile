@@ -97,7 +97,8 @@ fun DataSharingScreen(
                 modifier = Modifier.padding(padding),
                 uiState = uiState,
                 onUnlinkPatient = viewModel::unlinkPatient,
-                onReactivateLink = viewModel::reactivateLink
+                onReactivateLink = viewModel::reactivateLink,
+                onCancelRequest = viewModel::cancelPendingRequest
             )
         }
     }
@@ -580,15 +581,56 @@ private fun DoctorPatientsView(
     modifier: Modifier = Modifier,
     uiState: DataSharingUiState,
     onUnlinkPatient: (String) -> Unit = {},
-    onReactivateLink: (String) -> Unit = {}
+    onReactivateLink: (String) -> Unit = {},
+    onCancelRequest: (String) -> Unit = {}
 ) {
     val activePatients = uiState.consents.filter { it.isActive }
-    val revokedPatients = uiState.consents.filter { !it.isActive }
+    // v2.1.84 : une demande EN ATTENTE a isActive = false, comme un acces
+    // revoque. Les deux se retrouvaient donc melanges sous « Acces revoques »,
+    // ou le medecin ne se voyait proposer que « reactiver » — jamais d'annuler
+    // sa propre demande. On les separe.
+    val pendingRequests = uiState.consents.filter {
+        !it.isActive && it.status == ConsentStatus.PENDING
+    }
+    val revokedPatients = uiState.consents.filter {
+        !it.isActive && it.status != ConsentStatus.PENDING
+    }
 
     var pendingUnlink by remember { mutableStateOf<DataSharingConsent?>(null) }
+    var pendingCancel by remember { mutableStateOf<DataSharingConsent?>(null) }
     var pendingReactivate by remember { mutableStateOf<DataSharingConsent?>(null) }
 
     // ── Dialogs de confirmation ──
+    pendingCancel?.let { consent ->
+        AlertDialog(
+            onDismissRequest = { pendingCancel = null },
+            icon = { Icon(Icons.Default.HourglassEmpty, null, tint = Warning) },
+            title = { Text("Annuler la demande ?") },
+            text = {
+                Text(
+                    "${consent.patientNom.ifBlank { "Ce patient" }} ne verra plus votre " +
+                    "demande d'acces. Vous pourrez en formuler une nouvelle plus tard."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onCancelRequest(consent.patientUid)
+                        pendingCancel = null
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) { Text("Annuler la demande") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingCancel = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
+        )
+    }
+
     pendingUnlink?.let { consent ->
         AlertDialog(
             onDismissRequest = { pendingUnlink = null },
@@ -703,6 +745,65 @@ private fun DoctorPatientsView(
                     }
                 }
             }
+            // ── Demandes en attente de reponse du patient ──
+            if (pendingRequests.isNotEmpty()) {
+                item { Spacer(Modifier.height(8.dp)) }
+                item {
+                    Text(
+                        "Demandes en attente (${pendingRequests.size})",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = Warning
+                    )
+                }
+                items(pendingRequests, key = { "pending-${it.patientUid}" }) { consent ->
+                    Card(
+                        Modifier.fillMaxWidth(),
+                        elevation = CardDefaults.cardElevation(0.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Warning.copy(alpha = 0.08f)
+                        )
+                    ) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                shape = CircleShape,
+                                color = Warning.copy(alpha = 0.18f),
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        Icons.Default.HourglassEmpty, null,
+                                        tint = Warning, modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    consent.patientNom.ifBlank { "Patient" },
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    "En attente de sa réponse",
+                                    fontSize = 12.sp,
+                                    color = OnSurfaceVariant
+                                )
+                            }
+                            Spacer(Modifier.width(4.dp))
+                            TextButton(onClick = { pendingCancel = consent }) {
+                                Text("Annuler", color = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                    }
+                }
+            }
+
             if (revokedPatients.isNotEmpty()) {
                 item { Spacer(Modifier.height(8.dp)) }
                 item {

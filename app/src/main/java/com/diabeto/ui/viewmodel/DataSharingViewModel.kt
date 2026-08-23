@@ -224,6 +224,24 @@ class DataSharingViewModel @Inject constructor(
         }
     }
 
+    /**
+     * v2.1.84 : le medecin retire une demande d'acces restee sans reponse.
+     * Distinct de [unlinkPatient], qui retire un acces DEJA accorde.
+     */
+    fun cancelPendingRequest(patientUid: String) {
+        viewModelScope.launch {
+            dataSharingRepository.cancelPendingRequest(patientUid).fold(
+                onSuccess = {
+                    _uiState.update { it.copy(message = "Demande annulée") }
+                    loadData()
+                },
+                onFailure = { e ->
+                    _uiState.update { it.copy(message = "Erreur: ${e.message}") }
+                }
+            )
+        }
+    }
+
     /** v2.1.44 : reactive un lien precedemment revoque (n'importe quelle des 2 parties). */
     fun reactivateLink(otherUid: String) {
         viewModelScope.launch {

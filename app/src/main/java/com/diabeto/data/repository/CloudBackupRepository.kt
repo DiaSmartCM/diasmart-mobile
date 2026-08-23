@@ -84,12 +84,17 @@ class CloudBackupRepository @Inject constructor(
             val userRef = db.collection(BACKUPS).document(userId)
 
             // Collecte delta
-            val patients = patientDao.getPatientsModifiedSince(since)
-            val glucose = glucoseDao.getLecturesModifiedSince(since)
-            val hba1cs = hbA1cDao.getHbA1cModifiedSince(since)
-            val meds = medicamentDao.getMedicamentsModifiedSince(since)
-            val rdvs = rendezVousDao.getRendezVousModifiedSince(since)
-            val journals = journalDao.getEntriesModifiedSince(since)
+            // v2.1.84 : la collecte delta ne portait aucun filtre de compte.
+            // Sur un appareil ayant servi a plusieurs comptes, la sauvegarde
+            // televersait les lignes d'AUTRUI dans le cloud du compte courant —
+            // une fuite qui franchissait les frontieres de l'appareil.
+            val moi = uid ?: "__aucun__"
+            val patients = patientDao.getPatientsModifiedSince(since, moi)
+            val glucose = glucoseDao.getLecturesModifiedSince(since, moi)
+            val hba1cs = hbA1cDao.getHbA1cModifiedSince(since, moi)
+            val meds = medicamentDao.getMedicamentsModifiedSince(since, moi)
+            val rdvs = rendezVousDao.getRendezVousModifiedSince(since, moi)
+            val journals = journalDao.getEntriesModifiedSince(since, moi)
             val total = patients.size + glucose.size + hba1cs.size + meds.size + rdvs.size + journals.size
 
             if (total == 0) {
