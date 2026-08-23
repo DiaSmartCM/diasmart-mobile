@@ -1,6 +1,7 @@
 package com.diabeto.ui.viewmodel
 
 import android.graphics.Bitmap
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.diabeto.data.entity.ContexteGlucose
@@ -17,6 +18,8 @@ import com.diabeto.data.repository.GlucoseRepository
 import com.diabeto.data.repository.MessagerieRepository
 import com.diabeto.data.repository.PatientRepository
 import com.diabeto.data.repository.RepasRepository
+import com.diabeto.domain.prediction.GlucosePrediction
+import com.diabeto.notifications.ExcursionScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -76,6 +79,8 @@ data class RepasUiState(
 
 @HiltViewModel
 class RepasViewModel @Inject constructor(
+    @dagger.hilt.android.qualifiers.ApplicationContext
+    private val appContext: android.content.Context,
     private val chatbotRepository: ChatbotRepository,
     private val repasRepository: RepasRepository,
     private val chatHistoryRepository: ChatHistoryRepository,
@@ -356,6 +361,12 @@ class RepasViewModel @Inject constructor(
                     // Sauvegarder dans l'historique ROLLY
                     sauvegarderDansHistoriqueRolly(analyseCorrigee, glycemieAvant, glycemieApres)
 
+                    // v2.1.79 : programmer les alertes d'excursion. Non
+                    // critique — un echec ici ne doit jamais faire perdre
+                    // l'enregistrement du repas.
+                    runCatching { programmerAlertesExcursion(analyseCorrigee, glycemieAvant) }
+                        .onFailure { Log.w(TAG, "Alertes d'excursion non programmees", it) }
+
                     // Notifier le(s) médecin(s) traitant(s) (non-critique)
                     notifierMedecinRepas(analyseCorrigee.nomRepas, analyseCorrigee.scoreDiabete)
 
@@ -402,6 +413,52 @@ class RepasViewModel @Inject constructor(
      * Sauvegarde l'analyse dans l'historique de discussion ROLLY
      * pour pouvoir la consulter plus tard dans le chatbot.
      */
+    /**
+     * Programme les alertes qui suivent le repas.
+     *
+     * Le point de depart est la glycemie saisie « avant repas » si elle existe,
+     * sinon la derniere mesure connue. Sans aucun des deux, on ne programme
+     * rien : annoncer un pic a partir d'une base inventee serait pire que se
+     * taire.
+     *
+     * Le coefficient personnel est recalcule ici a partir des repas deja
+     * mesures, pour que la notification annonce la meme valeur que l'ecran.
+     */
+    private suspend fun programmerAlertesExcursion(
+        analyse: RepasAnalyse,
+        glycemieAvant: Double?,
+    ) {
+        val depart = glycemieAvant
+            ?: patientRepository.getAllPatientsList().firstOrNull()?.id?.let { pid ->
+                glucoseRepository.getLast7DaysLectures(pid)
+                    .maxByOrNull { it.dateHeure }?.valeur
+            }
+            ?: return
+
+        val calibration = GlucosePrediction.calibrer(
+            repasRepository.getRepasDepuis(7).mapNotNull { r ->
+                val a = r.glycemieAvantRepas
+                val b = r.glycemieApresRepas
+                if (a != null && b != null && r.chargeGlycemique > 1.0) {
+                    GlucosePrediction.Observation(
+                        chargeGlycemique = r.chargeGlycemique,
+                        monteeObservee = b - a,
+                        indexGlycemique = r.indexGlycemique,
+                    )
+                } else null
+            }
+        )
+
+        ExcursionScheduler.programmerApresRepas(
+            context = appContext,
+            nomRepas = analyse.nomRepas.ifBlank { "Repas" },
+            glucides = analyse.glucidesEstimes,
+            indexGlycemique = analyse.indexGlycemique,
+            glycemieDepart = depart,
+            calibration = calibration,
+        )
+    }
+
     private suspend fun sauvegarderDansHistoriqueRolly(
         analyse: RepasAnalyse,
         glycemieAvant: Double?,
@@ -609,5 +666,9 @@ class RepasViewModel @Inject constructor(
         _uiState.update {
             RepasUiState(historique = it.historique)
         }
+    }
+
+    private companion object {
+        const val TAG = "RepasViewModel"
     }
 }

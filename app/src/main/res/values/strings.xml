@@ -101,6 +101,7 @@
     <!-- Notifications -->
     <string name="notif_channel_medicaments">Rappels de médicaments</string>
     <string name="notif_channel_rdv">Rappels de rendez-vous</string>
+    <string name="notif_channel_glycemie">Prédictions glycémiques</string>
     <string name="notif_medicament_title">Prise de médicament</string>
     <string name="notif_medicament_text">Il est temps de prendre %1$s</string>
     <string name="notif_rdv_title">Rendez-vous à venir</string>
@@ -452,6 +453,9 @@
 
     <!-- PatientDetailScreen -->
     <string name="pd_title">Détail du patient</string>
+    <string name="pd_title_self">Ma fiche santé</string>
+    <string name="card_myfile_title">Ma fiche santé</string>
+    <string name="card_myfile_subtitle">Mes données de suivi</string>
     <string name="pd_confirm_delete_title">Confirmer la suppression</string>
     <string name="pd_confirm_delete_text">Voulez-vous vraiment supprimer ce patient ? Cette action est irréversible.</string>
     <string name="pd_stats_title">Statistiques Glycémie (30 jours)</string>

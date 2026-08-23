@@ -25,6 +25,18 @@ import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+/**
+ * Fiche d'un patient.
+ *
+ * v2.1.78 : le meme ecran sert desormais aux deux roles. Cote medecin il
+ * presente un patient suivi, cote patient sa propre fiche — la mise en page,
+ * les statistiques et les actions rapides sont identiques, seule change
+ * l'autorite sur les donnees. Le patient consulte et modifie les siennes ;
+ * il ne peut pas supprimer son dossier depuis ici, cette operation relevant
+ * de la suppression de compte.
+ *
+ * @param estMaFiche vrai lorsque le patient consulte son propre dossier.
+ */
 fun PatientDetailScreen(
     patientId: Long,
     onNavigateBack: () -> Unit,
@@ -32,6 +44,7 @@ fun PatientDetailScreen(
     onNavigateToGlucose: () -> Unit,
     onNavigateToMedicaments: () -> Unit,
     onNavigateToRendezVous: () -> Unit,
+    estMaFiche: Boolean = false,
     viewModel: PatientDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -54,7 +67,9 @@ fun PatientDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.pd_title)) },
+                title = {
+                    Text(stringResource(if (estMaFiche) R.string.pd_title_self else R.string.pd_title))
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back))
@@ -64,12 +79,14 @@ fun PatientDetailScreen(
                     IconButton(onClick = onNavigateToEdit) {
                         Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.common_modify))
                     }
-                    IconButton(onClick = { showDeleteDialog = true }) {
-                        Icon(
-                            Icons.Default.Delete, 
-                            contentDescription = stringResource(R.string.cd_delete),
-                            tint = Error
-                        )
+                    if (!estMaFiche) {
+                        IconButton(onClick = { showDeleteDialog = true }) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = stringResource(R.string.cd_delete),
+                                tint = Error
+                            )
+                        }
                     }
                 },
                 colors = diaSmartTopAppBarColors()

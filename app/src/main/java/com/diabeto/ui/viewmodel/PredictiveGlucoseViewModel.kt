@@ -7,6 +7,9 @@ import com.diabeto.data.entity.LectureGlucoseEntity
 import com.diabeto.data.repository.ChatbotRepository
 import com.diabeto.data.repository.GlucoseRepository
 import com.diabeto.data.repository.PatientRepository
+import com.diabeto.data.repository.RepasRepository
+import com.diabeto.domain.prediction.ConseilGlycemique
+import com.diabeto.domain.prediction.GlucosePrediction
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -36,7 +39,24 @@ data class PredictiveUiState(
     val isAnalyzing: Boolean = false,
     val riskLevel: RiskLevel = RiskLevel.NORMAL,
     val alerts: List<String> = emptyList(),
-    val error: String? = null
+    val error: String? = null,
+
+    // ── v2.1.79 : prediction d'excursion post-prandiale ──
+    /** Pic attendu, arrondi au multiple de 5 mg/dL. Null si aucun repas actif. */
+    val picPrevu: Int? = null,
+    /** Bornes basse et haute de la fourchette annoncee. */
+    val picBas: Int? = null,
+    val picHaut: Int? = null,
+    /** Montee attendue depuis la derniere mesure. */
+    val monteePrevue: Int? = null,
+    /** Heure du pic, deja formatee (ex. "18:40"). */
+    val heurePic: String? = null,
+    /** Repas a l'origine de l'excursion. */
+    val repasDeclencheur: String? = null,
+    /** Sur quoi repose la prediction, dit franchement a l'utilisateur. */
+    val baseCalibration: String = "",
+    /** Conseil rattache au niveau attendu. */
+    val conseil: ConseilGlycemique.Conseil? = null,
 )
 
 enum class RiskLevel(val label: String, val color: Long) {
@@ -52,7 +72,8 @@ class PredictiveGlucoseViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val glucoseRepository: GlucoseRepository,
     private val patientRepository: PatientRepository,
-    private val chatbotRepository: ChatbotRepository
+    private val chatbotRepository: ChatbotRepository,
+    private val repasRepository: RepasRepository
 ) : ViewModel() {
 
     private val patientId: Long = savedStateHandle.get<Long>("patientId")?.takeIf { it > 0 }
@@ -104,9 +125,66 @@ class PredictiveGlucoseViewModel @Inject constructor(
                     )
                 }
 
-                // Prédiction simple basée sur la tendance
-                val predictedPoints = generatePrediction(lectures)
                 val currentValue = lectures.last().valeur
+
+                // ── v2.1.79 : prediction pilotee par les repas ────────────
+                // Les repas des 7 derniers jours servent a calibrer le
+                // coefficient personnel ; ceux des 6 dernieres heures sont
+                // encore en train d'agir et entrent dans la projection.
+                val repasRecents = runCatching { repasRepository.getRepasDepuis(7) }
+                    .getOrDefault(emptyList())
+
+                val calibration = GlucosePrediction.calibrer(
+                    repasRecents.mapNotNull { r ->
+                        val avant = r.glycemieAvantRepas
+                        val apres = r.glycemieApresRepas
+                        if (avant != null && apres != null && r.chargeGlycemique > 1.0) {
+                            GlucosePrediction.Observation(
+                                chargeGlycemique = r.chargeGlycemique,
+                                monteeObservee = apres - avant,
+                                indexGlycemique = r.indexGlycemique,
+                            )
+                        } else null
+                    }
+                )
+
+                val repasActifs = repasRecents.mapNotNull { r ->
+                    val minutes = (System.currentTimeMillis() - r.timestamp.toDate().time) / 60_000.0
+                    if (minutes in 0.0..360.0 && r.glucidesEstimes > 0) {
+                        r to GlucosePrediction.Repas(
+                            minutesAvantMaintenant = minutes,
+                            glucides = r.glucidesEstimes,
+                            indexGlycemique = r.indexGlycemique.coerceIn(1, 110),
+                        )
+                    } else null
+                }
+
+                val minutesDepuisMesure =
+                    ChronoUnit.MINUTES.between(lectures.last().dateHeure, now)
+                        .toDouble().coerceAtLeast(0.0)
+
+                val excursion = GlucosePrediction.predire(
+                    derniereValeur = currentValue,
+                    minutesDepuisMesure = minutesDepuisMesure,
+                    glycemieHabituelle = lectures.takeLast(20).map { it.valeur }.average(),
+                    repas = repasActifs.map { it.second },
+                    calibration = calibration,
+                )
+
+                val predictedPoints = excursion.courbe
+                    .filter { it.minutes > 0 }
+                    .map { p ->
+                        PredictivePoint(
+                            hoursFromNow = (p.minutes / 60.0).toFloat(),
+                            value = p.valeur,
+                            isPrediction = true,
+                            confidence = (1f - (p.minutes / 480.0).toFloat()).coerceIn(0.2f, 1f),
+                        )
+                    }
+
+                val aUnRepasActif = repasActifs.isNotEmpty()
+                val heurePic = now.plusMinutes(excursion.minutesJusquAuPic.toLong())
+                    .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
 
                 // Analyser risques
                 val (riskLevel, alerts) = analyzeRisks(currentValue, predictedPoints)
@@ -129,69 +207,29 @@ class PredictiveGlucoseViewModel @Inject constructor(
                     predictedMax = predictedValues.maxOrNull(),
                     trendDescription = trendDesc,
                     riskLevel = riskLevel,
-                    alerts = alerts
+                    alerts = alerts,
+
+                    picPrevu = if (aUnRepasActif) GlucosePrediction.arrondiAffichage(excursion.valeurPic) else null,
+                    picBas = if (aUnRepasActif) GlucosePrediction.arrondiAffichage(excursion.picBas) else null,
+                    picHaut = if (aUnRepasActif) GlucosePrediction.arrondiAffichage(excursion.picHaut) else null,
+                    monteePrevue = if (aUnRepasActif) GlucosePrediction.arrondiAffichage(excursion.monteePic) else null,
+                    heurePic = if (aUnRepasActif) heurePic else null,
+                    repasDeclencheur = repasActifs.maxByOrNull { it.second.chargeGlycemique }
+                        ?.first?.nomRepas,
+                    baseCalibration = if (calibration.personnalise)
+                        "Calibre sur ${calibration.nombreObservations} repas mesures"
+                    else
+                        "Estimation generique — saisis tes glycemies avant et apres repas " +
+                            "pour l'ajuster a toi",
+                    conseil = if (aUnRepasActif)
+                        ConseilGlycemique.pourExcursionPrevue(excursion)
+                    else
+                        ConseilGlycemique.pour(currentValue),
                 ) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.message) }
             }
         }
-    }
-
-    /**
-     * Génère des points de prédiction pour les 6 prochaines heures
-     * en utilisant une régression linéaire pondérée sur les lectures récentes
-     */
-    private fun generatePrediction(lectures: List<LectureGlucoseEntity>): List<PredictivePoint> {
-        if (lectures.size < 3) return emptyList()
-
-        val now = LocalDateTime.now()
-        val recentLectures = lectures.takeLast(10)
-
-        // Calcul de la tendance par régression linéaire
-        val points = recentLectures.mapIndexed { i, l ->
-            val hours = ChronoUnit.MINUTES.between(l.dateHeure, now).toDouble() / 60.0
-            Pair(-hours, l.valeur)
-        }
-
-        val n = points.size.toDouble()
-        val sumX = points.sumOf { it.first }
-        val sumY = points.sumOf { it.second }
-        val sumXY = points.sumOf { it.first * it.second }
-        val sumX2 = points.sumOf { it.first * it.first }
-
-        val slope = if (n * sumX2 - sumX * sumX != 0.0) {
-            (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX)
-        } else 0.0
-
-        val intercept = (sumY - slope * sumX) / n
-        val currentEstimate = intercept // At x=0 (now)
-
-        // Générer des points prédits toutes les 30 minutes pour 6 heures
-        val predictions = mutableListOf<PredictivePoint>()
-        for (i in 1..12) {
-            val hoursAhead = i * 0.5f
-            var predicted = currentEstimate + slope * hoursAhead
-
-            // Appliquer une atténuation vers la moyenne (mean reversion)
-            val meanGlucose = lectures.takeLast(20).map { it.valeur }.average()
-            val reversionFactor = 0.05 * hoursAhead // Plus on va loin, plus on revient vers la moyenne
-            predicted = predicted * (1 - reversionFactor) + meanGlucose * reversionFactor
-
-            // Borner les valeurs entre 40 et 400
-            predicted = predicted.coerceIn(40.0, 400.0)
-
-            // Confiance décroissante avec le temps
-            val confidence = (1f - hoursAhead / 8f).coerceIn(0.2f, 1f)
-
-            predictions.add(PredictivePoint(
-                hoursFromNow = hoursAhead,
-                value = predicted,
-                isPrediction = true,
-                confidence = confidence
-            ))
-        }
-
-        return predictions
     }
 
     private fun analyzeRisks(

@@ -17,6 +17,12 @@ object NotificationHelper {
     
     const val CHANNEL_MEDICAMENTS = "medicaments_channel"
     const val CHANNEL_RENDEZ_VOUS = "rendezvous_channel"
+
+    // v2.1.79 : canal distinct pour les predictions glycemiques. Separe des
+    // rappels de traitement pour que l'utilisateur puisse couper les uns sans
+    // perdre les autres — un rappel de medicament et une alerte de pic n'ont ni
+    // la meme frequence ni la meme urgence.
+    const val CHANNEL_GLYCEMIE = "glycemie_channel"
     
     const val NOTIFICATION_ID_MEDICAMENT = 1000
     const val NOTIFICATION_ID_RENDEZ_VOUS = 2000
@@ -50,8 +56,19 @@ object NotificationHelper {
                 vibrationPattern = longArrayOf(0, 300, 100, 300)
             }
             
+            // Canal des predictions glycemiques
+            val glycemieChannel = NotificationChannel(
+                CHANNEL_GLYCEMIE,
+                context.getString(R.string.notif_channel_glycemie),
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                description = "Pics glycemiques attendus et moments de mesure"
+                enableVibration(true)
+                vibrationPattern = longArrayOf(0, 200, 100, 200)
+            }
+
             notificationManager.createNotificationChannels(
-                listOf(medicamentsChannel, rendezVousChannel)
+                listOf(medicamentsChannel, rendezVousChannel, glycemieChannel)
             )
         }
     }

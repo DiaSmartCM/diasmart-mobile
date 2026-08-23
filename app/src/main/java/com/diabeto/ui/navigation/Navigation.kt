@@ -26,7 +26,10 @@ object Routes {
     const val DASHBOARD        = "dashboard"
     const val PATIENTS         = "patients"
     const val PATIENTS_SEARCH  = "patients/search"
-    const val PATIENT_DETAIL   = "patient/{patientId}"
+    // v2.1.78 : `self` distingue la fiche d'un patient suivi (medecin) de la
+    // fiche personnelle du patient. Parametre optionnel : les appels existants
+    // restent valides et retombent sur false.
+    const val PATIENT_DETAIL   = "patient/{patientId}?self={self}"
     const val PATIENT_EDIT     = "patient/edit?patientId={patientId}"
     const val GLUCOSE_TRACKING = "glucose/{patientId}"
     const val MEDICAMENTS      = "medicaments/{patientId}"
@@ -52,7 +55,8 @@ object Routes {
     const val VOIP_CALL        = "voip_call"
     const val SHARED_PATIENT   = "shared_patient/{patientUid}?patientNom={patientNom}"
 
-    fun patientDetail(patientId: Long)   = "patient/$patientId"
+    fun patientDetail(patientId: Long, self: Boolean = false) =
+        "patient/$patientId?self=$self"
     fun patientEdit(patientId: Long? = null) =
         if (patientId != null) "patient/edit?patientId=$patientId" else "patient/edit"
     fun glucoseTracking(patientId: Long) = "glucose/$patientId"
@@ -226,6 +230,7 @@ fun DiabetoNavigation(
             DashboardScreen(
                 onNavigateToPatients       = { navController.navigate(Routes.PATIENTS) },
                 onNavigateToPatientDetail  = { id -> navController.navigate(Routes.patientDetail(id)) },
+                onNavigateToMaFiche        = { id -> navController.navigate(Routes.patientDetail(id, self = true)) },
                 onNavigateToRendezVous     = { navController.navigate(Routes.rendezVous()) },
                 onNavigateToAddPatient     = { navController.navigate(Routes.PATIENTS_SEARCH) },
                 onNavigateToChatbot        = { navController.navigate(Routes.chatbot()) },
@@ -276,16 +281,21 @@ fun DiabetoNavigation(
         // ── Detail d'un patient ───────────────────────────────────────────────
         composable(
             route     = Routes.PATIENT_DETAIL,
-            arguments = listOf(navArgument("patientId") { type = NavType.LongType })
+            arguments = listOf(
+                navArgument("patientId") { type = NavType.LongType },
+                navArgument("self") { type = NavType.BoolType; defaultValue = false }
+            )
         ) { back ->
             val patientId = back.arguments?.getLong("patientId") ?: 0L
+            val estMaFiche = back.arguments?.getBoolean("self") ?: false
             PatientDetailScreen(
                 patientId              = patientId,
                 onNavigateBack         = { navController.popBackStack() },
                 onNavigateToEdit       = { navController.navigate(Routes.patientEdit(patientId)) },
                 onNavigateToGlucose    = { navController.navigate(Routes.glucoseTracking(patientId)) },
                 onNavigateToMedicaments = { navController.navigate(Routes.medicaments(patientId)) },
-                onNavigateToRendezVous = { navController.navigate(Routes.rendezVous(patientId)) }
+                onNavigateToRendezVous = { navController.navigate(Routes.rendezVous(patientId)) },
+                estMaFiche             = estMaFiche
             )
         }
 

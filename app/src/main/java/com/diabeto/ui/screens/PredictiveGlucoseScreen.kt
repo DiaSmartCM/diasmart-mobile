@@ -4,7 +4,10 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -83,6 +86,9 @@ fun PredictiveGlucoseScreen(
                 // Carte résumé actuel
                 item { CurrentStatusCard(uiState) }
 
+                // v2.1.79 : l'excursion attendue, chiffrée et datée.
+                item { ExcursionCard(uiState) }
+
                 // Graphique prédictif
                 item { PredictiveChartCard(uiState) }
 
@@ -133,6 +139,127 @@ fun PredictiveGlucoseScreen(
             },
             shape = RoundedCornerShape(24.dp)
         )
+    }
+}
+
+/**
+ * Excursion post-prandiale attendue.
+ *
+ * C'est la carte qui repond a « de combien et quand ». Elle n'apparait que
+ * lorsqu'un repas des six dernieres heures agit encore ; hors repas, il n'y a
+ * rien a annoncer et la carte se replie sur le conseil du moment.
+ *
+ * Trois choix d'affichage assumes :
+ *  - une FOURCHETTE plutot qu'un chiffre sec, parce qu'une prediction
+ *    glycemique n'est jamais exacte ;
+ *  - l'heure du pic en clair, plus utile qu'un « dans 82 minutes » ;
+ *  - la base de calcul ecrite noir sur blanc, pour qu'une estimation generique
+ *    ne se fasse jamais passer pour une valeur personnalisee.
+ */
+@Composable
+private fun ExcursionCard(uiState: PredictiveUiState) {
+    val pic = uiState.picPrevu
+    val conseil = uiState.conseil
+    if (pic == null && conseil == null) return
+
+    val accent = when {
+        pic == null -> Primary
+        pic > 250 -> Error
+        pic > 180 -> Warning
+        else -> Success
+    }
+
+    Card(
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(2.dp),
+        colors = CardDefaults.cardColors(Color.White)
+    ) {
+        Column(Modifier.padding(18.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier.size(8.dp).clip(CircleShape).background(accent)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    if (pic != null) "Excursion attendue" else "Conseil du moment",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = accent
+                )
+            }
+
+            if (pic != null) {
+                Spacer(Modifier.height(10.dp))
+
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        "$pic",
+                        fontSize = 42.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = accent
+                    )
+                    Text(
+                        " mg/dL",
+                        fontSize = 15.sp,
+                        color = OnSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    Spacer(Modifier.weight(1f))
+                    uiState.heurePic?.let {
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("vers", fontSize = 11.sp, color = OnSurfaceVariant)
+                            Text(it, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+
+                val bas = uiState.picBas
+                val haut = uiState.picHaut
+                val montee = uiState.monteePrevue
+                if (bas != null && haut != null && montee != null) {
+                    Text(
+                        "Fourchette $bas–$haut · montée d'environ $montee mg/dL",
+                        fontSize = 12.5.sp,
+                        color = OnSurfaceVariant
+                    )
+                }
+
+                uiState.repasDeclencheur?.let {
+                    Spacer(Modifier.height(2.dp))
+                    Text("D'après : $it", fontSize = 12.5.sp, color = OnSurfaceVariant)
+                }
+            }
+
+            conseil?.let { c ->
+                Spacer(Modifier.height(12.dp))
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = accent.copy(alpha = 0.09f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text(c.titre, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.height(3.dp))
+                        Text(
+                            c.message,
+                            style = MaterialTheme.typography.bodyMedium,
+                            lineHeight = 19.sp
+                        )
+                    }
+                }
+            }
+
+            if (uiState.baseCalibration.isNotBlank()) {
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    uiState.baseCalibration,
+                    fontSize = 11.5.sp,
+                    color = OnSurfaceVariant,
+                    lineHeight = 15.sp
+                )
+            }
+        }
     }
 }
 

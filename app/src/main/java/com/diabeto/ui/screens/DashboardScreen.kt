@@ -69,6 +69,9 @@ fun DashboardScreen(
     onNavigateToReports: () -> Unit = {},
     onNavigateToMesAvis: () -> Unit = {},
     onNavigateToGlucose: (Long) -> Unit = {},
+    // v2.1.78 : fiche sante personnelle du patient (meme ecran que la fiche
+    // patient cote medecin, sans l'action de suppression).
+    onNavigateToMaFiche: (Long) -> Unit = {},
     // v2.1.75 : ecran Medicaments (rappels de traitement), ouvert depuis
     // l'onglet "Rappels" de la barre du bas.
     onNavigateToMedicaments: (Long) -> Unit = {},
@@ -730,6 +733,29 @@ fun DashboardScreen(
                             iconTint = Color(0xFFF59E0B),
                             onClick = onNavigateToMesAvis,
                             modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+
+            // ── Ma fiche sante ──
+            // v2.1.78 : le dossier medical du patient existait deja (le meme
+            // ecran que le medecin utilise pour ses patients suivis), mais plus
+            // aucun chemin n'y menait cote patient depuis la reorganisation du
+            // tableau de bord. Carte pleine largeur : c'est le dossier lui-meme,
+            // pas une action parmi d'autres, et cela ne deplace aucune carte.
+            if (uiState.userRole == UserRole.PATIENT) {
+                item { Spacer(modifier = Modifier.height(12.dp)) }
+                item {
+                    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+                        FeatureCard(
+                            title = stringResource(R.string.card_myfile_title),
+                            subtitle = stringResource(R.string.card_myfile_subtitle),
+                            icon = Icons.Outlined.Badge,
+                            cardColor = CardNutrition,
+                            iconTint = Color(0xFFAD6A1C),
+                            onClick = { uiState.selfPatientId?.let(onNavigateToMaFiche) },
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }
