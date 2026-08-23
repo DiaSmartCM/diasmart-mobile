@@ -63,6 +63,9 @@ class MainActivity : AppCompatActivity() {
         ReminderScheduler.scheduleMedicationReminders(this)
         ReminderScheduler.scheduleAppointmentReminders(this)
         ReminderScheduler.scheduleMeasurementReminders(this)
+        // v2.1.83 : les rappels de traitement et de RDV passent par des
+        // alarmes exactes, seules capables de sonner a l'heure prevue.
+        com.diabeto.notifications.reprogrammerToutesLesAlarmes(this)
 
         // Batch sync : sync local → Firestore toutes les 4h + au démarrage
         BatchSyncWorker.schedulePeriodic(this)

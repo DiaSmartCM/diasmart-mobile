@@ -86,6 +86,14 @@
             android:enabled="true"
             android:exported="false" />
 
+        <!-- v2.1.83 : alarmes exactes des rappels de traitement et de RDV.
+             Non exporté : seul AlarmManager le réveille, via un PendingIntent
+             que l'application a elle-même posé. -->
+        <receiver
+            android:name=".notifications.AlarmReceiver"
+            android:enabled="true"
+            android:exported="false" />
+
         <!-- Receiver pour le redémarrage -->
         <receiver
             android:name=".notifications.BootReceiver"

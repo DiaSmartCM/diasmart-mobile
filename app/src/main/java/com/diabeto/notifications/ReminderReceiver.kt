@@ -94,6 +94,9 @@ class BootReceiver : BroadcastReceiver() {
         ReminderScheduler.scheduleMedicationReminders(context)
         ReminderScheduler.scheduleAppointmentReminders(context)
         ReminderScheduler.scheduleMeasurementReminders(context)
+
+        // Les alarmes exactes ne survivent pas au redemarrage.
+        reprogrammerToutesLesAlarmes(context)
     }
 }
 
@@ -104,3 +107,38 @@ class BootReceiver : BroadcastReceiver() {
  */
 private fun uidCourant(): String =
     com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: "__aucun__"
+
+/**
+ * v2.1.83 : (re)pose toutes les alarmes exactes de rappel.
+ *
+ * Appelee au lancement de l'application et apres un redemarrage du telephone —
+ * AlarmManager perd ses alarmes au reboot. Sans cet appel, un utilisateur qui
+ * redemarre son telephone ne recevrait plus aucun rappel de traitement, en
+ * silence.
+ */
+fun reprogrammerToutesLesAlarmes(context: android.content.Context) {
+    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+        try {
+            val db = com.diabeto.data.database.DiabetoDatabase.getInstance(context)
+
+            db.medicamentDao().getAllActiveMedicaments().forEach { med ->
+                if (med.rappelActive) {
+                    AlarmScheduler.programmerMedicament(
+                        context, med.id, med.nom, med.dosage, med.heurePrise, med.dateFin
+                    )
+                }
+            }
+
+            // getUpcomingRendezVous renvoie un RendezVousAvecPatient : le
+            // rendez-vous lui-meme est dans le champ `rendezVous`.
+            db.rendezVousDao().getUpcomingRendezVous(limit = 50).forEach { item ->
+                val rdv = item.rendezVous
+                AlarmScheduler.programmerRendezVous(
+                    context, rdv.id, rdv.titre, rdv.dateHeure, rdv.lieu
+                )
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("AlarmScheduler", "Reprogrammation des alarmes impossible", e)
+        }
+    }
+}

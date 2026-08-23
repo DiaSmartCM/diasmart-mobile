@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -411,6 +412,7 @@ private fun MonMedecinTabContent(
 }
 
 @Composable
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 private fun TreatingDoctorCard(
     consent: DataSharingConsent,
     onRateDoctor: () -> Unit,
@@ -481,19 +483,31 @@ private fun TreatingDoctorCard(
                     )
                 }
                 Spacer(Modifier.height(4.dp))
-                // Badges données partagées
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                // Badges donnees partagees.
+                //
+                // v2.1.83 : FlowRow et non Row. Sur un ecran de 360 dp, la
+                // colonne ne recoit qu'environ 160 dp une fois l'avatar et les
+                // deux boutons deduits, alors que les trois badges en demandent
+                // le double. Row ne sait pas passer a la ligne : il comprimait
+                // le dernier jusqu'a empiler ses lettres verticalement
+                // ("Méd / ica / men / ts"). FlowRow reporte simplement les
+                // badges en trop sur la ligne suivante.
+                androidx.compose.foundation.layout.FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     if (consent.shareGlucose) DataBadge("Glycémie")
                     if (consent.shareHbA1c) DataBadge("HbA1c")
                     if (consent.shareMedications) DataBadge("Médicaments")
                 }
             }
-            // Bouton noter
-            IconButton(onClick = onRateDoctor) {
+            // Les deux boutons gardent une taille fixe et ne sont jamais
+            // comprimes : ce sont les seules actions de la carte.
+            IconButton(onClick = onRateDoctor, modifier = Modifier.size(40.dp)) {
                 Icon(Icons.Default.StarRate, "Noter", tint = Color(0xFFF59E0B))
             }
             // v2.1.60 : bouton revoquer (parite RGPD avec le medecin)
-            IconButton(onClick = { showRevokeDialog = true }) {
+            IconButton(onClick = { showRevokeDialog = true }, modifier = Modifier.size(40.dp)) {
                 Icon(Icons.Default.LinkOff, "Révoquer l'accès", tint = StatusRedDark)
             }
         }
@@ -526,14 +540,31 @@ private fun PatientPendingRequestCard(
                 }
             }
             Spacer(Modifier.width(10.dp))
+            // v2.1.83 : un nom long poussait les deux boutons hors de l'ecran
+            // sur les appareils etroits, rendant la demande d'acces impossible
+            // a accepter ou refuser. Le nom est desormais borne a deux lignes
+            // et tronque, et les boutons conservent une place fixe.
             Column(Modifier.weight(1f)) {
-                Text("Dr. ${consent.medecinNom}", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                Text(stringResource(R.string.ds_wants_access), fontSize = 12.sp, color = OnSurfaceVariant)
+                Text(
+                    "Dr. ${consent.medecinNom}",
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    stringResource(R.string.ds_wants_access),
+                    fontSize = 12.sp,
+                    color = OnSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
-            IconButton(onClick = onAccept, modifier = Modifier.size(38.dp)) {
+            Spacer(Modifier.width(4.dp))
+            IconButton(onClick = onAccept, modifier = Modifier.size(40.dp)) {
                 Icon(Icons.Default.CheckCircle, "Accepter", tint = StatusGreen)
             }
-            IconButton(onClick = onReject, modifier = Modifier.size(38.dp)) {
+            IconButton(onClick = onReject, modifier = Modifier.size(40.dp)) {
                 Icon(Icons.Default.Cancel, "Refuser", tint = StatusRedDark)
             }
         }
