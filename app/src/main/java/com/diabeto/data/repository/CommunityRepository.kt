@@ -61,7 +61,7 @@ class CommunityRepository @Inject constructor(
      */
     suspend fun countPatientMembers(): Int = runCatching {
         firestore.collection(COL_USERS)
-            .whereEqualTo("role", "PATIENT")
+            .whereIn("role", listOf("PATIENT", "patient"))
             .get().await()
             .size()
     }.getOrDefault(0)

@@ -98,8 +98,15 @@ data class UserProfile(
             email = map["email"] as? String ?: "",
             nom = map["nom"] as? String ?: "",
             prenom = map["prenom"] as? String ?: "",
+            // v2.1.80 : la casse du role differe selon l'origine du compte.
+            // L'application ecrit le nom d'enumeration ("MEDECIN"), la
+            // plateforme web ecrit "medecin". Sans passage en majuscules,
+            // valueOf() levait une exception rattrapee en silence et tout
+            // medecin inscrit sur le web devenait un PATIENT ici — une erreur
+            // invisible, qui le privait de ses ecrans et le rendait
+            // introuvable pour les patients.
             role = try {
-                UserRole.valueOf(map["role"] as? String ?: "PATIENT")
+                UserRole.valueOf((map["role"] as? String ?: "PATIENT").trim().uppercase())
             } catch (e: Exception) {
                 UserRole.PATIENT
             },

@@ -422,7 +422,9 @@ class AuthRepository @Inject constructor(
     suspend fun getMedecins(): List<UserProfile> {
         return try {
             val snap = firestore.collection(COLLECTION_USERS)
-                .whereEqualTo("role", UserRole.MEDECIN.name)
+                // v2.1.80 : deux casses coexistent selon l'origine du compte
+                // (app = "MEDECIN", plateforme web = "medecin").
+                .whereIn("role", listOf("MEDECIN", "medecin"))
                 .get()
                 .await()
             snap.documents.mapNotNull { doc ->

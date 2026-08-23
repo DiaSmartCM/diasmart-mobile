@@ -97,7 +97,7 @@ class RdvSharedRepository @Inject constructor(
     suspend fun getAvailableMedecins(): List<UserProfile> {
         return try {
             val snap = firestore.collection(COL_USERS)
-                .whereEqualTo("role", "MEDECIN")
+                .whereIn("role", listOf("MEDECIN", "medecin"))
                 .get().await()
             snap.documents.mapNotNull { doc ->
                 @Suppress("UNCHECKED_CAST")

@@ -57,6 +57,23 @@ data class PredictiveUiState(
     val baseCalibration: String = "",
     /** Conseil rattache au niveau attendu. */
     val conseil: ConseilGlycemique.Conseil? = null,
+
+    /** Bulletin heure par heure, facon prevision meteo. */
+    val bulletin: List<HeurePrevue> = emptyList(),
+)
+
+/**
+ * Une echeance du bulletin glycemique.
+ *
+ * L'analogie meteo n'est pas qu'une image : comme une prevision, chaque valeur
+ * porte une heure, un niveau lisible d'un coup d'oeil, et une fiabilite qui
+ * decroit a mesure qu'on s'eloigne.
+ */
+data class HeurePrevue(
+    val heure: String,
+    val valeur: Int,
+    val niveau: ConseilGlycemique.Niveau,
+    val fiabilite: Float,
 )
 
 enum class RiskLevel(val label: String, val color: Long) {
@@ -182,6 +199,21 @@ class PredictiveGlucoseViewModel @Inject constructor(
                         )
                     }
 
+                // Bulletin horaire : on echantillonne la courbe a +1h .. +6h.
+                val fmtHeure = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+                val bulletin = (1..6).map { h ->
+                    val minutes = h * 60.0
+                    val valeur = excursion.courbe
+                        .minByOrNull { kotlin.math.abs(it.minutes - minutes) }
+                        ?.valeur ?: currentValue
+                    HeurePrevue(
+                        heure = now.plusHours(h.toLong()).format(fmtHeure),
+                        valeur = GlucosePrediction.arrondiAffichage(valeur),
+                        niveau = ConseilGlycemique.niveauDe(valeur),
+                        fiabilite = (1f - h / 8f).coerceIn(0.25f, 1f),
+                    )
+                }
+
                 val aUnRepasActif = repasActifs.isNotEmpty()
                 val heurePic = now.plusMinutes(excursion.minutesJusquAuPic.toLong())
                     .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
@@ -225,6 +257,7 @@ class PredictiveGlucoseViewModel @Inject constructor(
                         ConseilGlycemique.pourExcursionPrevue(excursion)
                     else
                         ConseilGlycemique.pour(currentValue),
+                    bulletin = bulletin,
                 ) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.message) }

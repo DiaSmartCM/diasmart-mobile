@@ -28,15 +28,29 @@ object WhatsAppShare {
      *  - ajoute l'indicatif Cameroun (237) si le numero local n'en a pas
      */
     fun normalizePhone(raw: String, defaultCountryCode: String = "237"): String {
-        val digits = raw.filter { it.isDigit() }
+        var digits = raw.filter { it.isDigit() }
         if (digits.isEmpty()) return ""
-        // Si le numero commence par 00, retirer
-        val noTrunk = if (digits.startsWith("00")) digits.drop(2) else digits
-        // Si le numero local commence par 6/7 (mobile Cameroun) sans indicatif → prefix
-        return if (noTrunk.length in 8..9 && (noTrunk.startsWith("6") || noTrunk.startsWith("2"))) {
-            defaultCountryCode + noTrunk
+
+        // Prefixe international : "00237..." ou "+237..." (le + a deja saute).
+        if (digits.startsWith("00")) digits = digits.drop(2)
+
+        // v2.1.80 : le zero de tete manquait au traitement. Un numero note
+        // "0691234567" — forme courante d'un carnet d'adresses — gardait son
+        // zero, n'entrait dans aucun cas et partait tel quel vers wa.me, qui
+        // ne reconnaissait pas le destinataire. On le retire d'abord, comme
+        // n'importe quel prefixe d'acheminement national.
+        while (digits.length > 9 && digits.startsWith("0")) digits = digits.drop(1)
+        if (digits.length in 9..10 && digits.startsWith("0")) digits = digits.drop(1)
+
+        // Deja au format international : on n'y touche pas.
+        if (digits.startsWith(defaultCountryCode) && digits.length >= 11) return digits
+
+        // Numero local camerounais : 9 chiffres (mobile en 6, fixe en 2), ou
+        // 8 chiffres pour les anciennes numerotations encore en circulation.
+        return if (digits.length in 8..9 && (digits.startsWith("6") || digits.startsWith("2"))) {
+            defaultCountryCode + digits
         } else {
-            noTrunk
+            digits
         }
     }
 

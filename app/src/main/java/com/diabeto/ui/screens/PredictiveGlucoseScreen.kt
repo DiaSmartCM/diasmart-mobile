@@ -31,6 +31,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.diabeto.ui.components.AiRichText
 import com.diabeto.ui.components.RollyIcon
 import com.diabeto.ui.theme.*
+import com.diabeto.domain.prediction.ConseilGlycemique
 import com.diabeto.ui.viewmodel.PredictiveGlucoseViewModel
 import com.diabeto.ui.viewmodel.PredictivePoint
 import com.diabeto.ui.viewmodel.PredictiveUiState
@@ -125,12 +126,28 @@ fun PredictiveGlucoseScreen(
                 }
             },
             text = {
-                LazyColumn(Modifier.heightIn(max = 420.dp)) {
-                    item {
-                        AiRichText(
-                            texte = uiState.rollyAnalysis ?: "",
-                            couleurAccent = Primary,
-                        )
+                LazyColumn(Modifier.heightIn(max = 460.dp)) {
+                    // v2.1.80 : le bulletin chiffre passe devant. Le bouton
+                    // « Predire » ouvrait jusqu'ici un texte redige par le
+                    // modele de langage — des conseils, pas une prevision.
+                    // Les valeurs viennent du modele d'excursion, calcule sur
+                    // l'appareil ; ROLLY ne fait plus que commenter.
+                    if (uiState.bulletin.isNotEmpty()) {
+                        item { BulletinMeteo(uiState) }
+                        item { Spacer(Modifier.height(16.dp)) }
+                    }
+                    if (!uiState.rollyAnalysis.isNullOrBlank()) {
+                        item {
+                            Text(
+                                "COMMENTAIRE DE ROLLY",
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = OnSurfaceVariant,
+                                letterSpacing = 1.sp,
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            AiRichText(texte = uiState.rollyAnalysis!!, couleurAccent = Primary)
+                        }
                     }
                 }
             },
@@ -139,6 +156,109 @@ fun PredictiveGlucoseScreen(
             },
             shape = RoundedCornerShape(24.dp)
         )
+    }
+}
+
+/**
+ * Bulletin glycemique heure par heure, presente comme une prevision meteo.
+ *
+ * L'analogie tient sur trois points, et c'est ce qui la rend juste : chaque
+ * echeance porte une heure, un niveau lisible d'un coup d'oeil sans lire le
+ * chiffre, et une fiabilite qui decroit avec l'horizon — la barre sous chaque
+ * colonne s'efface a mesure qu'on s'eloigne, exactement comme une prevision a
+ * six jours vaut moins qu'une prevision a demain.
+ */
+@Composable
+private fun BulletinMeteo(uiState: PredictiveUiState) {
+    fun couleur(n: ConseilGlycemique.Niveau) = when (n) {
+        ConseilGlycemique.Niveau.HYPO_SEVERE -> Error
+        ConseilGlycemique.Niveau.HYPO -> Error
+        ConseilGlycemique.Niveau.CIBLE -> Success
+        ConseilGlycemique.Niveau.ELEVEE -> Warning
+        ConseilGlycemique.Niveau.TRES_ELEVEE -> Error
+    }
+
+    Column {
+        // ── En-tete : la valeur de depart et le pic attendu ──
+        Row(verticalAlignment = Alignment.Bottom) {
+            Column {
+                Text("MAINTENANT", fontSize = 10.sp, color = OnSurfaceVariant, letterSpacing = 1.sp)
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        "${uiState.currentValue?.toInt() ?: "--"}",
+                        fontSize = 34.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(" mg/dL", fontSize = 13.sp, color = OnSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 6.dp))
+                }
+            }
+            Spacer(Modifier.weight(1f))
+            if (uiState.picPrevu != null && uiState.heurePic != null) {
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("PIC ATTENDU", fontSize = 10.sp, color = OnSurfaceVariant, letterSpacing = 1.sp)
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(
+                            "${uiState.picPrevu}",
+                            fontSize = 34.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Warning,
+                        )
+                        Text(
+                            "  ${uiState.heurePic}",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(bottom = 5.dp),
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(14.dp))
+
+        // ── La bande horaire ──
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            uiState.bulletin.forEach { h ->
+                val c = couleur(h.niveau)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(h.heure, fontSize = 10.5.sp, color = OnSurfaceVariant)
+                    Spacer(Modifier.height(5.dp))
+                    Box(
+                        Modifier.size(9.dp).clip(CircleShape)
+                            .background(c.copy(alpha = 0.25f + 0.75f * h.fiabilite))
+                    )
+                    Spacer(Modifier.height(5.dp))
+                    Text(
+                        "${h.valeur}",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = c,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    // Fiabilite : la barre pale a mesure que l'horizon s'eloigne.
+                    Box(
+                        Modifier.width(22.dp).height(3.dp).clip(RoundedCornerShape(2.dp))
+                            .background(c.copy(alpha = 0.15f + 0.55f * h.fiabilite))
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "mg/dL — la barre s'efface à mesure que la prévision s'éloigne",
+            fontSize = 10.5.sp,
+            color = OnSurfaceVariant,
+        )
+
+        if (uiState.baseCalibration.isNotBlank()) {
+            Spacer(Modifier.height(8.dp))
+            Text(uiState.baseCalibration, fontSize = 11.sp, color = OnSurfaceVariant, lineHeight = 15.sp)
+        }
     }
 }
 

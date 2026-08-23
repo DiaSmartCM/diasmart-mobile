@@ -266,7 +266,7 @@ class DataSharingRepository @Inject constructor(
 
         return try {
             val snap = firestore.collection(COLLECTION_USERS)
-                .whereEqualTo("role", UserRole.PATIENT.name)
+                .whereIn("role", listOf("PATIENT", "patient"))
                 .get().await()
 
             snap.documents.mapNotNull { doc ->

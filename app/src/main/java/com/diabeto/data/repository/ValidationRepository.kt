@@ -108,7 +108,7 @@ class ValidationRepository @Inject constructor(
     suspend fun getAvailableDoctors(): List<UserProfile> {
         return try {
             val snap = firestore.collection("users")
-                .whereEqualTo("role", "MEDECIN")
+                .whereIn("role", listOf("MEDECIN", "medecin"))
                 .get().await()
             snap.documents.mapNotNull { doc ->
                 @Suppress("UNCHECKED_CAST")

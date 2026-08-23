@@ -1311,8 +1311,8 @@ onAuthStateChanged(auth,async user=>{
         if(p.name){document.getElementById('profName').textContent=p.name;document.getElementById('settingsName').textContent=p.name;document.getElementById('dashName').textContent='Bonjour, '+p.name}
         document.getElementById('profEmail').textContent=user.email||'Non renseigne';
         document.getElementById('profPhone').textContent=p.phone||user.phoneNumber||'Non renseigne';
-        document.getElementById('settingsRole').textContent=p.role==='medecin'?'Medecin':'Patient';
-        document.getElementById('dashRole').textContent=p.role==='medecin'?'Medecin':'Patient';
+        document.getElementById('settingsRole').textContent=estMedecin(p.role)?'Medecin':'Patient';
+        document.getElementById('dashRole').textContent=estMedecin(p.role)?'Medecin':'Patient';
         // Google
         const isGoogle=user.providerData.some(pd=>pd.providerId==='google.com');
         document.getElementById('profGoogle').textContent=isGoogle?user.email:'Non lie';
@@ -1355,9 +1355,9 @@ onAuthStateChanged(auth,async user=>{
     // Show validations card for doctors
     const userDoc=await getDoc(doc(db,'users',user.uid));
     if(userDoc.exists()){
-      const role=userDoc.data().role||'patient';
+      const role=String(userDoc.data().role||'patient').toLowerCase();
       window._userRole=role;
-      if(role==='medecin'){
+      if(estMedecin(role)){
         const vc=document.getElementById('validationsCard');
         if(vc)vc.style.display='';
         // Masquer partage/export pour les medecins
@@ -1686,10 +1686,20 @@ window.revokeConsentInDb=async(id)=>{
   window.loadConsents();
 };
 
+// ── Role : casse unifiee ──
+// v2.1.80 : l'application Android enregistre le role en majuscules ("MEDECIN",
+// nom d'enumeration Kotlin) tandis que la plateforme l'enregistre en
+// minuscules. Chacune interrogeait ensuite dans sa propre casse, si bien qu'un
+// medecin inscrit depuis l'application etait invisible sur la plateforme — et
+// y etait meme traite comme un patient. On compare desormais sans tenir compte
+// de la casse, des deux cotes, plutot que de migrer les documents existants.
+function estMedecin(r){return String(r||'').toLowerCase()==='medecin'}
+window.estMedecin=estMedecin;
+
 // ── Load all doctors (users with role=medecin) ──
 window.loadDoctors=async()=>{
   try{
-    const q=query(collection(db,'users'),where('role','==','medecin'));
+    const q=query(collection(db,'users'),where('role','in',['medecin','MEDECIN']));
     const snap=await getDocs(q);
     const docs=[];snap.forEach(d=>docs.push({uid:d.id,...d.data()}));
     window._doctors=docs;
@@ -1740,7 +1750,7 @@ window.loadValidations=async()=>{
   const role=window._userRole||'patient';
   try{
     let q;
-    if(role==='medecin'){
+    if(estMedecin(role)){
       q=query(collection(db,'validations'),where('medecinUid','==',uid),orderBy('createdAt','desc'));
     }else{
       q=query(collection(db,'validations'),where('patientUid','==',uid),orderBy('createdAt','desc'),limit(20));
@@ -2981,7 +2991,7 @@ async function sendMessage(){
     const doctors=window._doctors||[];
     const userRole=window._userRole||'patient';
 
-    if(isMedical && doctors.length>0 && userRole==='patient'){
+    if(isMedical && doctors.length>0 && !estMedecin(userRole)){
       addValidationBanner();
     }
   }catch(e){
@@ -3156,7 +3166,7 @@ window.saveRdv=saveRdv;
 
 // ══════════ RDV REQUESTS (MEDECIN) ══════════
 async function loadRdvRequests(){
-  if(!auth.currentUser||window._userRole!=='medecin')return;
+  if(!auth.currentUser||!estMedecin(window._userRole))return;
   try{
     const q=query(collection(db,'rendezvous_requests'),where('medecinId','==',auth.currentUser.uid),where('statut','==','en_attente'));
     const snap=await getDocs(q);
@@ -3953,7 +3963,7 @@ function renderValidations(vals){
     const date=v.createdAt?.toDate?v.createdAt.toDate().toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'';
     const statusLabel={pending:'En attente',validated:'Valide',rejected:'Rejete'}[v.status]||v.status;
     const statusClass=v.status||'pending';
-    const isDoctor=role==='medecin';
+    const isDoctor=estMedecin(role);
     return`<div class="validation-card">
       <div class="vc-header">
         <span class="vc-patient">${isDoctor?v.patientNom:'Dr. '+v.medecinNom}</span>
