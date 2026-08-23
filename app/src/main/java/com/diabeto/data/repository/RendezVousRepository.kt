@@ -36,6 +36,10 @@ class RendezVousRepository @Inject constructor(
     
     suspend fun getUpcomingRendezVous(limit: Int = 50): List<RendezVousAvecPatient> = 
         rendezVousDao.getUpcomingRendezVous(owner = owner(), limit = limit)
+
+    /** v2.1.86 : tout l'historique du compte, pour que les onglets aient un sens. */
+    suspend fun getAllRendezVousForOwner(limit: Int = 200): List<RendezVousAvecPatient> =
+        rendezVousDao.getAllRendezVousForOwner(owner = owner(), limit = limit)
     
     fun getUpcomingRendezVousFlow(limit: Int = 50): Flow<List<RendezVousAvecPatient>> = 
         rendezVousDao.getUpcomingRendezVousFlow(limit = limit)
@@ -47,7 +51,7 @@ class RendezVousRepository @Inject constructor(
         rendezVousDao.getRendezVousForDateFlow(date)
     
     suspend fun getCountForDate(date: LocalDate = LocalDate.now()): Int = 
-        rendezVousDao.getCountForDate(date)
+        rendezVousDao.getCountForDate(owner = owner(), date = date)
     
     suspend fun getConfirmedCountForDate(date: LocalDate = LocalDate.now()): Int = 
         rendezVousDao.getConfirmedCountForDate(date)

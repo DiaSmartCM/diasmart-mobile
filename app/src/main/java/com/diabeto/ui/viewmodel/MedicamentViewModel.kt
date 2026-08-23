@@ -43,6 +43,8 @@ data class AddMedicamentState(
 @HiltViewModel
 class MedicamentViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
+    @dagger.hilt.android.qualifiers.ApplicationContext
+    private val appContext: android.content.Context,
     private val medicamentRepository: MedicamentRepository,
     private val patientRepository: PatientRepository
 ) : ViewModel() {
@@ -125,8 +127,23 @@ class MedicamentViewModel @Inject constructor(
                     notes = state.notes.trim()
                 )
                 
-                medicamentRepository.insertMedicament(medicament)
-                
+                val nouvelId = medicamentRepository.insertMedicament(medicament)
+
+                // v2.1.86 : l'alarme se pose ICI, a la creation.
+                // Elle n'etait programmee qu'au lancement suivant de
+                // l'application : une prise saisie pour dans cinq minutes ne
+                // sonnait jamais, et se retrouvait reportee au lendemain.
+                if (medicament.rappelActive) {
+                    com.diabeto.notifications.AlarmScheduler.programmerMedicament(
+                        context = appContext,
+                        medicamentId = if (nouvelId > 0) nouvelId else medicament.id,
+                        nom = medicament.nom,
+                        dosage = medicament.dosage,
+                        heurePrise = medicament.heurePrise,
+                        dateFin = medicament.dateFin,
+                    )
+                }
+
                 _uiState.update { it.copy(showAddDialog = false, addSuccess = true) }
                 _addState.value = AddMedicamentState()
                 
@@ -153,6 +170,23 @@ class MedicamentViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 medicamentRepository.toggleRappelStatus(medicament.id, medicament.rappelActive)
+
+                // Le rappel vient d'etre bascule : on pose ou on retire
+                // l'alarme en consequence, sans attendre un redemarrage.
+                if (!medicament.rappelActive) {
+                    com.diabeto.notifications.AlarmScheduler.programmerMedicament(
+                        context = appContext,
+                        medicamentId = medicament.id,
+                        nom = medicament.nom,
+                        dosage = medicament.dosage,
+                        heurePrise = medicament.heurePrise,
+                        dateFin = medicament.dateFin,
+                    )
+                } else {
+                    com.diabeto.notifications.AlarmScheduler.annulerMedicament(
+                        appContext, medicament.id
+                    )
+                }
                 loadData()
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = e.message) }
@@ -164,6 +198,11 @@ class MedicamentViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 medicamentRepository.deleteMedicament(medicament)
+                // Sans cette annulation, l'alarme d'un traitement supprime
+                // continuerait de sonner jusqu'a son echeance.
+                com.diabeto.notifications.AlarmScheduler.annulerMedicament(
+                    appContext, medicament.id
+                )
                 loadData()
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = e.message) }

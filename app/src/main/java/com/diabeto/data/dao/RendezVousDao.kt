@@ -36,6 +36,31 @@ interface RendezVousDao {
      * donc la propriete deja etablie sur `patients`, ce qui evite une migration
      * de schema supplementaire et garde une seule source de verite.
      */
+    /**
+     * v2.1.86 : TOUS les rendez-vous du compte, passes comme a venir.
+     *
+     * L'ecran medecin ne chargeait que `getUpcomingRendezVous`, filtre sur
+     * `dateHeure >= maintenant`. Ses onglets « Tous » et « Passes » filtraient
+     * donc une liste ne contenant deja que le futur : ils ne pouvaient rien
+     * afficher d'autre. Un rendez-vous programme plus tot dans la journee
+     * disparaissait des trois onglets, tout en restant compte par le tableau
+     * de bord — d'ou un compteur a 5 en face d'une liste vide.
+     *
+     * Le tri est DESC : les rendez-vous recents en premier, ce qui met en tete
+     * ce que le medecin vient de saisir.
+     */
+    @Transaction
+    @Query("""
+        SELECT * FROM rendez_vous
+        WHERE patientId IN (SELECT id FROM patients WHERE ownerUid = :owner)
+        ORDER BY dateHeure DESC
+        LIMIT :limit
+    """)
+    suspend fun getAllRendezVousForOwner(
+        owner: String,
+        limit: Int = 200
+    ): List<RendezVousAvecPatient>
+
     @Transaction
     @Query("""
         SELECT * FROM rendez_vous
@@ -78,11 +103,15 @@ interface RendezVousDao {
     """)
     fun getRendezVousForDateFlow(date: LocalDate = LocalDate.now()): Flow<List<RendezVousAvecPatient>>
     
+    // v2.1.86 : le compteur doit compter ce que la liste affiche. Non filtre,
+    // il annoncait 5 rendez-vous en face d'une liste vide — l'incoherence
+    // faisait croire a une perte de donnees.
     @Query("""
-        SELECT COUNT(*) FROM rendez_vous 
+        SELECT COUNT(*) FROM rendez_vous
         WHERE date(dateHeure) = date(:date)
+        AND patientId IN (SELECT id FROM patients WHERE ownerUid = :owner)
     """)
-    suspend fun getCountForDate(date: LocalDate = LocalDate.now()): Int
+    suspend fun getCountForDate(owner: String, date: LocalDate = LocalDate.now()): Int
     
     @Query("""
         SELECT COUNT(*) FROM rendez_vous 

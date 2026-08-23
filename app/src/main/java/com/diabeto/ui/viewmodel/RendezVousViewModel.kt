@@ -211,7 +211,10 @@ class RendezVousViewModel @Inject constructor(
                                 }
                             }
                     } else {
-                        rendezVousRepository.getUpcomingRendezVous(50)
+                        // Tout l'historique : les onglets Tous / A venir /
+                        // Passes filtrent ensuite cote UI. Charger seulement
+                        // les RDV a venir rendait deux onglets sur trois muets.
+                        rendezVousRepository.getAllRendezVousForOwner(200)
                     }
                     _uiState.update { it.copy(rendezVous = rdvs, isLoading = false, isMedecin = true) }
                 } else {
@@ -360,7 +363,28 @@ class RendezVousViewModel @Inject constructor(
 
                 // Sync to Firestore rdv_shared for the patient
                 // (selectedOption est deja resolu plus haut pour le FK fix)
+                // v2.1.86 : alarme posee ICI. Elle n'etait programmee qu'au
+                // lancement suivant de l'application, donc un RDV cree pour
+                // dans deux heures ne declenchait aucun rappel.
+                com.diabeto.notifications.AlarmScheduler.programmerRendezVous(
+                    context = appContext,
+                    rdvId = rdvId,
+                    titre = rdv.titre,
+                    dateHeure = rdv.dateHeure,
+                    lieu = rdv.lieu,
+                )
+
                 val patientUid = selectedOption?.uid
+                if (patientUid.isNullOrBlank()) {
+                    // v2.1.86 : sans compte lie, le rendez-vous reste dans le
+                    // seul agenda du medecin. Le silence laissait croire que le
+                    // patient avait ete prevenu.
+                    _uiState.update {
+                        it.copy(error = "Rendez-vous enregistré dans votre agenda. " +
+                            "Ce patient n'ayant pas de compte lié, il ne le verra pas " +
+                            "dans son application — prévenez-le autrement.")
+                    }
+                }
                 if (!patientUid.isNullOrBlank()) {
                     val medecinProfile = authRepository.getCurrentUserProfile()
                     val rdvData = mapOf(
@@ -376,7 +400,15 @@ class RendezVousViewModel @Inject constructor(
                         "createdAt" to LocalDateTime.now().toString()
                     )
                     rdvSharedRepository.setSharedRdv(patientUid, rdvId.toString(), rdvData)
-                        .onFailure { Log.e(TAG, "Failed to sync RDV to Firestore", it) }
+                        .onFailure {
+                            Log.e(TAG, "Failed to sync RDV to Firestore", it)
+                            // Un echec silencieux laissait le medecin penser que
+                            // le patient etait informe.
+                            _uiState.update { st ->
+                                st.copy(error = "Rendez-vous enregistré, mais son envoi " +
+                                    "au patient a échoué. Réessayez une fois connecté.")
+                            }
+                        }
                 }
 
                 _uiState.update { it.copy(showAddDialog = false, addSuccess = true) }

@@ -15,6 +15,15 @@ const { requireAuth } = require("./_firebase.js");
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE;
+
+// Duree de validite des liens de telechargement : 90 jours.
+//
+// Compromis assume. Trop court, un medecin qui rouvre le rapport d'un patient
+// deux mois plus tard tombe sur un lien mort et croit a une panne. Trop long,
+// on retombe sur l'acces perpetuel qu'on cherche justement a eviter. Un
+// trimestre couvre l'intervalle habituel entre deux consultations de suivi
+// pour un diabetique.
+const SIGNED_URL_TTL_SECONDS = 90 * 24 * 60 * 60;
 const BUCKET = "diasmart-files";
 
 const ALLOWED_FOLDERS = new Set([
@@ -131,12 +140,53 @@ module.exports = async (req, res) => {
     });
   }
 
-  // Bucket public ⇒ on construit l'URL publique directement.
-  const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${encodeURIComponent(path).replace(/%2F/g, "/")}`;
+  // ── Lien signe, a duree limitee ────────────────────────────────────
+  //
+  // Le bucket reste PRIVE. Auparavant on renvoyait une URL publique dont la
+  // seule protection etait l'imprevisibilite du chemin. Cela suffit tant que
+  // le lien ne circule pas — mais un rapport medical nominatif transfere sur
+  // WhatsApp, capture en photo ou retrouve dans un historique restait lisible
+  // pour toujours, sans aucun moyen de revoquer l'acces.
+  //
+  // Un lien signe expire de lui-meme. Le medecin ouvre le rapport pendant la
+  // duree prevue, ensuite le lien meurt. C'est la difference entre un document
+  // confie et un document publie.
+  const encodedPath = encodeURIComponent(path).replace(/%2F/g, "/");
+  let signedUrl;
+  try {
+    const signResp = await fetch(
+      `${SUPABASE_URL}/storage/v1/object/sign/${BUCKET}/${encodedPath}`,
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE}`,
+          "apikey": SUPABASE_SERVICE_ROLE,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ expiresIn: SIGNED_URL_TTL_SECONDS }),
+      }
+    );
+    if (!signResp.ok) {
+      const detail = await signResp.text().catch(() => "");
+      console.error("Supabase sign failed:", signResp.status, detail);
+      return res.status(502).json({
+        error: "supabase_sign_failed",
+        status: signResp.status,
+        detail: detail.substring(0, 200),
+      });
+    }
+    const signed = await signResp.json();
+    // Supabase renvoie un chemin relatif ("/object/sign/...?token=…").
+    signedUrl = `${SUPABASE_URL}/storage/v1${signed.signedURL || signed.signedUrl}`;
+  } catch (e) {
+    console.error("Supabase sign network error:", e.message);
+    return res.status(502).json({ error: "supabase_sign_unreachable" });
+  }
 
   return res.status(200).json({
-    url: publicUrl,
+    url: signedUrl,
     path,
     sizeBytes: buffer.length,
+    expiresInSeconds: SIGNED_URL_TTL_SECONDS,
   });
 };
