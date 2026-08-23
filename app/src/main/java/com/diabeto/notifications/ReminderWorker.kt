@@ -28,7 +28,7 @@ class MedicationReminderWorker @AssistedInject constructor(
 
             for (med in medicaments) {
                 if (!med.rappelActive) continue
-                val patient = patientDao.getPatientById(med.patientId) ?: continue
+                val patient = patientDao.getPatientById(med.patientId, uidCourant()) ?: continue
 
                 NotificationHelper.showMedicamentReminder(
                     context = applicationContext,
@@ -61,7 +61,7 @@ class AppointmentReminderWorker @AssistedInject constructor(
 
             for (rdv in upcomingRdvs) {
                 if (rdv.rappelEnvoye) continue
-                val patient = patientDao.getPatientById(rdv.patientId) ?: continue
+                val patient = patientDao.getPatientById(rdv.patientId, uidCourant()) ?: continue
 
                 NotificationHelper.showRendezVousReminder(
                     context = applicationContext,
@@ -89,7 +89,7 @@ class GlucoseMeasurementReminderWorker @AssistedInject constructor(
 
     override suspend fun doWork(): Result {
         return try {
-            val patients = patientDao.getAllPatientsList()
+            val patients = patientDao.getAllPatientsList(uidCourant())
 
             for (patient in patients) {
                 val todayReadings = glucoseDao.getReadingsCountForDate(
@@ -180,3 +180,7 @@ object ReminderScheduler {
         wm.cancelUniqueWork(MEASUREMENT_WORK)
     }
 }
+
+/** Compte connecte : un rappel ne concerne que ses propres dossiers. */
+private fun uidCourant(): String =
+    com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: "__aucun__"

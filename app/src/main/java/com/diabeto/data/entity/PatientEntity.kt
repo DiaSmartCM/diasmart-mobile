@@ -20,6 +20,20 @@ import java.time.Period
 data class PatientEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
+    /**
+     * v2.1.82 : compte proprietaire du dossier.
+     *
+     * La base locale appartenait a l'appareil et non au compte connecte : sur
+     * un telephone ou l'application avait servi a un patient, un medecin qui
+     * s'y connectait ensuite retrouvait ses dossiers et sa glycemie. Chaque
+     * dossier porte desormais l'identifiant de son createur, et toutes les
+     * lectures filtrent dessus.
+     *
+     * Chaine vide = dossier orphelin, cree avant le cloisonnement. Il reste
+     * stocke mais n'apparait dans aucune requete tant qu'il n'a pas ete
+     * reattribue — on ne devine pas a qui appartenait une donnee de sante.
+     */
+    val ownerUid: String = "",
     val nom: String,
     val prenom: String,
     val dateNaissance: LocalDate,

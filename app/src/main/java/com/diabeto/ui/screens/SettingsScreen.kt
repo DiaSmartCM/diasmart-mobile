@@ -699,6 +699,35 @@ fun SettingsScreen(
                         color = OnSurfaceVariant,
                         fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                     )
+                    // v2.1.82 : la sauvegarde cloud figure elle aussi dans la
+                    // liste des elements supprimes. Il faut donc EXPORTER hors
+                    // de DiaSmart avant, pas seulement sauvegarder — le rappel
+                    // renvoie vers l'export, seul moyen de conserver quelque
+                    // chose apres suppression du compte.
+                    Spacer(Modifier.height(12.dp))
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFFEF4444).copy(alpha = 0.10f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
+                            Icon(
+                                Icons.Default.Download, null,
+                                tint = Color(0xFFEF4444),
+                                modifier = Modifier.size(18.dp).padding(top = 2.dp)
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                "La sauvegarde cloud sera detruite avec le compte. " +
+                                "Pour garder une trace de vos donnees, utilisez " +
+                                "« Exporter mes donnees » AVANT de confirmer : le " +
+                                "fichier reste sur votre telephone.",
+                                fontSize = 12.5.sp,
+                                lineHeight = 17.sp,
+                                color = if (isDark) DarkTextPrimary else TextPrimary
+                            )
+                        }
+                    }
                 }
             },
             confirmButton = {

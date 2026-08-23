@@ -159,7 +159,7 @@ class CloudBackupRepository @Inject constructor(
             val userRef = db.collection(BACKUPS).document(userId)
 
             // 1. Patients
-            val patients = patientDao.getAllPatientsList()
+            val patients = patientDao.getAllPatientsList(uid ?: "__aucun__")
             for (p in patients) {
                 userRef.collection("patients").document(p.id.toString())
                     .set(patientToMap(p), SetOptions.merge()).await()
@@ -396,7 +396,7 @@ class CloudBackupRepository @Inject constructor(
     }
 
     suspend fun isLocalDbEmpty(): Boolean = withContext(Dispatchers.IO) {
-        patientDao.getPatientCount() == 0
+        patientDao.getPatientCount(uid ?: "__aucun__") == 0
     }
 
     suspend fun getBackupInfo(): Map<String, Any>? {

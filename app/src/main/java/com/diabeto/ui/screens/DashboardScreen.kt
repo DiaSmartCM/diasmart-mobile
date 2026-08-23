@@ -72,6 +72,10 @@ fun DashboardScreen(
     // v2.1.78 : fiche sante personnelle du patient (meme ecran que la fiche
     // patient cote medecin, sans l'action de suppression).
     onNavigateToMaFiche: (Long) -> Unit = {},
+    // v2.1.81 : ouverture d'un patient depuis le tableau de bord medecin.
+    // Passe par l'ecran de donnees partagees, ou la lecture est
+    // conditionnee au consentement, et non par la fiche locale.
+    onNavigateToSharedPatient: (String, String) -> Unit = { _, _ -> },
     // v2.1.75 : ecran Medicaments (rappels de traitement), ouvert depuis
     // l'onglet "Rappels" de la barre du bas.
     onNavigateToMedicaments: (Long) -> Unit = {},
@@ -377,18 +381,34 @@ fun DashboardScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column {
-                                    Text(stringResource(R.string.dash_glucose_avg), fontSize = 12.sp, color = Color.White.copy(alpha = 0.7f))
+                                    // v2.1.81 : une glycemie n'a de sens que
+                                    // pour celui qu'elle concerne. Le medecin
+                                    // voit le nombre de patients qui lui ont
+                                    // accorde un partage, pas une moyenne
+                                    // agregee de leurs mesures.
+                                    val estMedecin = uiState.userRole == UserRole.MEDECIN
+                                    Text(
+                                        if (estMedecin) stringResource(R.string.dash_linked_patients)
+                                        else stringResource(R.string.dash_glucose_avg),
+                                        fontSize = 12.sp,
+                                        color = Color.White.copy(alpha = 0.7f)
+                                    )
                                     Spacer(Modifier.height(4.dp))
                                     Row(verticalAlignment = Alignment.Bottom) {
                                         Text(
-                                            text = if (uiState.avgGlucose > 0) uiState.glucoseUnit.format(uiState.avgGlucose) else "--",
+                                            text = when {
+                                                estMedecin -> "${uiState.totalPatients}"
+                                                uiState.avgGlucose > 0 -> uiState.glucoseUnit.format(uiState.avgGlucose)
+                                                else -> "--"
+                                            },
                                             fontSize = 38.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = Color.White
                                         )
                                         Spacer(Modifier.width(6.dp))
                                         Text(
-                                            uiState.glucoseUnit.shortLabel,
+                                            if (estMedecin) stringResource(R.string.dash_linked_patients_unit)
+                                            else uiState.glucoseUnit.shortLabel,
                                             fontSize = 14.sp,
                                             color = Color.White.copy(alpha = 0.7f),
                                             modifier = Modifier.padding(bottom = 6.dp)
@@ -856,7 +876,12 @@ fun DashboardScreen(
                     )
                 }
                 item {
-                    if (uiState.recentPatients.isEmpty()) {
+                    // v2.1.81 : la liste vient des partages consentis, plus de
+                    // la base locale. Un patient n'apparait ici qu'apres avoir
+                    // autorise ce medecin a acceder a ses donnees ; l'ouverture
+                    // passe par l'ecran de donnees partagees, ou le
+                    // consentement est verifie a la lecture.
+                    if (uiState.patientsConsentants.isEmpty()) {
                         Card(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
                             shape = RoundedCornerShape(20.dp),
@@ -864,18 +889,28 @@ fun DashboardScreen(
                             elevation = CardDefaults.cardElevation(0.dp),
                             border = BorderStroke(1.dp, outlineCol)
                         ) {
-                            EmptyStateMessage("Aucun patient enregistré", Icons.Outlined.People, textSec = textSec, textTer = textTer, surfaceVar = if (isDark) DarkOutline else SurfaceVariant)
+                            EmptyStateMessage(
+                                "Aucun patient ne partage ses données avec vous",
+                                Icons.Outlined.People,
+                                textSec = textSec, textTer = textTer,
+                                surfaceVar = if (isDark) DarkOutline else SurfaceVariant
+                            )
                         }
                     } else {
                         LazyRow(
                             contentPadding = PaddingValues(horizontal = 20.dp),
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            items(uiState.recentPatients, key = { it.id }) { patient ->
+                            items(uiState.patientsConsentants, key = { it.patientUid }) { consent ->
                                 PatientChip(
-                                    name = patient.nomComplet,
-                                    subtitle = "${patient.age} ans",
-                                    onClick = { onNavigateToPatientDetail(patient.id) }
+                                    name = consent.patientNom.ifBlank { "Patient" },
+                                    subtitle = "Partage actif",
+                                    onClick = {
+                                        onNavigateToSharedPatient(
+                                            consent.patientUid,
+                                            consent.patientNom.ifBlank { "Patient" }
+                                        )
+                                    }
                                 )
                             }
                         }

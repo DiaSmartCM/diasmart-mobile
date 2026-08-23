@@ -85,6 +85,11 @@ fun ProfileScreen(
     var isCapturingLocation by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(true) }
     var showEditDialog by remember { mutableStateOf(false) }
+    // v2.1.82 : la deconnexion efface desormais les dossiers locaux du compte.
+    // Elle ne peut plus se declencher d'un seul appui sans avertissement.
+    var showLogoutDialog by remember { mutableStateOf(false) }
+    var sauvegardeEnCours by remember { mutableStateOf(false) }
+    var messageSauvegarde by remember { mutableStateOf<String?>(null) }
     var editField by remember { mutableStateOf("") }
     var editValue by remember { mutableStateOf("") }
     var editTitle by remember { mutableStateOf("") }
@@ -628,10 +633,7 @@ fun ProfileScreen(
 
             // ── Déconnexion ──
             OutlinedButton(
-                onClick = {
-                    auth.signOut()
-                    onNavigateBack()
-                },
+                onClick = { showLogoutDialog = true },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 border = BorderStroke(1.dp, Error),
@@ -648,6 +650,84 @@ fun ProfileScreen(
     }
 
     // ── Edit Dialog ──
+    // ═══════════════════════════════════════════════════════════════
+    //  Deconnexion — avertissement de sauvegarde
+    //
+    //  Le bouton de sauvegarde vit DANS le dialogue. Un avertissement qui
+    //  renverrait vers un autre ecran ne serait pas suivi : l'utilisateur
+    //  qui veut partir ne fait pas un detour.
+    // ═══════════════════════════════════════════════════════════════
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!sauvegardeEnCours) showLogoutDialog = false },
+            shape = RoundedCornerShape(24.dp),
+            icon = { Icon(Icons.Default.CloudUpload, null, tint = Primary) },
+            title = { Text("Sauvegarder avant de partir ?", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    Text(
+                        "En vous deconnectant, les dossiers enregistres sur ce " +
+                        "telephone seront effaces. C'est ce qui empeche le compte " +
+                        "suivant d'y acceder.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        "Les donnees deja sauvegardees dans le cloud seront " +
+                        "restaurees a votre prochaine connexion. Celles qui ne " +
+                        "l'ont jamais ete seront perdues.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = OnSurfaceVariant
+                    )
+                    messageSauvegarde?.let {
+                        Spacer(Modifier.height(12.dp))
+                        Text(it, style = MaterialTheme.typography.bodySmall, color = Primary)
+                    }
+                    Spacer(Modifier.height(14.dp))
+                    Button(
+                        onClick = {
+                            sauvegardeEnCours = true
+                            messageSauvegarde = null
+                            profileViewModel.sauvegarderAvantDeconnexion { ok, msg ->
+                                sauvegardeEnCours = false
+                                messageSauvegarde = if (ok) "Sauvegarde terminee — $msg" else "Echec : $msg"
+                            }
+                        },
+                        enabled = !sauvegardeEnCours,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        if (sauvegardeEnCours) {
+                            CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = Color.White)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Sauvegarde en cours...")
+                        } else {
+                            Icon(Icons.Default.CloudUpload, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Sauvegarder maintenant")
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showLogoutDialog = false
+                        profileViewModel.purgerPuisDeconnecter { onNavigateBack() }
+                    },
+                    enabled = !sauvegardeEnCours,
+                    colors = ButtonDefaults.textButtonColors(contentColor = Error)
+                ) { Text("Se deconnecter") }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showLogoutDialog = false },
+                    enabled = !sauvegardeEnCours
+                ) { Text(stringResource(R.string.action_cancel)) }
+            }
+        )
+    }
+
     if (showEditDialog) {
         AlertDialog(
             onDismissRequest = { showEditDialog = false },

@@ -78,7 +78,10 @@ class GlucoseWidgetProvider : AppWidgetProvider() {
                 val glucoseDao = db.glucoseDao()
 
                 // Récupérer le premier patient (widget simplifié)
-                val patients = db.patientDao().getAllPatientsList()
+                val patients = db.patientDao().getAllPatientsList(
+                    com.google.firebase.auth.FirebaseAuth.getInstance()
+                        .currentUser?.uid ?: "__aucun__"
+                )
                 if (patients.isEmpty()) {
                     views.setTextViewText(R.id.widget_glucose_value, "---")
                     views.setTextViewText(R.id.widget_trend_text, "Aucun patient")

@@ -231,6 +231,7 @@ fun DiabetoNavigation(
                 onNavigateToPatients       = { navController.navigate(Routes.PATIENTS) },
                 onNavigateToPatientDetail  = { id -> navController.navigate(Routes.patientDetail(id)) },
                 onNavigateToMaFiche        = { id -> navController.navigate(Routes.patientDetail(id, self = true)) },
+                onNavigateToSharedPatient  = { uid, nom -> navController.navigate(Routes.sharedPatient(uid, nom)) },
                 onNavigateToRendezVous     = { navController.navigate(Routes.rendezVous()) },
                 onNavigateToAddPatient     = { navController.navigate(Routes.PATIENTS_SEARCH) },
                 onNavigateToChatbot        = { navController.navigate(Routes.chatbot()) },

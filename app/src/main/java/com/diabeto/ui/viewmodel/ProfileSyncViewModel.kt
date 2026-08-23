@@ -6,6 +6,7 @@ import com.diabeto.data.entity.PatientEntity
 import com.diabeto.data.repository.LocationRepository
 import com.diabeto.data.repository.PatientRepository
 import com.diabeto.data.repository.AuthRepository
+import com.diabeto.data.repository.CloudBackupRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -24,11 +25,52 @@ import javax.inject.Inject
 class ProfileSyncViewModel @Inject constructor(
     private val patientRepository: PatientRepository,
     private val locationRepository: LocationRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val cloudBackup: CloudBackupRepository
 ) : ViewModel() {
 
     /** Expose si la permission GPS est actuellement accordee (UI doit la demander sinon). */
     fun hasLocationPermission(): Boolean = locationRepository.hasLocationPermission()
+
+    // ─────────────────────────────────────────────────────────────────────
+    // v2.1.82 : sauvegarde et purge autour de la deconnexion
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Sauvegarde complete vers le cloud, declenchee depuis le dialogue de
+     * deconnexion. Le bouton vit DANS le dialogue : un avertissement qu'on ne
+     * peut pas suivre sans quitter l'ecran n'est pas suivi.
+     */
+    fun sauvegarderAvantDeconnexion(onDone: (succes: Boolean, message: String) -> Unit) {
+        viewModelScope.launch {
+            val r = runCatching { cloudBackup.performFullBackup() }
+            r.fold(
+                onSuccess = { res ->
+                    res.fold(
+                        onSuccess = { n -> onDone(true, "$n éléments sauvegardés") },
+                        onFailure = { e -> onDone(false, e.message ?: "Sauvegarde impossible") }
+                    )
+                },
+                onFailure = { e -> onDone(false, e.message ?: "Sauvegarde impossible") }
+            )
+        }
+    }
+
+    /**
+     * Efface les dossiers locaux du compte courant, PUIS deconnecte.
+     *
+     * L'ordre n'est pas negociable : la purge a besoin de l'identifiant du
+     * compte pour ne supprimer que ses dossiers. Apres signOut() elle ne
+     * trouverait plus personne et ne supprimerait rien — la fuite resterait
+     * ouverte pour le compte suivant.
+     */
+    fun purgerPuisDeconnecter(onDone: () -> Unit) {
+        viewModelScope.launch {
+            runCatching { patientRepository.purgeLocalDataForCurrentUser() }
+            authRepository.signOut()
+            onDone()
+        }
+    }
 
     /**
      * Capture la position GPS + reverse-geocode, et ecrit directement dans le profil

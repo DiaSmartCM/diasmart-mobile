@@ -40,7 +40,7 @@ class ReminderReceiver : BroadcastReceiver() {
         val database = DiabetoDatabase.getInstance(context)
         val medicament = database.medicamentDao().getMedicamentById(medicamentId)
         val patient = medicament?.let {
-            database.patientDao().getPatientById(it.patientId)
+            database.patientDao().getPatientById(it.patientId, uidCourant())
         }
 
         if (medicament != null && patient != null && medicament.rappelActive) {
@@ -57,7 +57,7 @@ class ReminderReceiver : BroadcastReceiver() {
         val database = DiabetoDatabase.getInstance(context)
         val rdv = database.rendezVousDao().getRendezVousById(rdvId)
         val patient = rdv?.let {
-            database.patientDao().getPatientById(it.patientId)
+            database.patientDao().getPatientById(it.patientId, uidCourant())
         }
 
         if (rdv != null && patient != null && rdv.estConfirme && !rdv.rappelEnvoye) {
@@ -96,3 +96,11 @@ class BootReceiver : BroadcastReceiver() {
         ReminderScheduler.scheduleMeasurementReminders(context)
     }
 }
+
+/**
+ * v2.1.82 : un rappel ne doit concerner que le compte connecte. Sans ce
+ * filtre, un telephone ayant servi a plusieurs comptes notifiait les
+ * traitements d'un autre utilisateur.
+ */
+private fun uidCourant(): String =
+    com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: "__aucun__"

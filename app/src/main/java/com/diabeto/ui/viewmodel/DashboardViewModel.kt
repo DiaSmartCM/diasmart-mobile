@@ -26,6 +26,12 @@ data class DashboardUiState(
     val upcomingMedicaments: Int = 0,
     val upcomingRendezVous: List<RendezVousAvecPatient> = emptyList(),
     val recentPatients: List<PatientEntity> = emptyList(),
+    /**
+     * v2.1.81 : patients ayant accorde un partage actif a ce medecin. Seule
+     * source autorisee pour afficher un patient sur le tableau de bord d'un
+     * medecin — la base locale ignore les consentements.
+     */
+    val patientsConsentants: List<com.diabeto.data.model.DataSharingConsent> = emptyList(),
     // v2.1.71 : id du dossier Room "self" du patient — sert a ouvrir l'ecran
     // glycemie depuis le dashboard (la carte glycemie du header devient
     // cliquable cote patient). null si aucun dossier local encore.
@@ -192,18 +198,49 @@ class DashboardViewModel @Inject constructor(
                 // Médicaments à venir
                 val upcomingMeds = medicamentRepository.getUpcomingMedicaments()
                 
-                // Moyenne glycémie globale
+                // ── Moyenne glycemique et patients recents ────────────────
+                // v2.1.81 — correction de confidentialite.
+                //
+                // Ces deux valeurs etaient tirees de getAllPatientsList(), donc
+                // de la base LOCALE, sans aucun filtre de consentement. Un
+                // medecin voyait ainsi la glycemie moyenne et la fiche d'un
+                // patient auquel il n'etait pas lie et qui n'avait rien
+                // autorise. Le compteur "Patients", lui, lisait deja les
+                // partages actifs : il affichait 0 pendant qu'une fiche
+                // s'affichait juste en dessous — l'incoherence trahissait la
+                // fuite.
+                //
+                // Cote patient, la moyenne reste celle de son propre dossier :
+                // c'est sa donnee, il la consulte chez lui.
+                // Cote medecin, aucune donnee glycemique n'est agregee sur le
+                // tableau de bord. Les chiffres d'un patient se consultent
+                // dans sa fiche, apres liaison et consentement.
                 val patients = patientRepository.getAllPatientsList()
-                var totalGlucose = 0.0
-                var count = 0
-                patients.take(10).forEach { p ->
-                    val avg = glucoseRepository.getLast24HoursAverage(p.id)
-                    if (avg > 0) {
-                        totalGlucose += avg
-                        count++
+                val avgGlucose = if (role == UserRole.MEDECIN) {
+                    0.0
+                } else {
+                    var totalGlucose = 0.0
+                    var count = 0
+                    patients.take(10).forEach { p ->
+                        val avg = glucoseRepository.getLast24HoursAverage(p.id)
+                        if (avg > 0) {
+                            totalGlucose += avg
+                            count++
+                        }
                     }
+                    if (count > 0) totalGlucose / count else 0.0
                 }
-                val avgGlucose = if (count > 0) totalGlucose / count else 0.0
+
+                // Patients recents : uniquement ceux qui ont accorde un partage
+                // actif a ce medecin. La liste vient de Firestore, ou le
+                // consentement est la condition de lecture — pas de la base
+                // locale, qui ne connait pas les autorisations.
+                val patientsConsentants = if (role == UserRole.MEDECIN) {
+                    runCatching { dataSharingRepository.getSharedPatients() }
+                        .getOrDefault(emptyList())
+                        .filter { it.isActive }
+                        .take(5)
+                } else emptyList()
                 
                 _uiState.update {
                     it.copy(
@@ -215,7 +252,11 @@ class DashboardViewModel @Inject constructor(
                         pendingConfirmations = pending.size,
                         upcomingMedicaments = upcomingMeds.size,
                         upcomingRendezVous = upcomingRdvs,
-                        recentPatients = patients.take(5),
+                        // Cote medecin la liste locale n'est plus exposee ;
+                        // seuls les partages consentis alimentent l'ecran.
+                        recentPatients = if (role == UserRole.MEDECIN) emptyList()
+                                         else patients.take(5),
+                        patientsConsentants = patientsConsentants,
                         // v2.1.71 : cote patient, garantit un dossier "self"
                         // (cree si absent) pour que la saisie glycemie / carnet /
                         // podometre / predictions fonctionnent.

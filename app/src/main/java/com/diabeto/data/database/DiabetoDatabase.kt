@@ -35,7 +35,7 @@ import javax.crypto.spec.GCMParameterSpec
         AiCacheEntity::class,
         PendingOperationEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -215,6 +215,43 @@ abstract class DiabetoDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v10 — cloisonnement des dossiers patients par compte.
+         *
+         * Jusqu'ici la table `patients` n'avait aucune marque de proprietaire :
+         * la base appartenait a l'appareil, pas au compte connecte. Sur un
+         * telephone ou l'application avait d'abord servi a un patient, un
+         * medecin qui s'y connectait ensuite retrouvait ses dossiers, sa
+         * glycemie comprise.
+         *
+         * Les dossiers DEJA presents sont deliberement laisses SANS
+         * proprietaire (chaine vide). Les attribuer au compte connecte au
+         * moment de la mise a jour aurait reproduit exactement la faute qu'on
+         * corrige : le compte medecin aurait herite des dossiers crees cote
+         * patient. Un dossier orphelin reste stocke mais n'apparait dans
+         * aucune requete ; il faut le reattribuer explicitement.
+         */
+        private val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                try {
+                    db.execSQL(
+                        "ALTER TABLE patients ADD COLUMN ownerUid TEXT NOT NULL DEFAULT ''"
+                    )
+                } catch (e: Exception) {
+                    Log.w(TAG, "Migration 9→10 : colonne ownerUid deja presente ? ${e.message}")
+                }
+                // Index : chaque lecture filtre desormais sur ce champ.
+                try {
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS index_patients_ownerUid ON patients(ownerUid)"
+                    )
+                } catch (e: Exception) {
+                    Log.w(TAG, "Migration 9→10 : index non cree : ${e.message}")
+                }
+                Log.d(TAG, "Migration 9→10 : dossiers existants laisses sans proprietaire")
+            }
+        }
+
         @Volatile
         private var INSTANCE: DiabetoDatabase? = null
 
@@ -250,7 +287,7 @@ abstract class DiabetoDatabase : RoomDatabase() {
             .openHelperFactory(factory)
             .addMigrations(
                 MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
-                MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9
+                MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10
             )
             .fallbackToDestructiveMigrationOnDowngrade()
             .build()

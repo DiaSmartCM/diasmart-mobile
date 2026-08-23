@@ -272,6 +272,8 @@
     <!-- Dashboard header + stats -->
     <string name="dash_greeting">Bonjour !</string>
     <string name="dash_glucose_avg">Glycémie moyenne</string>
+    <string name="dash_linked_patients">Patients suivis</string>
+    <string name="dash_linked_patients_unit">liés</string>
     <string name="dash_offline_mode">Mode hors-ligne</string>
     <string name="dash_offline_subtitle">Données locales accessibles</string>
     <string name="dash_stat_doctors">Médecins</string>
