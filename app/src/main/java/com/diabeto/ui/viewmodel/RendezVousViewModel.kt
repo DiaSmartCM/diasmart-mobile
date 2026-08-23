@@ -366,13 +366,15 @@ class RendezVousViewModel @Inject constructor(
                 // v2.1.86 : alarme posee ICI. Elle n'etait programmee qu'au
                 // lancement suivant de l'application, donc un RDV cree pour
                 // dans deux heures ne declenchait aucun rappel.
-                com.diabeto.notifications.AlarmScheduler.programmerRendezVous(
-                    context = appContext,
-                    rdvId = rdvId,
-                    titre = rdv.titre,
-                    dateHeure = rdv.dateHeure,
-                    lieu = rdv.lieu,
-                )
+                runCatching {
+                    com.diabeto.notifications.AlarmScheduler.programmerRendezVous(
+                        context = appContext,
+                        rdvId = rdvId,
+                        titre = rdv.titre,
+                        dateHeure = rdv.dateHeure,
+                        lieu = rdv.lieu,
+                    )
+                }.onFailure { Log.w(TAG, "Alarme RDV non posee", it) }
 
                 val patientUid = selectedOption?.uid
                 if (patientUid.isNullOrBlank()) {

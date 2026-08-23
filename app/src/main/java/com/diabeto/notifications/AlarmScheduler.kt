@@ -1,6 +1,7 @@
 package com.diabeto.notifications
 
 import android.app.AlarmManager
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -179,5 +180,108 @@ object AlarmScheduler {
     fun annulerRendezVous(context: Context, rdvId: Long) {
         val id = BASE_RENDEZ_VOUS + rdvId.toInt()
         manager(context).cancel(intentPour(context, TYPE_RENDEZ_VOUS, id, "", ""))
+    }
+
+    /**
+     * Ouvre l'ecran systeme d'autorisation des alarmes exactes.
+     *
+     * Expliquer a l'utilisateur ou cliquer dans les reglages Android echoue
+     * presque toujours : le chemin change selon le constructeur. Autant l'y
+     * amener directement.
+     */
+    fun ouvrirReglageAlarmes(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return false
+        return try {
+            context.startActivity(
+                Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+                    .setData(android.net.Uri.parse("package:${context.packageName}"))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+            true
+        } catch (e: Exception) {
+            Log.w(TAG, "Ecran d'autorisation des alarmes indisponible", e)
+            // Repli : la fiche de l'application, d'ou l'utilisateur peut
+            // atteindre le reglage quel que soit le constructeur.
+            try {
+                context.startActivity(
+                    Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                        .setData(android.net.Uri.parse("package:${context.packageName}"))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+                true
+            } catch (e2: Exception) {
+                false
+            }
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Diagnostic
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * v2.1.87 : etat reel du systeme d'alarme, en clair.
+     *
+     * Trois versions ont ete publiees en devinant pourquoi les rappels ne
+     * sonnaient pas. Un rapport lisible depuis l'ecran coute moins cher qu'un
+     * aller-retour de plus : il dit ce que le systeme autorise reellement sur
+     * CET appareil, plutot que ce que le code espere.
+     */
+    fun diagnostic(context: Context): String = buildString {
+        val am = manager(context)
+
+        appendLine("Android : API ${Build.VERSION.SDK_INT} (${Build.MANUFACTURER} ${Build.MODEL})")
+
+        val exact = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+            am.canScheduleExactAlarms() else true
+        appendLine("Alarmes exactes : " + if (exact) "autorisees" else "REFUSEES")
+        if (!exact) {
+            appendLine("  -> Parametres Android > Applications > DiaSmart >")
+            appendLine("     Alarmes et rappels : autoriser.")
+        }
+
+        val nm = context.getSystemService(NotificationManager::class.java)
+        appendLine("Notifications : " + if (nm.areNotificationsEnabled()) "activees" else "BLOQUEES")
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val canal = nm.getNotificationChannel(NotificationHelper.CHANNEL_MEDICAMENTS)
+            appendLine("Canal traitements : " + when {
+                canal == null -> "ABSENT"
+                canal.importance == NotificationManager.IMPORTANCE_NONE -> "DESACTIVE par l'utilisateur"
+                else -> "importance ${canal.importance}"
+            })
+        }
+
+        // Une alarme deja posee prouve que le mecanisme fonctionne bout en bout.
+        val dejaPosee = PendingIntent.getBroadcast(
+            context, BASE_MEDICAMENT,
+            Intent(context, AlarmReceiver::class.java)
+                .setAction("com.diabeto.ALARME_$TYPE_MEDICAMENT$BASE_MEDICAMENT"),
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE,
+        ) != null
+        appendLine("Alarme de test deja posee : " + if (dejaPosee) "oui" else "non")
+    }
+
+    /**
+     * Pose une alarme dans une minute et renvoie ce qui s'est reellement passe.
+     * Permet de distinguer un refus systeme d'un blocage constructeur.
+     */
+    fun testerDansUneMinute(context: Context): String {
+        return try {
+            val quand = LocalDateTime.now().plusMinutes(1)
+            val id = BASE_MEDICAMENT + 9999
+            poser(
+                context, quand,
+                intentPour(
+                    context, TYPE_MEDICAMENT, id,
+                    titre = "Test d'alarme DiaSmart",
+                    texte = "Si vous lisez ceci, les rappels fonctionnent sur cet appareil.",
+                ),
+            )
+            val mode = if (peutPoserAlarmeExacte(context)) "exacte" else "approximative"
+            "Alarme $mode posee pour dans 1 minute. Verrouillez l'ecran et attendez."
+        } catch (e: Exception) {
+            "Echec : ${e.javaClass.simpleName} — ${e.message}"
+        }
     }
 }

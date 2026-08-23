@@ -75,6 +75,9 @@ fun SettingsScreen(
     // v2.1.85 : recuperation des dossiers orphelins
     var showClaimOrphansDialog by remember { mutableStateOf(false) }
     var messageRecuperation by remember { mutableStateOf<String?>(null) }
+    // v2.1.87 : diagnostic des alarmes. Trois versions publiees en devinant
+    // pourquoi les rappels ne sonnaient pas — autant donner l'instrument.
+    var rapportAlarmes by remember { mutableStateOf<String?>(null) }
 
     // Le comptage se fait a chaque ouverture de l'ecran : apres une
     // recuperation, la carte doit disparaitre sans redemarrage.
@@ -420,6 +423,63 @@ fun SettingsScreen(
                 item { Spacer(Modifier.height(8.dp)) }
             }
 
+            // ── Diagnostic des rappels ──
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = cardBg),
+                    elevation = CardDefaults.cardElevation(0.dp)
+                ) {
+                    Column(Modifier.padding(18.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.NotificationsActive, null,
+                                tint = Primary, modifier = Modifier.size(22.dp)
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                "Les rappels ne sonnent pas ?",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                color = titleColor
+                            )
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "Ce test pose une alarme dans une minute et indique " +
+                            "ce que votre téléphone autorise réellement.",
+                            fontSize = 13.sp,
+                            lineHeight = 18.sp,
+                            color = subtitleColor
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(
+                                onClick = {
+                                    rapportAlarmes =
+                                        com.diabeto.notifications.AlarmScheduler.diagnostic(context) +
+                                        "\n" +
+                                        com.diabeto.notifications.AlarmScheduler.testerDansUneMinute(context)
+                                },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(14.dp)
+                            ) { Text("Tester", fontSize = 13.sp) }
+
+                            OutlinedButton(
+                                onClick = {
+                                    com.diabeto.notifications.AlarmScheduler
+                                        .ouvrirReglageAlarmes(context)
+                                },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(14.dp)
+                            ) { Text("Autoriser", fontSize = 13.sp) }
+                        }
+                    }
+                }
+            }
+            item { Spacer(Modifier.height(8.dp)) }
+
             item {
                 DayLifeSectionHeader(
                     title = stringResource(R.string.settings_section_export),
@@ -733,6 +793,23 @@ fun SettingsScreen(
                 pendingMethod = null
             },
             onDismiss = { pendingMethod = null }
+        )
+    }
+
+    rapportAlarmes?.let { rapport ->
+        AlertDialog(
+            onDismissRequest = { rapportAlarmes = null },
+            shape = RoundedCornerShape(24.dp),
+            icon = { Icon(Icons.Default.NotificationsActive, null, tint = Primary) },
+            title = { Text("État des rappels", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
+                    Text(rapport, fontSize = 13.sp, lineHeight = 19.sp)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { rapportAlarmes = null }) { Text("Fermer") }
+            }
         )
     }
 

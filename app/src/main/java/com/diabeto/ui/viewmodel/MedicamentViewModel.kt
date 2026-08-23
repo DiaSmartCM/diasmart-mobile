@@ -133,7 +133,11 @@ class MedicamentViewModel @Inject constructor(
                 // Elle n'etait programmee qu'au lancement suivant de
                 // l'application : une prise saisie pour dans cinq minutes ne
                 // sonnait jamais, et se retrouvait reportee au lendemain.
-                if (medicament.rappelActive) {
+                // runCatching : une alarme qui echoue (permission retiree,
+                // constructeur restrictif) ne doit pas emporter avec elle la
+                // fermeture du dialogue ni le rechargement de la liste. Le
+                // traitement est deja enregistre a ce stade.
+                if (medicament.rappelActive) runCatching {
                     com.diabeto.notifications.AlarmScheduler.programmerMedicament(
                         context = appContext,
                         medicamentId = if (nouvelId > 0) nouvelId else medicament.id,
@@ -142,6 +146,8 @@ class MedicamentViewModel @Inject constructor(
                         heurePrise = medicament.heurePrise,
                         dateFin = medicament.dateFin,
                     )
+                }.onFailure {
+                    android.util.Log.w("MedicamentVM", "Alarme non posee", it)
                 }
 
                 _uiState.update { it.copy(showAddDialog = false, addSuccess = true) }
@@ -173,7 +179,7 @@ class MedicamentViewModel @Inject constructor(
 
                 // Le rappel vient d'etre bascule : on pose ou on retire
                 // l'alarme en consequence, sans attendre un redemarrage.
-                if (!medicament.rappelActive) {
+                runCatching { if (!medicament.rappelActive) {
                     com.diabeto.notifications.AlarmScheduler.programmerMedicament(
                         context = appContext,
                         medicamentId = medicament.id,
@@ -186,7 +192,7 @@ class MedicamentViewModel @Inject constructor(
                     com.diabeto.notifications.AlarmScheduler.annulerMedicament(
                         appContext, medicament.id
                     )
-                }
+                } }.onFailure { android.util.Log.w("MedicamentVM", "Alarme non mise a jour", it) }
                 loadData()
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = e.message) }
@@ -200,9 +206,11 @@ class MedicamentViewModel @Inject constructor(
                 medicamentRepository.deleteMedicament(medicament)
                 // Sans cette annulation, l'alarme d'un traitement supprime
                 // continuerait de sonner jusqu'a son echeance.
-                com.diabeto.notifications.AlarmScheduler.annulerMedicament(
-                    appContext, medicament.id
-                )
+                runCatching {
+                    com.diabeto.notifications.AlarmScheduler.annulerMedicament(
+                        appContext, medicament.id
+                    )
+                }
                 loadData()
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = e.message) }
