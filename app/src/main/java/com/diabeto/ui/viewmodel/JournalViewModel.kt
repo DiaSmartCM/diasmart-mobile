@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import javax.inject.Inject
+import com.diabeto.util.MessageErreur
 
 data class JournalUiState(
     val entries: List<JournalEntity> = emptyList(),
@@ -59,7 +60,7 @@ class JournalViewModel @Inject constructor(
                 val entries = journalRepository.getEntriesByPatientList(patientId)
                 _uiState.update { it.copy(entries = entries, isLoading = false) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message) }
+                _uiState.update { it.copy(isLoading = false, error = MessageErreur.lisible(e)) }
             }
         }
     }
@@ -146,7 +147,7 @@ class JournalViewModel @Inject constructor(
                 }
                 loadEntries()
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message) }
+                _uiState.update { it.copy(isLoading = false, error = MessageErreur.lisible(e)) }
             }
         }
     }

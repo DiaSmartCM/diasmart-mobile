@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.diabeto.util.MessageErreur
 
 /**
  * Mode de connexion actif sur la page Login
@@ -266,7 +267,7 @@ class AuthViewModel @Inject constructor(
                 },
                 onFailure = { e ->
                     _uiState.update {
-                        it.copy(isLoading = false, error = e.message ?: "Code invalide")
+                        it.copy(isLoading = false, error = MessageErreur.lisible(e))
                     }
                 }
             )
@@ -288,7 +289,7 @@ class AuthViewModel @Inject constructor(
                 },
                 onFailure = { e ->
                     _uiState.update {
-                        it.copy(isLoading = false, error = e.message ?: "Impossible d'envoyer le code")
+                        it.copy(isLoading = false, error = MessageErreur.lisible(e))
                     }
                 }
             )
@@ -334,7 +335,7 @@ class AuthViewModel @Inject constructor(
                 },
                 onFailure = { e ->
                     _uiState.update {
-                        it.copy(isLoading = false, error = "Erreur Google : ${e.message}")
+                        it.copy(isLoading = false, error = MessageErreur.lisible(e))
                     }
                 }
             )
@@ -433,7 +434,7 @@ class AuthViewModel @Inject constructor(
                 },
                 onFailure = { e ->
                     _uiState.update {
-                        it.copy(isLoading = false, error = "Erreur : ${e.message}")
+                        it.copy(isLoading = false, error = MessageErreur.lisible(e))
                     }
                 }
             )

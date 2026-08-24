@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
 import javax.inject.Inject
+import com.diabeto.util.MessageErreur
 
 /**
  * Point de données prédictif pour le graphique
@@ -260,7 +261,7 @@ class PredictiveGlucoseViewModel @Inject constructor(
                     bulletin = bulletin,
                 ) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message) }
+                _uiState.update { it.copy(isLoading = false, error = MessageErreur.lisible(e)) }
             }
         }
     }
@@ -330,7 +331,7 @@ class PredictiveGlucoseViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.update { it.copy(
                     isAnalyzing = false,
-                    error = "Erreur d'analyse: ${e.message}"
+                    error = MessageErreur.lisible(e)
                 ) }
             }
         }

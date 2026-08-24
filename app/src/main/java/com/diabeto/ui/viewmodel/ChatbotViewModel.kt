@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.diabeto.util.MessageErreur
 
 private const val TAG = "ChatbotViewModel"
 
@@ -374,14 +375,14 @@ class ChatbotViewModel @Inject constructor(
             } catch (e: Exception) {
                 Log.e(TAG, "Erreur envoyerMessage", e)
                 val msgErreur = ChatbotMessage(
-                    contenu = "❌ Erreur : ${e.javaClass.simpleName} — ${e.message}",
+                    contenu = MessageErreur.lisible(e),
                     estUtilisateur = false
                 )
                 _uiState.update { state ->
                     state.copy(
                         messages = state.messages.dropLast(1) + msgErreur,
                         isLoading = false,
-                        error = e.message
+                        error = MessageErreur.lisible(e)
                     )
                 }
             }
@@ -439,7 +440,7 @@ class ChatbotViewModel @Inject constructor(
 
                 _uiState.update { it.copy(isLoading = false, analyseRapide = analyse, showAnalyse = true) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message) }
+                _uiState.update { it.copy(isLoading = false, error = MessageErreur.lisible(e)) }
             }
         }
     }
@@ -469,7 +470,7 @@ class ChatbotViewModel @Inject constructor(
 
                 _uiState.update { it.copy(isLoading = false, analyseRapide = prevision, showAnalyse = true) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message) }
+                _uiState.update { it.copy(isLoading = false, error = MessageErreur.lisible(e)) }
             }
         }
     }
@@ -499,7 +500,7 @@ class ChatbotViewModel @Inject constructor(
 
                 _uiState.update { it.copy(isLoading = false, analyseRapide = conseils, showAnalyse = true) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message) }
+                _uiState.update { it.copy(isLoading = false, error = MessageErreur.lisible(e)) }
             }
         }
     }
@@ -554,7 +555,7 @@ class ChatbotViewModel @Inject constructor(
                 chatHistoryRepository.saveMessage(confirmMsg)
             } catch (e: Exception) {
                 Log.e(TAG, "Erreur validation", e)
-                _uiState.update { it.copy(error = "Erreur lors de l'envoi: ${e.message}") }
+                _uiState.update { it.copy(error = MessageErreur.lisible(e)) }
             }
         }
     }

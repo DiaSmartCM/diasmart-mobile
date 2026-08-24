@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.diabeto.util.MessageErreur
 
 data class ValidationsUiState(
     val validations: List<RollyValidation> = emptyList(),
@@ -57,7 +58,7 @@ class ValidationsViewModel @Inject constructor(
             try {
                 validationRepository.validateResponse(validationId, approved, comment)
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = MessageErreur.lisible(e)) }
             }
         }
     }

@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.diabeto.util.MessageErreur
 
 data class PatientsUiState(
     val isMedecin: Boolean = false,
@@ -81,7 +82,7 @@ class PatientsViewModel @Inject constructor(
                 )
             }
         } catch (e: Exception) {
-            _uiState.update { it.copy(isLoading = false, message = "Erreur: ${e.message}") }
+            _uiState.update { it.copy(isLoading = false, message = MessageErreur.lisible(e)) }
         }
     }
 
@@ -98,7 +99,7 @@ class PatientsViewModel @Inject constructor(
                 )
             }
         } catch (e: Exception) {
-            _uiState.update { it.copy(isLoading = false, message = "Erreur: ${e.message}") }
+            _uiState.update { it.copy(isLoading = false, message = MessageErreur.lisible(e)) }
         }
     }
 
@@ -119,7 +120,7 @@ class PatientsViewModel @Inject constructor(
                     loadMedecinData()
                 },
                 onFailure = { e ->
-                    _uiState.update { it.copy(requestingUid = null, message = "Erreur: ${e.message}") }
+                    _uiState.update { it.copy(requestingUid = null, message = MessageErreur.lisible(e)) }
                 }
             )
         }
@@ -135,7 +136,7 @@ class PatientsViewModel @Inject constructor(
                     loadPatientData()
                 },
                 onFailure = { e ->
-                    _uiState.update { it.copy(message = "Erreur: ${e.message}") }
+                    _uiState.update { it.copy(message = MessageErreur.lisible(e)) }
                 }
             )
         }
@@ -151,7 +152,7 @@ class PatientsViewModel @Inject constructor(
                     loadPatientData()
                 },
                 onFailure = { e ->
-                    _uiState.update { it.copy(message = "Erreur: ${e.message}") }
+                    _uiState.update { it.copy(message = MessageErreur.lisible(e)) }
                 }
             )
         }

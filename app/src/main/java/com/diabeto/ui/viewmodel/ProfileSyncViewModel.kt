@@ -11,6 +11,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
+import com.diabeto.util.MessageErreur
 
 /**
  * ViewModel léger pour synchroniser les données morphométriques
@@ -104,11 +105,11 @@ class ProfileSyncViewModel @Inject constructor(
                         val label = point.ville.ifBlank { "Position enregistree" }
                         onDone(true, "Position mise a jour ($label)")
                     },
-                    onFailure = { onDone(false, "Erreur: ${it.message}") }
+                    onFailure = { onDone(false, MessageErreur.lisible(it)) }
                 )
                 return@launch
             } catch (e: Exception) {
-                onDone(false, "Erreur: ${e.message}")
+                onDone(false, MessageErreur.lisible(e))
             }
         }
     }

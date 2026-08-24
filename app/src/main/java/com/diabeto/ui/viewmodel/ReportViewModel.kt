@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.File
 import javax.inject.Inject
+import com.diabeto.util.MessageErreur
 
 data class WhatsappSharePayload(
     val phone: String,
@@ -82,7 +83,7 @@ class ReportViewModel @Inject constructor(
                 onFailure = { e ->
                     Log.e(TAG, "CSV export failed", e)
                     _uiState.update {
-                        it.copy(isExportingCsv = false, error = "Export CSV echoue: ${e.message}")
+                        it.copy(isExportingCsv = false, error = MessageErreur.lisible(e))
                     }
                 }
             )
@@ -155,20 +156,28 @@ class ReportViewModel @Inject constructor(
                 onFailure = { e ->
                     Log.e(TAG, "shareLocalFile failed", e)
                     _uiState.update {
-                        it.copy(isSending = false, error = "Envoi fichier echoue: ${describeError(e)}")
+                        it.copy(isSending = false, error = "Envoi du fichier — ${describeError(e)}")
                     }
                 }
             )
         }
     }
 
+    /**
+     * v2.1.88 : le detail technique part dans les journaux, l'utilisateur lit
+     * une phrase utile.
+     *
+     * Cette fonction composait auparavant le nom de la classe d'exception, son
+     * message et celui de sa cause. Un patient voyait alors, en plein ecran :
+     *
+     *     Upload echoue: IllegalStateException: HTTP 502 — {"error":"supabase_unreachable"}
+     *
+     * Cela ne lui apprenait rien d'actionnable et exposait le fonctionnement
+     * interne du service — jusqu'au nom du prestataire de stockage.
+     */
     private fun describeError(e: Throwable): String {
-        val cls = e::class.java.simpleName
-        val msg = e.message?.takeIf { it.isNotBlank() } ?: "(pas de message)"
-        val cause = e.cause?.let { c ->
-            " | cause: ${c::class.java.simpleName}: ${c.message ?: "(pas de message)"}"
-        } ?: ""
-        return "$cls: $msg$cause"
+        Log.w(TAG, "Echec detaille", e)
+        return MessageErreur.lisible(e)
     }
 
     /** Genere + envoie un rapport patient (auto-export). */
@@ -179,7 +188,7 @@ class ReportViewModel @Inject constructor(
             val fileResult = reportRepository.buildPatientReport(state.period)
             val file = fileResult.getOrElse { e ->
                 Log.e(TAG, "Generation echouee", e)
-                _uiState.update { it.copy(isGenerating = false, error = "Generation echouee: ${describeError(e)}") }
+                _uiState.update { it.copy(isGenerating = false, error = "Génération du rapport — ${describeError(e)}") }
                 return@launch
             }
             _uiState.update { it.copy(isGenerating = false, lastFile = file, isSending = true) }
@@ -209,7 +218,7 @@ class ReportViewModel @Inject constructor(
             )
             val file = fileResult.getOrElse { e ->
                 Log.e(TAG, "Generation echouee", e)
-                _uiState.update { it.copy(isGenerating = false, error = "Generation echouee: ${describeError(e)}") }
+                _uiState.update { it.copy(isGenerating = false, error = "Génération du rapport — ${describeError(e)}") }
                 return@launch
             }
             _uiState.update { it.copy(isGenerating = false, lastFile = file, isSending = true) }
@@ -221,7 +230,7 @@ class ReportViewModel @Inject constructor(
         val uploadResult = reportRepository.uploadReport(file)
         val (_, downloadUrl) = uploadResult.getOrElse { e ->
             Log.e(TAG, "Upload echoue (file=${file.name} size=${file.length()})", e)
-            _uiState.update { it.copy(isSending = false, error = "Upload echoue: ${describeError(e)}") }
+            _uiState.update { it.copy(isSending = false, error = "Envoi du rapport — ${describeError(e)}") }
             return
         }
         _uiState.update { it.copy(lastFileUrl = downloadUrl) }
@@ -252,7 +261,7 @@ class ReportViewModel @Inject constructor(
             )
             r.fold(
                 onSuccess = { channels.add(ReportRecord.CHANNEL_MESSAGERIE) },
-                onFailure = { Log.w(TAG, "messagerie failed: ${it.message}") }
+                onFailure = { Log.w(TAG, MessageErreur.lisible(it)) }
             )
         }
         if (state.sendByEmail && state.emailOverride.isNotBlank()) {
@@ -265,7 +274,7 @@ class ReportViewModel @Inject constructor(
             )
             r.fold(
                 onSuccess = { channels.add(ReportRecord.CHANNEL_EMAIL) },
-                onFailure = { Log.w(TAG, "email failed: ${it.message}") }
+                onFailure = { Log.w(TAG, MessageErreur.lisible(it)) }
             )
         }
         // Partage WhatsApp : on prepare le payload, l'ecran ouvrira l'Intent.

@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
 import javax.inject.Inject
+import com.diabeto.util.MessageErreur
 
 /**
  * Onglet actif dans l'écran de suivi
@@ -87,7 +88,7 @@ class GlucoseViewModel @Inject constructor(
                     )
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message) }
+                _uiState.update { it.copy(isLoading = false, error = MessageErreur.lisible(e)) }
             }
         }
     }
@@ -117,7 +118,7 @@ class GlucoseViewModel @Inject constructor(
                 _uiState.update { it.copy(newValeur = "", addSuccess = true) }
                 loadData()
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = MessageErreur.lisible(e)) }
             }
         }
     }
@@ -125,7 +126,7 @@ class GlucoseViewModel @Inject constructor(
     fun deleteLecture(lecture: LectureGlucoseEntity) {
         viewModelScope.launch {
             try { glucoseRepository.deleteLecture(lecture); loadData() }
-            catch (e: Exception) { _uiState.update { it.copy(error = e.message) } }
+            catch (e: Exception) { _uiState.update { it.copy(error = MessageErreur.lisible(e)) } }
         }
     }
 
@@ -149,7 +150,7 @@ class GlucoseViewModel @Inject constructor(
                 _uiState.update { it.copy(showAddHbA1cDialog = false, newHbA1cValeur = "", newHbA1cLabo = "", addSuccess = true) }
                 loadData()
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = MessageErreur.lisible(e)) }
             }
         }
     }
@@ -157,7 +158,7 @@ class GlucoseViewModel @Inject constructor(
     fun deleteHbA1c(hba1c: HbA1cEntity) {
         viewModelScope.launch {
             try { glucoseRepository.deleteHbA1c(hba1c); loadData() }
-            catch (e: Exception) { _uiState.update { it.copy(error = e.message) } }
+            catch (e: Exception) { _uiState.update { it.copy(error = MessageErreur.lisible(e)) } }
         }
     }
 
@@ -167,7 +168,7 @@ class GlucoseViewModel @Inject constructor(
                 val result = glucoseRepository.estimerEtSauvegarderHbA1c(patientId)
                 if (result != null) { _uiState.update { it.copy(addSuccess = true) }; loadData() }
                 else _uiState.update { it.copy(error = "Minimum 10 lectures pour estimer l'HbA1c") }
-            } catch (e: Exception) { _uiState.update { it.copy(error = e.message) } }
+            } catch (e: Exception) { _uiState.update { it.copy(error = MessageErreur.lisible(e)) } }
         }
     }
 
@@ -212,7 +213,7 @@ class GlucoseViewModel @Inject constructor(
                 val analysis = chatbotRepository.analyserGlycemie(patient, lectures, latestHbA1c, hba1cEst)
                 _uiState.update { it.copy(rollyAnalysis = analysis, showRollyAnalysis = true) }
             } catch (e: Exception) {
-                Log.d("GlucoseVM", "Auto-analysis skipped: ${e.message}")
+                Log.d("GlucoseVM", MessageErreur.lisible(e))
             }
         }
     }
@@ -232,7 +233,7 @@ class GlucoseViewModel @Inject constructor(
                 )
                 _uiState.update { it.copy(exportCsvData = report) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = "Erreur export: ${e.message}") }
+                _uiState.update { it.copy(error = MessageErreur.lisible(e)) }
             }
         }
     }

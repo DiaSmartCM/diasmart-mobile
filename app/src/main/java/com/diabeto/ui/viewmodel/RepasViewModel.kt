@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import javax.inject.Inject
+import com.diabeto.util.MessageErreur
 
 /**
  * État UI pour l'écran d'analyse de repas
@@ -197,7 +198,7 @@ class RepasViewModel @Inject constructor(
                     },
                     onFailure = { e ->
                         _uiState.update {
-                            it.copy(isAnalysing = false, error = "Erreur parsing: ${e.message}")
+                            it.copy(isAnalysing = false, error = MessageErreur.lisible(e))
                         }
                     }
                 )
@@ -205,7 +206,7 @@ class RepasViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isAnalysing = false,
-                        error = e.message ?: "Erreur inattendue lors de l'analyse."
+                        error = MessageErreur.lisible(e)
                     )
                 }
             }
@@ -253,13 +254,13 @@ class RepasViewModel @Inject constructor(
                     },
                     onFailure = { e ->
                         _uiState.update {
-                            it.copy(isAnalysing = false, error = "Erreur parsing: ${e.message}")
+                            it.copy(isAnalysing = false, error = MessageErreur.lisible(e))
                         }
                     }
                 )
             } catch (e: Exception) {
                 _uiState.update {
-                    it.copy(isAnalysing = false, error = e.message ?: "Erreur lors du recalcul.")
+                    it.copy(isAnalysing = false, error = MessageErreur.lisible(e))
                 }
             }
         }
@@ -301,7 +302,7 @@ class RepasViewModel @Inject constructor(
                     },
                     onFailure = { e ->
                         _uiState.update {
-                            it.copy(isAnalysing = false, error = e.message)
+                            it.copy(isAnalysing = false, error = MessageErreur.lisible(e))
                         }
                     }
                 )
@@ -309,7 +310,7 @@ class RepasViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isAnalysing = false,
-                        error = e.message ?: "Erreur inattendue lors de l'analyse."
+                        error = MessageErreur.lisible(e)
                     )
                 }
             }
@@ -408,7 +409,7 @@ class RepasViewModel @Inject constructor(
                 },
                 onFailure = { e ->
                     _uiState.update {
-                        it.copy(isSaving = false, error = e.message)
+                        it.copy(isSaving = false, error = MessageErreur.lisible(e))
                     }
                 }
             )
@@ -596,7 +597,7 @@ class RepasViewModel @Inject constructor(
                 )
             }
         } catch (e: Exception) {
-            android.util.Log.w("RepasVM", "notifierMedecinRepas echoue (non-critique): ${e.message}")
+            android.util.Log.w("RepasVM", MessageErreur.lisible(e))
         }
     }
 
@@ -668,7 +669,7 @@ class RepasViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         showIntegrerGlycemieDialog = false,
-                        error = "Erreur integration glycemie: ${e.message}"
+                        error = MessageErreur.lisible(e)
                     )
                 }
             }
@@ -696,7 +697,7 @@ class RepasViewModel @Inject constructor(
             repasRepository.getRepasHistoriqueFlow()
                 .catch { e ->
                     android.util.Log.e("RepasVM", "Erreur chargement historique", e)
-                    _uiState.update { it.copy(isLoadingHistorique = false, error = e.message) }
+                    _uiState.update { it.copy(isLoadingHistorique = false, error = MessageErreur.lisible(e)) }
                 }
                 .collect { repas ->
                     _uiState.update { it.copy(historique = repas, isLoadingHistorique = false) }

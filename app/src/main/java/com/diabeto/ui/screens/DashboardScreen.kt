@@ -511,17 +511,25 @@ fun DashboardScreen(
                         textPri = textPri,
                         textSec = textSec
                     )
-                    MiniStatCard(
-                        value = uiState.upcomingMedicaments.toString(),
-                        label = stringResource(R.string.dash_stat_reminders),
-                        icon = Icons.Outlined.Medication,
-                        iconBg = if (isDark) CardMedicationDark else CardMedication,
-                        iconTint = if (isDark) Color(0xFFFFB3C6) else Secondary,
-                        modifier = Modifier.weight(1f),
-                        cardSurface = cardSurface,
-                        textPri = textPri,
-                        textSec = textSec
-                    )
+                    // v2.1.88 : compteur de rappels reserve au PATIENT.
+                    //
+                    // Un medecin n'a pas de prises de traitement a suivre : la
+                    // carte affichait invariablement 0 et occupait un tiers de
+                    // la rangee sans rien apprendre. Cote medecin, l'agenda des
+                    // rendez-vous est la seule echeance qui le concerne.
+                    if (uiState.userRole != UserRole.MEDECIN) {
+                        MiniStatCard(
+                            value = uiState.upcomingMedicaments.toString(),
+                            label = stringResource(R.string.dash_stat_reminders),
+                            icon = Icons.Outlined.Medication,
+                            iconBg = if (isDark) CardMedicationDark else CardMedication,
+                            iconTint = if (isDark) Color(0xFFFFB3C6) else Secondary,
+                            modifier = Modifier.weight(1f),
+                            cardSurface = cardSurface,
+                            textPri = textPri,
+                            textSec = textSec
+                        )
+                    }
                 }
             }
 

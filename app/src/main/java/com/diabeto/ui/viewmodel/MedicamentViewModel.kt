@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
 import javax.inject.Inject
+import com.diabeto.util.MessageErreur
 
 /**
  * État de la gestion des médicaments
@@ -77,7 +78,7 @@ class MedicamentViewModel @Inject constructor(
                     )
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message) }
+                _uiState.update { it.copy(isLoading = false, error = MessageErreur.lisible(e)) }
             }
         }
     }
@@ -156,7 +157,7 @@ class MedicamentViewModel @Inject constructor(
                 loadData()
                 
             } catch (e: Exception) {
-                _addState.update { it.copy(error = e.message) }
+                _addState.update { it.copy(error = MessageErreur.lisible(e)) }
             }
         }
     }
@@ -167,7 +168,7 @@ class MedicamentViewModel @Inject constructor(
                 medicamentRepository.toggleActifStatus(medicament.id, medicament.estActif)
                 loadData()
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = MessageErreur.lisible(e)) }
             }
         }
     }
@@ -195,7 +196,7 @@ class MedicamentViewModel @Inject constructor(
                 } }.onFailure { android.util.Log.w("MedicamentVM", "Alarme non mise a jour", it) }
                 loadData()
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = MessageErreur.lisible(e)) }
             }
         }
     }
@@ -213,7 +214,7 @@ class MedicamentViewModel @Inject constructor(
                 }
                 loadData()
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = MessageErreur.lisible(e)) }
             }
         }
     }

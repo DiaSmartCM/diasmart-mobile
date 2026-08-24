@@ -25,6 +25,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import javax.inject.Inject
+import com.diabeto.util.MessageErreur
 
 /**
  * Filtre pour les rendez-vous
@@ -222,7 +223,7 @@ class RendezVousViewModel @Inject constructor(
                     loadPatientRendezVousFromFirestore()
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message) }
+                _uiState.update { it.copy(isLoading = false, error = MessageErreur.lisible(e)) }
             }
         }
     }
@@ -270,7 +271,11 @@ class RendezVousViewModel @Inject constructor(
             // confirme et a venir, on tente l'ajout dans l'agenda. Idempotent
             // grace au cache des requestIds deja ajoutes.
             val now = LocalDateTime.now()
-            rdvList.filter { it.estConfirme && it.dateHeure.isAfter(now) }
+            // v2.1.88 : le filtre exigeait estConfirme. Les RDV poses par le
+            // medecin arrivaient non confirmes et n'entraient jamais dans
+            // l'agenda du patient. Un rendez-vous a venir merite d'y figurer,
+            // confirme ou non — c'est justement ce dont on veut se souvenir.
+            rdvList.filter { it.dateHeure.isAfter(now) }
                 .forEach { rdv ->
                     runCatching {
                         val notes = buildString {
@@ -366,6 +371,21 @@ class RendezVousViewModel @Inject constructor(
                 // v2.1.86 : alarme posee ICI. Elle n'etait programmee qu'au
                 // lancement suivant de l'application, donc un RDV cree pour
                 // dans deux heures ne declenchait aucun rappel.
+                // v2.1.88 : l'insertion au calendrier n'avait lieu que lorsque
+                // le medecin ACCEPTAIT une demande. Un RDV qu'il pose lui-meme
+                // n'entrait dans aucun agenda.
+                runCatching {
+                    CalendarHelper.addOrUpdateEvent(
+                        context = appContext,
+                        requestId = "local_$rdvId",
+                        title = "Consultation : ${selectedOption?.nom ?: rdv.titre}".take(120),
+                        dateHeureIso = rdv.dateHeure.toString(),
+                        dureeMinutes = rdv.dureeMinutes.coerceAtLeast(15),
+                        description = rdv.notes,
+                        location = rdv.lieu.ifBlank { "Cabinet medical" }
+                    )
+                }.onFailure { Log.w(TAG, "Ajout au calendrier (medecin) echoue", it) }
+
                 runCatching {
                     com.diabeto.notifications.AlarmScheduler.programmerRendezVous(
                         context = appContext,
@@ -396,7 +416,11 @@ class RendezVousViewModel @Inject constructor(
                         "type" to rdv.type.name,
                         "lieu" to rdv.lieu,
                         "notes" to rdv.notes,
-                        "estConfirme" to false,
+                        // v2.1.88 : un RDV pose par le medecin est confirme par lui.
+                        // A false, il etait exclu de la synchronisation
+                        // calendrier du patient, qui ne prend que les RDV
+                        // confirmes : il n'atteignait donc jamais son agenda.
+                        "estConfirme" to true,
                         "medecinNom" to (medecinProfile?.nomComplet ?: "Votre médecin"),
                         "medecinUid" to (authRepository.currentUserId ?: ""),
                         "createdAt" to LocalDateTime.now().toString()
@@ -419,7 +443,7 @@ class RendezVousViewModel @Inject constructor(
                 loadData()
 
             } catch (e: Exception) {
-                _addState.update { it.copy(error = e.message) }
+                _addState.update { it.copy(error = MessageErreur.lisible(e)) }
             }
         }
     }
@@ -442,7 +466,7 @@ class RendezVousViewModel @Inject constructor(
                 }
                 loadData()
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = MessageErreur.lisible(e)) }
             }
         }
     }
@@ -461,7 +485,7 @@ class RendezVousViewModel @Inject constructor(
                 }
                 loadData()
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = MessageErreur.lisible(e)) }
             }
         }
     }
@@ -559,7 +583,7 @@ class RendezVousViewModel @Inject constructor(
                 _uiState.update { it.copy(showBookDialog = false, bookSuccess = true) }
                 _bookState.value = BookAppointmentState()
             } catch (e: Exception) {
-                _bookState.update { it.copy(isSubmitting = false, error = e.message) }
+                _bookState.update { it.copy(isSubmitting = false, error = MessageErreur.lisible(e)) }
             }
         }
     }
@@ -601,7 +625,7 @@ class RendezVousViewModel @Inject constructor(
                 }.onFailure { Log.w(TAG, "calendar add failed (medecin)", it) }
                 loadData()
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = MessageErreur.lisible(e)) }
             }
         }
     }
@@ -611,7 +635,7 @@ class RendezVousViewModel @Inject constructor(
             try {
                 appointmentRequestRepository.rejectRequest(requestId, reponse)
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = MessageErreur.lisible(e)) }
             }
         }
     }
@@ -621,7 +645,7 @@ class RendezVousViewModel @Inject constructor(
             try {
                 appointmentRequestRepository.cancelRequest(requestId)
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = MessageErreur.lisible(e)) }
             }
         }
     }

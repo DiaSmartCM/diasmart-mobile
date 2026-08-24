@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.diabeto.util.MessageErreur
 
 data class FamilyUiState(
     val isLoading: Boolean = true,
@@ -86,7 +87,7 @@ class FamilyViewModel @Inject constructor(
                 },
                 onFailure = { e ->
                     Log.w("FamilyVM", "invite failed", e)
-                    _uiState.update { it.copy(isInviting = false, error = e.message ?: "Erreur invitation") }
+                    _uiState.update { it.copy(isInviting = false, error = MessageErreur.lisible(e)) }
                 }
             )
         }
@@ -96,7 +97,7 @@ class FamilyViewModel @Inject constructor(
         viewModelScope.launch {
             familyRepository.acceptInvitation(ownerUid).fold(
                 onSuccess = { _uiState.update { it.copy(message = "Invitation acceptee") } },
-                onFailure = { err -> _uiState.update { it.copy(error = "Erreur : ${err.message}") } }
+                onFailure = { err -> _uiState.update { it.copy(error = MessageErreur.lisible(err)) } }
             )
         }
     }
@@ -105,7 +106,7 @@ class FamilyViewModel @Inject constructor(
         viewModelScope.launch {
             familyRepository.rejectInvitation(ownerUid).fold(
                 onSuccess = { _uiState.update { it.copy(message = "Invitation refusee") } },
-                onFailure = { err -> _uiState.update { it.copy(error = "Erreur : ${err.message}") } }
+                onFailure = { err -> _uiState.update { it.copy(error = MessageErreur.lisible(err)) } }
             )
         }
     }
@@ -114,7 +115,7 @@ class FamilyViewModel @Inject constructor(
         viewModelScope.launch {
             familyRepository.revokeAsOwner(aidantUid).fold(
                 onSuccess = { _uiState.update { it.copy(message = "Acces aidant revoque") } },
-                onFailure = { err -> _uiState.update { it.copy(error = "Erreur : ${err.message}") } }
+                onFailure = { err -> _uiState.update { it.copy(error = MessageErreur.lisible(err)) } }
             )
         }
     }
@@ -123,7 +124,7 @@ class FamilyViewModel @Inject constructor(
         viewModelScope.launch {
             familyRepository.unlinkAsAidant(ownerUid).fold(
                 onSuccess = { _uiState.update { it.copy(message = "Lien supprime") } },
-                onFailure = { err -> _uiState.update { it.copy(error = "Erreur : ${err.message}") } }
+                onFailure = { err -> _uiState.update { it.copy(error = MessageErreur.lisible(err)) } }
             )
         }
     }
@@ -132,7 +133,7 @@ class FamilyViewModel @Inject constructor(
         viewModelScope.launch {
             familyRepository.reactivateLink(otherUid).fold(
                 onSuccess = { _uiState.update { it.copy(message = "Lien reactive") } },
-                onFailure = { err -> _uiState.update { it.copy(error = "Erreur : ${err.message}") } }
+                onFailure = { err -> _uiState.update { it.copy(error = MessageErreur.lisible(err)) } }
             )
         }
     }

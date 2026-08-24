@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
+import com.diabeto.util.MessageErreur
 
 data class MessagerieUiState(
     val conversations: List<Conversation> = emptyList(),
@@ -68,7 +69,7 @@ class ConversationsViewModel @Inject constructor(
             }
 
             messagerieRepository.getConversationsFlow()
-                .catch { e -> _uiState.update { it.copy(isLoading = false, error = e.message) } }
+                .catch { e -> _uiState.update { it.copy(isLoading = false, error = MessageErreur.lisible(e)) } }
                 .collect { conversations ->
                     _uiState.update { it.copy(conversations = conversations, isLoading = false) }
                 }
@@ -84,7 +85,7 @@ class ConversationsViewModel @Inject constructor(
             val result = messagerieRepository.creerConversation(medecin)
             result.fold(
                 onSuccess = { convId -> onSuccess(convId) },
-                onFailure = { e -> _uiState.update { it.copy(error = e.message) } }
+                onFailure = { e -> _uiState.update { it.copy(error = MessageErreur.lisible(e)) } }
             )
         }
     }
@@ -127,7 +128,7 @@ class ConversationDetailViewModel @Inject constructor(
     private fun observerMessages() {
         viewModelScope.launch {
             messagerieRepository.getMessagesFlow(conversationId)
-                .catch { e -> _uiState.update { it.copy(error = e.message) } }
+                .catch { e -> _uiState.update { it.copy(error = MessageErreur.lisible(e)) } }
                 .collect { messages ->
                     _uiState.update { it.copy(messages = messages, isLoading = false) }
                 }
@@ -146,7 +147,7 @@ class ConversationDetailViewModel @Inject constructor(
                 onSuccess = { _uiState.update { it.copy(isSending = false) } },
                 onFailure = { e ->
                     _uiState.update {
-                        it.copy(isSending = false, error = e.message, inputText = text)
+                        it.copy(isSending = false, error = MessageErreur.lisible(e), inputText = text)
                     }
                 }
             )

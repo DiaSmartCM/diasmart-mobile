@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import javax.inject.Inject
+import com.diabeto.util.MessageErreur
 
 /**
  * État de la liste des patients
@@ -70,7 +71,7 @@ class PatientListViewModel @Inject constructor(
             try {
                 // Les patients sont chargés via le flow ci-dessus
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message) }
+                _uiState.update { it.copy(isLoading = false, error = MessageErreur.lisible(e)) }
             }
         }
     }
@@ -134,7 +135,7 @@ class PatientDetailViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 _uiState.update {
-                    it.copy(isLoading = false, error = e.message)
+                    it.copy(isLoading = false, error = MessageErreur.lisible(e))
                 }
             }
         }
@@ -148,7 +149,7 @@ class PatientDetailViewModel @Inject constructor(
                     _uiState.update { it.copy(deleteSuccess = true) }
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(error = MessageErreur.lisible(e)) }
             }
         }
     }
@@ -228,7 +229,7 @@ class PatientEditViewModel @Inject constructor(
                     _uiState.update { it.copy(isLoading = false, error = "Patient non trouvé") }
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message) }
+                _uiState.update { it.copy(isLoading = false, error = MessageErreur.lisible(e)) }
             }
         }
     }
@@ -296,7 +297,7 @@ class PatientEditViewModel @Inject constructor(
 
                 _uiState.update { it.copy(isLoading = false, saveSuccess = true) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message) }
+                _uiState.update { it.copy(isLoading = false, error = MessageErreur.lisible(e)) }
             }
         }
     }

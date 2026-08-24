@@ -11,6 +11,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.diabeto.util.MessageErreur
 
 data class CommunityMessage(
     val id: String = "",
@@ -85,12 +86,12 @@ class CommunityViewModel @Inject constructor(
                 try {
                     notificationApi.notifyCommunity(preview = text, senderName = userName)
                 } catch (e: Exception) {
-                    Log.w("CommunityVM", "notifyCommunity failed: ${e.message}")
+                    Log.w("CommunityVM", MessageErreur.lisible(e))
                 }
 
                 _uiState.update { it.copy(inputText = "", isSending = false) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isSending = false, error = "Erreur: ${e.message}") }
+                _uiState.update { it.copy(isSending = false, error = MessageErreur.lisible(e)) }
             }
         }
     }

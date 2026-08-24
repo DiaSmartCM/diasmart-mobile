@@ -170,17 +170,33 @@ class DoctorReviewRepository @Inject constructor(
     }
 
     /** Liste les avis recents sur un medecin (max 50). */
+    /**
+     * v2.1.88 : tri cote client, comme ailleurs dans le projet.
+     *
+     * La requete combinait `whereEqualTo("doctorUid")` et
+     * `orderBy("createdAt")` sur deux champs differents : Firestore exige alors
+     * un INDEX COMPOSITE. Sans cet index, la requete echoue en
+     * FAILED_PRECONDITION — et les appelants, qui l'enveloppent dans un
+     * runCatching, retombaient sur une liste vide. Le medecin voyait
+     * « Aucun avis » alors que ses avis existaient bel et bien.
+     *
+     * AppointmentRequestRepository documente deja ce piege et trie cote client
+     * pour la meme raison. On applique ici la meme regle : un seul filtre dans
+     * la requete, le tri en memoire. Le volume d'avis d'un medecin ne justifie
+     * pas de dependre d'un index a creer a la main dans la console.
+     */
     suspend fun getReviewsForDoctor(doctorUid: String, limit: Long = 50): List<DoctorReview> {
-        val q = reviews
+        val snap = reviews
             .whereEqualTo("doctorUid", doctorUid)
-            .orderBy("createdAt", Query.Direction.DESCENDING)
-            .limit(limit)
-        val snap = q.get().await()
+            .get()
+            .await()
         return snap.documents.mapNotNull { doc ->
             @Suppress("UNCHECKED_CAST")
             val data = doc.data as? Map<String, Any?> ?: return@mapNotNull null
             DoctorReview.fromMap(data)
         }
+            .sortedByDescending { it.createdAt.seconds }
+            .take(limit.toInt())
     }
 
     /**

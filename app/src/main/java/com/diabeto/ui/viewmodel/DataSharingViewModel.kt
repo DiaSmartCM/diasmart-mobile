@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
+import com.diabeto.util.MessageErreur
 
 /**
  * Mode de tri des medecins dans la recherche.
@@ -94,7 +95,7 @@ class DataSharingViewModel @Inject constructor(
                     )
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, message = "Erreur: ${e.message}") }
+                _uiState.update { it.copy(isLoading = false, message = MessageErreur.lisible(e)) }
             }
         }
     }
@@ -188,7 +189,7 @@ class DataSharingViewModel @Inject constructor(
                     loadData()
                 },
                 onFailure = { e ->
-                    _uiState.update { it.copy(message = "Erreur: ${e.message}") }
+                    _uiState.update { it.copy(message = MessageErreur.lisible(e)) }
                 }
             )
         }
@@ -203,7 +204,7 @@ class DataSharingViewModel @Inject constructor(
                     loadData()
                 },
                 onFailure = { e ->
-                    _uiState.update { it.copy(message = "Erreur: ${e.message}") }
+                    _uiState.update { it.copy(message = MessageErreur.lisible(e)) }
                 }
             )
         }
@@ -218,7 +219,7 @@ class DataSharingViewModel @Inject constructor(
                     loadData()
                 },
                 onFailure = { e ->
-                    _uiState.update { it.copy(message = "Erreur: ${e.message}") }
+                    _uiState.update { it.copy(message = MessageErreur.lisible(e)) }
                 }
             )
         }
@@ -236,7 +237,7 @@ class DataSharingViewModel @Inject constructor(
                     loadData()
                 },
                 onFailure = { e ->
-                    _uiState.update { it.copy(message = "Erreur: ${e.message}") }
+                    _uiState.update { it.copy(message = MessageErreur.lisible(e)) }
                 }
             )
         }
@@ -251,7 +252,7 @@ class DataSharingViewModel @Inject constructor(
                     loadData()
                 },
                 onFailure = { e ->
-                    _uiState.update { it.copy(message = "Erreur: ${e.message}") }
+                    _uiState.update { it.copy(message = MessageErreur.lisible(e)) }
                 }
             )
         }
@@ -316,7 +317,7 @@ class DataSharingViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isSubmittingReview = false,
-                            message = "Erreur: ${e.message}"
+                            message = MessageErreur.lisible(e)
                         )
                     }
                 }
@@ -389,7 +390,7 @@ class DataSharingViewModel @Inject constructor(
 
                 _uiState.update { it.copy(exportData = sb.toString()) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(message = "Erreur export: ${e.message}") }
+                _uiState.update { it.copy(message = MessageErreur.lisible(e)) }
             }
         }
     }
@@ -403,7 +404,7 @@ class DataSharingViewModel @Inject constructor(
                     loadData()
                 },
                 onFailure = { e ->
-                    _uiState.update { it.copy(message = "Erreur: ${e.message}") }
+                    _uiState.update { it.copy(message = MessageErreur.lisible(e)) }
                 }
             )
         }
@@ -418,7 +419,7 @@ class DataSharingViewModel @Inject constructor(
                     loadData()
                 },
                 onFailure = { e ->
-                    _uiState.update { it.copy(message = "Erreur: ${e.message}") }
+                    _uiState.update { it.copy(message = MessageErreur.lisible(e)) }
                 }
             )
         }
