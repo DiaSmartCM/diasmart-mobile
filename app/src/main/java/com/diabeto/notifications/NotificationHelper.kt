@@ -23,6 +23,22 @@ object NotificationHelper {
     // perdre les autres — un rappel de medicament et une alerte de pic n'ont ni
     // la meme frequence ni la meme urgence.
     const val CHANNEL_GLYCEMIE = "glycemie_channel"
+
+    // v2.1.89 : canaux de type ALARME pour les traitements et les rendez-vous.
+    //
+    // Les anciens canaux jouaient le son de notification par defaut : bref, au
+    // volume des notifications, et noye parmi les messages. Une prise de
+    // traitement manquee n'a pas le meme cout qu'un message rate.
+    //
+    // Ces canaux utilisent la SONNERIE D'ALARME choisie par l'utilisateur dans
+    // son telephone, sur le flux audio des alarmes — donc plus long, au volume
+    // des reveils, et audible meme quand les notifications sont en sourdine.
+    //
+    // Un canal ne peut plus changer de son apres sa creation (Android 8+) :
+    // d'ou de NOUVEAUX identifiants plutot qu'une modification des anciens, qui
+    // n'aurait eu aucun effet sur les installations existantes.
+    const val CHANNEL_ALARME_MEDICAMENTS = "medicaments_alarme_v1"
+    const val CHANNEL_ALARME_RENDEZ_VOUS = "rendezvous_alarme_v1"
     
     const val NOTIFICATION_ID_MEDICAMENT = 1000
     const val NOTIFICATION_ID_RENDEZ_VOUS = 2000
@@ -67,8 +83,56 @@ object NotificationHelper {
                 vibrationPattern = longArrayOf(0, 200, 100, 200)
             }
 
+            // ── Canaux de type ALARME ─────────────────────────────────
+            // Son : la sonnerie d'alarme configuree par l'utilisateur, avec
+            // repli sur la sonnerie de notification si aucune n'est definie.
+            // Flux audio USAGE_ALARM : volume des reveils, et le son passe meme
+            // lorsque les notifications sont silencieuses.
+            val sonnerieAlarme =
+                android.media.RingtoneManager.getDefaultUri(
+                    android.media.RingtoneManager.TYPE_ALARM
+                ) ?: android.media.RingtoneManager.getDefaultUri(
+                    android.media.RingtoneManager.TYPE_NOTIFICATION
+                )
+
+            val attributsAlarme = android.media.AudioAttributes.Builder()
+                .setUsage(android.media.AudioAttributes.USAGE_ALARM)
+                .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+
+            // Vibration longue et repetee : une prise manquee doit se remarquer.
+            val vibrationAlarme = longArrayOf(0, 800, 400, 800, 400, 800, 400, 800)
+
+            val alarmeMedicaments = NotificationChannel(
+                CHANNEL_ALARME_MEDICAMENTS,
+                context.getString(R.string.notif_channel_alarme_medicaments),
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Sonnerie a l'heure de prise du traitement"
+                setSound(sonnerieAlarme, attributsAlarme)
+                enableVibration(true)
+                vibrationPattern = vibrationAlarme
+                setBypassDnd(true)
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+            }
+
+            val alarmeRendezVous = NotificationChannel(
+                CHANNEL_ALARME_RENDEZ_VOUS,
+                context.getString(R.string.notif_channel_alarme_rdv),
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Sonnerie une heure avant un rendez-vous"
+                setSound(sonnerieAlarme, attributsAlarme)
+                enableVibration(true)
+                vibrationPattern = vibrationAlarme
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+            }
+
             notificationManager.createNotificationChannels(
-                listOf(medicamentsChannel, rendezVousChannel, glycemieChannel)
+                listOf(
+                    medicamentsChannel, rendezVousChannel, glycemieChannel,
+                    alarmeMedicaments, alarmeRendezVous
+                )
             )
         }
     }

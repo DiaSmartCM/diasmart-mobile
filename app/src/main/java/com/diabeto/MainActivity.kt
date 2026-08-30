@@ -59,6 +59,20 @@ class MainActivity : AppCompatActivity() {
         // Créer les canaux de notification
         NotificationHelper.createNotificationChannels(this)
 
+        // v2.1.89 : DEMARRAGE A FROID.
+        //
+        // handleNotificationIntent n'etait appelee que depuis onNewIntent,
+        // c'est-a-dire uniquement quand l'application tournait deja en
+        // arriere-plan. Application fermee, le tap sur une notification lancait
+        // l'activite par onCreate — et la destination etait perdue : on
+        // atterrissait sur le tableau de bord, a l'utilisateur de retrouver
+        // seul le message ou le rappel concerne.
+        //
+        // DeepLinkBus retient l'evenement jusqu'a ce que la navigation soit
+        // prete et l'utilisateur authentifie ; l'appel peut donc avoir lieu ici,
+        // bien avant que l'ecran ne soit monte.
+        handleNotificationIntent(intent)
+
         // Programmer les rappels intelligents
         ReminderScheduler.scheduleMedicationReminders(this)
         ReminderScheduler.scheduleAppointmentReminders(this)
@@ -75,9 +89,6 @@ class MainActivity : AppCompatActivity() {
         DiaSmartFCMService.subscribeToUpdatesTopic()
         // Sauvegarder le token FCM dans Firestore
         DiaSmartFCMService.saveTokenToFirestore()
-
-        // Deep-link issu du tap sur une notification (app froide)
-        handleNotificationIntent(intent)
 
         // v2.1.42 : Crashlytics user identity + breadcrumb
         FirebaseAuth.getInstance().currentUser?.let { user ->

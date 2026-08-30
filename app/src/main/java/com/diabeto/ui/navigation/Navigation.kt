@@ -101,6 +101,8 @@ fun DiabetoNavigation(
     // l'event une fois que l'utilisateur est passe le splash + l'auth (sinon
     // la nav saute par-dessus le login). On poll la route courante jusqu'a
     // ce qu'elle soit "prete".
+    val contexteApp = androidx.compose.ui.platform.LocalContext.current.applicationContext
+
     LaunchedEffect(Unit) {
         DeepLinkBus.events.collect { event ->
             // Attendre que la nav soit montee + l'utilisateur authentifie.
@@ -132,6 +134,25 @@ fun DiabetoNavigation(
                 }
                 "community" -> navController.navigate(Routes.COMMUNITY)
                 "mes_avis" -> navController.navigate(Routes.MES_AVIS)
+
+                // v2.1.89 : destinations des alarmes.
+                //
+                // Ces trois ecrans attendent un patientId. Une alarme ne le
+                // transporte pas — elle sonne pour le compte connecte, quel que
+                // soit le dossier. On resout donc le dossier « self » au moment
+                // du tap ; s'il n'existe pas, on ouvre l'ecran sans parametre
+                // plutot que de ne rien faire.
+                "medicaments" -> {
+                    val pid = resoudreDossierPersonnel(contexteApp)
+                    navController.navigate(
+                        if (pid != null) Routes.medicaments(pid) else Routes.DASHBOARD
+                    )
+                }
+                "rendezvous" -> navController.navigate(Routes.rendezVous())
+                "predictive" -> {
+                    val pid = resoudreDossierPersonnel(contexteApp)
+                    navController.navigate(Routes.predictive(pid))
+                }
                 // "dashboard" → noop, on y est deja
             }
             DeepLinkBus.clearReplayCache()
@@ -588,3 +609,26 @@ fun DiabetoNavigation(
         }
     }
 }
+
+/**
+ * v2.1.89 : identifiant du dossier local du compte connecte.
+ *
+ * Les ecrans de traitements et de courbes attendent un patientId. Une alarme
+ * n'en transporte pas : elle sonne pour le compte connecte, sans savoir quel
+ * dossier ouvrir. On le retrouve donc ici, au moment du tap.
+ *
+ * Renvoie null si aucun dossier n'existe — l'appelant ouvre alors le tableau
+ * de bord plutot que de rester sans reaction.
+ */
+private suspend fun resoudreDossierPersonnel(contexte: android.content.Context): Long? =
+    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        runCatching {
+            val uid = com.google.firebase.auth.FirebaseAuth.getInstance()
+                .currentUser?.uid ?: return@runCatching null
+            com.diabeto.data.database.DiabetoDatabase.getInstance(contexte)
+                .patientDao()
+                .getAllPatientsList(uid)
+                .firstOrNull()
+                ?.id
+        }.getOrNull()
+    }

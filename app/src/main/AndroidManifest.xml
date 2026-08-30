@@ -23,6 +23,10 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS" />
+    <!-- v2.1.89 : sans cette permission, impossible de proposer
+         l'exemption d'optimisation. Le podometre, les alarmes de
+         traitement et la capture GPS sont suspendus ecran eteint. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
@@ -91,6 +95,12 @@
              que l'application a elle-même posé. -->
         <receiver
             android:name=".notifications.AlarmReceiver"
+            android:enabled="true"
+            android:exported="false" />
+
+        <!-- Bouton « Arreter » de la notification d'alarme -->
+        <receiver
+            android:name=".notifications.ArretAlarmeReceiver"
             android:enabled="true"
             android:exported="false" />
 

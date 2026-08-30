@@ -454,6 +454,58 @@ fun SettingsScreen(
                             color = subtitleColor
                         )
                         Spacer(Modifier.height(12.dp))
+
+                        // v2.1.89 : l'exemption de batterie passe en premier.
+                        // C'est la cause la plus frequente du silence — sans
+                        // elle, le systeme suspend l'application ecran eteint
+                        // et ni le podometre, ni les alarmes, ni le GPS ne
+                        // survivent. Le bouton disparait une fois accordee.
+                        if (!com.diabeto.util.OptimisationBatterie.estExemptee(context)) {
+                            Surface(
+                                shape = RoundedCornerShape(14.dp),
+                                color = Color(0xFFF59E0B).copy(alpha = 0.12f),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(Modifier.padding(12.dp)) {
+                                    Text(
+                                        "L'application est mise en veille par le système. " +
+                                        "Le podomètre, les rappels et le GPS s'arrêtent " +
+                                        "dès que l'écran s'éteint.",
+                                        fontSize = 12.5.sp,
+                                        lineHeight = 17.sp,
+                                        color = if (isDark) DarkTextPrimary else TextPrimary
+                                    )
+                                    Spacer(Modifier.height(10.dp))
+                                    Button(
+                                        onClick = {
+                                            com.diabeto.util.OptimisationBatterie
+                                                .demanderExemption(context)
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color(0xFFF59E0B)
+                                        )
+                                    ) { Text("Autoriser le fonctionnement en arrière-plan", fontSize = 13.sp) }
+                                }
+                            }
+                            Spacer(Modifier.height(10.dp))
+                        }
+
+                        // Reglage constructeur : n'apparait que sur les marques
+                        // connues pour fermer les applications malgre l'exemption.
+                        if (com.diabeto.util.OptimisationBatterie.constructeurRestrictif()) {
+                            OutlinedButton(
+                                onClick = {
+                                    com.diabeto.util.OptimisationBatterie
+                                        .ouvrirReglagesConstructeur(context)
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            ) { Text("Réglages ${android.os.Build.MANUFACTURER} : démarrage auto", fontSize = 12.5.sp) }
+                            Spacer(Modifier.height(10.dp))
+                        }
+
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(
                                 onClick = {

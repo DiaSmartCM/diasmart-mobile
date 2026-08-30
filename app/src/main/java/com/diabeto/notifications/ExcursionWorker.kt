@@ -46,6 +46,8 @@ class ExcursionWorker @AssistedInject constructor(
         val intent = android.content.Intent(context, com.diabeto.MainActivity::class.java).apply {
             flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
                 android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
+            // Une alerte de pic renvoie vers la courbe qui l'explique.
+            putExtra("navigate_to", "predictive")
         }
         val pending = android.app.PendingIntent.getActivity(
             context, id, intent,

@@ -252,6 +252,11 @@ object AlarmScheduler {
             })
         }
 
+        // v2.1.89 : la cause la plus frequente du silence n'est ni l'alarme ni
+        // la notification, mais la mise en veille de l'application par le
+        // systeme. On l'affiche donc dans le meme rapport.
+        append(com.diabeto.util.OptimisationBatterie.diagnostic(context))
+
         // Une alarme deja posee prouve que le mecanisme fonctionne bout en bout.
         val dejaPosee = PendingIntent.getBroadcast(
             context, BASE_MEDICAMENT,

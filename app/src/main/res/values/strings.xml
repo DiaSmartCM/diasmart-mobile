@@ -102,6 +102,9 @@
     <string name="notif_channel_medicaments">Rappels de médicaments</string>
     <string name="notif_channel_rdv">Rappels de rendez-vous</string>
     <string name="notif_channel_glycemie">Prédictions glycémiques</string>
+    <string name="notif_channel_alarme_medicaments">Alarmes de traitement</string>
+    <string name="notif_channel_alarme_rdv">Alarmes de rendez-vous</string>
+    <string name="alarme_arreter">Arrêter</string>
     <string name="notif_medicament_title">Prise de médicament</string>
     <string name="notif_medicament_text">Il est temps de prendre %1$s</string>
     <string name="notif_rdv_title">Rendez-vous à venir</string>
