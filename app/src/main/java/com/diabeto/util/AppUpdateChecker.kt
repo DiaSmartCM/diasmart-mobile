@@ -58,6 +58,28 @@ class AppUpdateChecker(private val context: Context) {
     private val firestore = FirebaseFirestore.getInstance()
 
     /**
+     * Dossier de travail des mises a jour.
+     *
+     * v2.1.90 : ce n'est plus /storage/emulated/0/Download.
+     *
+     * Ce dossier public exigeait WRITE_EXTERNAL_STORAGE, une permission
+     * dangereuse qui doit etre accordee a l'execution sur Android 6 a 9 — ce
+     * que l'application ne demandait jamais. DownloadManager refusait donc
+     * d'ecrire, avec le message « No permission to write to
+     * /storage/emulated/0/Download/DiaSmart-update.apk ». Sur Android 10 et
+     * au-dela, la permission ne s'applique plus du tout et c'est le stockage
+     * cloisonne qui bloquait la relecture du fichier telecharge.
+     *
+     * Le dossier prive de l'application n'a jamais eu besoin d'aucune
+     * permission, sur aucune version d'Android. Et comme l'APK est lu par
+     * notre propre processus pour etre pousse dans PackageInstaller, rien
+     * n'exige qu'il soit visible par les autres applications.
+     */
+    private fun dossierMiseAJour(): File? =
+        context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+            ?: context.filesDir
+
+    /**
      * Vérifie si une mise à jour est disponible.
      */
     suspend fun checkForUpdate(): AppUpdateInfo? {
@@ -211,7 +233,12 @@ class AppUpdateChecker(private val context: Context) {
     private suspend fun downloadFile(url: String, fileName: String): File? {
         return suspendCancellableCoroutine { continuation ->
             try {
-                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                val downloadsDir = dossierMiseAJour()
+                if (downloadsDir == null) {
+                    Log.e(TAG, "Aucun dossier de travail disponible")
+                    continuation.resume(null)
+                    return@suspendCancellableCoroutine
+                }
                 val targetFile = File(downloadsDir, fileName)
                 if (targetFile.exists()) targetFile.delete()
 
@@ -219,7 +246,9 @@ class AppUpdateChecker(private val context: Context) {
                     .setTitle("Mise à jour DiaSmart")
                     .setDescription("Téléchargement en cours...")
                     .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
-                    .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
+                    .setDestinationInExternalFilesDir(
+                        context, Environment.DIRECTORY_DOWNLOADS, fileName
+                    )
                     .setAllowedOverMetered(true)
                     .setAllowedOverRoaming(false)
 
@@ -278,7 +307,7 @@ class AppUpdateChecker(private val context: Context) {
      */
     private fun extractApkFromZip(zipFile: File, versionName: String): File? {
         return try {
-            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            val downloadsDir = dossierMiseAJour() ?: return null
             val targetApk = File(downloadsDir, "DiaSmart-$versionName.apk")
 
             ZipInputStream(zipFile.inputStream()).use { zis ->
@@ -376,7 +405,9 @@ class AppUpdateChecker(private val context: Context) {
                 .setTitle("DiaSmart $versionName")
                 .setDescription("Téléchargement de la mise à jour...")
                 .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, downloadFileName)
+                .setDestinationInExternalFilesDir(
+                    context, Environment.DIRECTORY_DOWNLOADS, downloadFileName
+                )
                 .setAllowedOverMetered(true)
                 .setAllowedOverRoaming(false)
 
@@ -391,7 +422,7 @@ class AppUpdateChecker(private val context: Context) {
                     if (id == downloadId) {
                         try { context.unregisterReceiver(this) } catch (_: Exception) {}
 
-                        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                        val downloadsDir = dossierMiseAJour()
                         val downloadedFile = File(downloadsDir, downloadFileName)
 
                         val apkFile = if (isZip) {
@@ -405,7 +436,12 @@ class AppUpdateChecker(private val context: Context) {
                         if (apkFile != null && apkFile.exists()) {
                             installWithPackageInstaller(apkFile)
                         } else {
-                            Toast.makeText(context, "Erreur: fichier APK introuvable", Toast.LENGTH_LONG).show()
+                            Toast.makeText(
+                                context,
+                                "Le telechargement n'est pas alle au bout. " +
+                                    "Verifie ta connexion et reessaie.",
+                                Toast.LENGTH_LONG,
+                            ).show()
                         }
                     }
                 }
@@ -426,13 +462,20 @@ class AppUpdateChecker(private val context: Context) {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Erreur téléchargement", e)
-            Toast.makeText(context, "Erreur: ${e.message}", Toast.LENGTH_LONG).show()
+            // Le detail technique part dans les logs ; l'utilisateur recoit une
+            // phrase qui lui dit quoi faire. C'est ce Toast qui affichait
+            // « Neither user 10215 nor current process has android.permission… ».
+            Toast.makeText(
+                context,
+                MessageErreur.lisible(e, "telecharger la mise a jour"),
+                Toast.LENGTH_LONG,
+            ).show()
         }
     }
 
     private fun cleanOldFiles() {
         try {
-            val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            val dir = dossierMiseAJour() ?: return
             dir.listFiles()?.forEach { file ->
                 if (file.name.startsWith("DiaSmart-") &&
                     (file.name.endsWith(".apk") || file.name.endsWith(".zip"))) {

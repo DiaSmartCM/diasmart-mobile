@@ -12,9 +12,10 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28"
-        tools:ignore="ScopedStorage" />
+    <!-- v2.1.90 : WRITE_EXTERNAL_STORAGE retiree. Les mises a jour se
+         telechargent dans le dossier prive de l'application, qui n'exige
+         aucune permission. La declaration restante n'aurait servi qu'a
+         faire croire a un droit jamais demande a l'execution. -->
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
     <!-- Calendrier : ajout automatique des RDV acceptes pour patient et medecin -->
     <uses-permission android:name="android.permission.READ_CALENDAR" />
