@@ -67,6 +67,7 @@ class PreferencesRepository @Inject constructor(
         val PENDING_UPDATE_CHANGELOG = stringPreferencesKey("pending_update_changelog")
         val PENDING_UPDATE_FORCE = booleanPreferencesKey("pending_update_force")
         val APP_LOCK_ENABLED = booleanPreferencesKey("app_lock_enabled")
+        val SON_DEMARRAGE = booleanPreferencesKey("son_demarrage")
         val APP_LOCK_METHOD = stringPreferencesKey("app_lock_method")
         val APP_LOCK_CREDENTIAL = stringPreferencesKey("app_lock_credential")
         val ONBOARDING_DASHBOARD_SEEN = booleanPreferencesKey("onboarding_dashboard_seen")
@@ -155,6 +156,21 @@ class PreferencesRepository @Inject constructor(
 
     suspend fun setAppLockEnabled(enabled: Boolean) {
         context.dataStore.edit { it[Keys.APP_LOCK_ENABLED] = enabled }
+    }
+
+    /**
+     * Sonorite jouee a l'ouverture de l'application.
+     *
+     * Activee par defaut, mais elle ne suffit pas a elle seule : l'ecran de
+     * demarrage verifie aussi que le telephone n'est pas en silencieux, et
+     * joue sur le flux multimedia. Trois conditions, pas une.
+     */
+    val sonDemarrage: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[Keys.SON_DEMARRAGE] ?: true
+    }
+
+    suspend fun setSonDemarrage(actif: Boolean) {
+        context.dataStore.edit { it[Keys.SON_DEMARRAGE] = actif }
     }
 
     /**

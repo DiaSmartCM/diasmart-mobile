@@ -28,6 +28,7 @@ data class SettingsUiState(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val language: AppLanguage = AppLanguage.FRENCH,
     val notificationsEnabled: Boolean = true,
+    val sonDemarrage: Boolean = true,
     val medicationReminders: Boolean = true,
     val measurementReminders: Boolean = true,
     val appointmentReminders: Boolean = true,
@@ -76,6 +77,11 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             preferencesRepository.language.collect { lang ->
                 _uiState.update { it.copy(language = lang) }
+            }
+        }
+        viewModelScope.launch {
+            preferencesRepository.sonDemarrage.collect { actif ->
+                _uiState.update { it.copy(sonDemarrage = actif) }
             }
         }
         viewModelScope.launch {
@@ -199,6 +205,10 @@ class SettingsViewModel @Inject constructor(
                 androidx.core.os.LocaleListCompat.forLanguageTags(tag)
             )
         }
+    }
+
+    fun setSonDemarrage(actif: Boolean) {
+        viewModelScope.launch { preferencesRepository.setSonDemarrage(actif) }
     }
 
     fun setNotificationsEnabled(enabled: Boolean) {

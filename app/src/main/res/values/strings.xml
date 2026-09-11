@@ -102,6 +102,8 @@
     <string name="notif_channel_medicaments">Rappels de médicaments</string>
     <string name="notif_channel_rdv">Rappels de rendez-vous</string>
     <string name="notif_channel_glycemie">Prédictions glycémiques</string>
+    <string name="settings_son_demarrage_title">Son au démarrage</string>
+    <string name="settings_son_demarrage_subtitle">Mélodie courte à l’ouverture, muette si le téléphone est en silencieux</string>
     <string name="notif_channel_alarme_medicaments">Alarmes de traitement</string>
     <string name="notif_channel_alarme_rdv">Alarmes de rendez-vous</string>
     <string name="alarme_arreter">Arrêter</string>

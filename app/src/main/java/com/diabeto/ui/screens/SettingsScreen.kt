@@ -280,6 +280,21 @@ fun SettingsScreen(
                             isDark = isDark
                         )
                     }
+                    // Le son d'ouverture n'est pas une notification, mais
+                    // c'est ici que l'utilisateur vient couper ce qui fait du
+                    // bruit : le chercher ailleurs serait le cacher.
+                    DayLifeDivider(dividerColor)
+                    DayLifeToggleItem(
+                        icon = Icons.Default.VolumeUp,
+                        iconBg = Color(0xFF8B93F0),
+                        title = stringResource(R.string.settings_son_demarrage_title),
+                        subtitle = stringResource(R.string.settings_son_demarrage_subtitle),
+                        checked = uiState.sonDemarrage,
+                        onCheckedChange = viewModel::setSonDemarrage,
+                        titleColor = titleColor,
+                        subtitleColor = subtitleColor,
+                        isDark = isDark
+                    )
                     DayLifeDivider(dividerColor)
                     DayLifeToggleItem(
                         icon = Icons.Default.CalendarMonth,
