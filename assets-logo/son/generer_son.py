@@ -110,7 +110,11 @@ def souffle(duree=0.42, gain=0.09):
 
 # ── Composition ───────────────────────────────────────────────────────
 # Pentatonique de do majeur, sept degres ascendants.
-GAMME = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33]
+# Une octave plus haut qu'a la premiere version. Releve sur un
+# enregistrement telephone : 55 % de l'energie tombait entre 200 et 500 Hz,
+# bande qu'un haut-parleur de telephone ne restitue pas. Le son existait
+# dans le fichier et pas dans la piece.
+GAMME = [523.25, 587.33, 659.25, 783.99, 880.00, 1046.50, 1174.66]
 
 poser(souffle(), T_SORTIE - 120)
 
@@ -123,15 +127,17 @@ for k, ms in enumerate(contacts):
     poser(impact(GAMME[k], gain=gain), ms)
 
 # La pose sur le « i » resout la montee.
-poser(cloche(783.99), T_POSE_I)
+poser(cloche(1567.98), T_POSE_I)
 # Deux micro-contacts du tassement, a peine audibles.
-poser(impact(1174.66, duree=0.10, gain=0.10), T_POSE_I + 150)
-poser(impact(1174.66, duree=0.08, gain=0.05), T_POSE_I + 268)
+poser(impact(2349.32, duree=0.10, gain=0.10), T_POSE_I + 150)
+poser(impact(2349.32, duree=0.08, gain=0.05), T_POSE_I + 268)
 
 # ── Finition ──────────────────────────────────────────────────────────
 # Passe-bas a un pole : rabote les aigus residuels du clic et des partiels.
 # Une sonorite d'ouverture doit s'entendre sans se faire remarquer.
-COUPURE = 3200.0
+# Le passe-bas s'ouvre : a 3,2 kHz il rabotait les attaques, or c'est
+# justement ce que le haut-parleur restitue le mieux.
+COUPURE = 7000.0
 alpha = 1.0 - np.exp(-2 * np.pi * COUPURE / FE)
 lisse = np.empty_like(piste)
 acc = 0.0

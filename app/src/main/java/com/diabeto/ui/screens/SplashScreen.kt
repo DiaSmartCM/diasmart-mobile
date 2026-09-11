@@ -220,9 +220,13 @@ fun SplashScreen(
                 fontWeight = FontWeight.Bold,
             )
             val mot = "DiaSmart"
-            val couleurs = listOf(
-                BLANC, BLANC, BLANC, BLEU_MOT, BLEU_MOT, BLEU_MOT, VIOLET_MOT, VIOLET_MOT
-            )
+            // « Dia » en blanc, « Smart » en dégradé du bleu au violet.
+            // Une lettre ne peut porter qu'une couleur : on échantillonne le
+            // dégradé lettre par lettre plutôt que de le couper en deux blocs.
+            val couleurs = listOf(BLANC, BLANC, BLANC) +
+                (0..4).map { k ->
+                    androidx.compose.ui.graphics.lerp(BLEU_MOT, VIOLET_MOT, k / 4f)
+                }
             val total = mesureur.measure(mot, style).size.width.toFloat()
             var cumul = 0f
             var x = L / 2f * e - total / 2f
@@ -279,7 +283,11 @@ fun SplashScreen(
             val etat = positionBille(t, arcs, lettres)
             if (etat.opacite > 0f) {
                 val rr = px(etat.rayon)
-                translate(px(etat.x), py(etat.y)) {
+                // `etat.x` est deja en pixels ecran : les arcs sont bâtis sur
+                // les lettres mesurees. Le repasser par px() le multipliait
+                // une seconde fois par l'echelle, et la bille partait loin a
+                // droite du mot. Seule la verticale est en unites du repere.
+                translate(etat.x, py(etat.y)) {
                     scale(2f - etat.ecrase, etat.ecrase, Offset.Zero) {
                         rotate(etat.angle, Offset.Zero) {
                             // Intérieur bleu, révélé par l'ouverture de la coque.
@@ -321,33 +329,41 @@ fun SplashScreen(
             // ── Les lettres, une par impact ──
             val avancee = etat.avancee
             lettres.forEachIndexed { i, lettre ->
-                val rang = ORDRE.indexOf(i)
-                if (rang < 0 || etat.contacts <= rang) return@forEachIndexed
-                val jeune = bornes((avancee - rang) / 0.32f, 0f, 1f)
-                val monte = melange(11f, 0f, sortie(jeune))
+                /* La tige du « i » ne figure pas dans ORDRE : cette table ne
+                   liste que les lettres qu'un rebond fait surgir, et la bille
+                   ne rebondit pas sur le « i », elle s'y pose. Tirée de cette
+                   table, la tige recevait le rang -1 et n'était jamais
+                   dessinée — le nom s'affichait « D aSmart ». Elle suit donc
+                   son propre calendrier, calé sur la pose de la bille. */
                 if (lettre.tige) {
+                    val venue = bornes(prog(t, T_REBONDS_FIN + 350f, T_POSE), 0f, 1f)
+                    if (venue <= 0f) return@forEachIndexed
                     val lt = px(CORPS * TIGE_L)
                     val hx = px(CORPS * HAUT_X)
                     drawRoundRect(
-                        color = BLANC.copy(alpha = melange(0.2f, 1f, jeune)),
+                        color = BLANC.copy(alpha = melange(0.2f, 1f, venue)),
                         topLeft = Offset(
                             lettre.x + lettre.largeur / 2f - lt / 2f,
-                            py(SOL) - hx + px(monte),
+                            py(SOL) - hx + px(melange(9f, 0f, sortie(venue))),
                         ),
                         size = Size(lt, hx),
                         cornerRadius = androidx.compose.ui.geometry.CornerRadius(lt / 2f),
                     )
-                } else {
-                    val mise = lettre.mise ?: return@forEachIndexed
-                    drawText(
-                        textLayoutResult = mise,
-                        topLeft = Offset(
-                            lettre.x,
-                            py(SOL) - mise.firstBaseline + px(monte),
-                        ),
-                        alpha = melange(0.2f, 1f, jeune),
-                    )
+                    return@forEachIndexed
                 }
+
+                val rang = ORDRE.indexOf(i)
+                if (rang < 0 || etat.contacts <= rang) return@forEachIndexed
+                val jeune = bornes((avancee - rang) / 0.32f, 0f, 1f)
+                val mise = lettre.mise ?: return@forEachIndexed
+                drawText(
+                    textLayoutResult = mise,
+                    topLeft = Offset(
+                        lettre.x,
+                        py(SOL) - mise.firstBaseline + px(melange(11f, 0f, sortie(jeune))),
+                    ),
+                    alpha = melange(0.2f, 1f, jeune),
+                )
             }
 
             // ── Slogan, barre de chargement, version ──
