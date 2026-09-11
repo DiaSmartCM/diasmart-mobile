@@ -2,6 +2,7 @@ package com.diabeto.ui.screens
 
 import android.content.Context
 import android.media.AudioAttributes
+import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.MediaPlayer
 import androidx.compose.animation.core.Animatable
@@ -122,31 +123,88 @@ private interface SplashEntryPoint {
 }
 
 /**
- * Joue la sonorité d'ouverture, sous trois conditions cumulées.
+ * Sonorité d'ouverture, sous trois conditions cumulées.
  *
  * Le réglage de l'utilisateur ne suffit pas. Une application de santé qui
  * sonne pendant une consultation se fait désinstaller : on vérifie donc
  * aussi le mode de sonnerie du téléphone. Et le son part sur le flux
  * multimédia, jamais alarme ni notification — c'est le seul où baisser le
  * volume a l'effet attendu.
+ *
+ * L'objet détient le lecteur pour n'en avoir qu'un, et le libère aussi bien
+ * en fin de lecture qu'en cas d'erreur.
  */
-private fun jouerOuverture(context: Context) {
-    try {
-        val audio = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
-        if (audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
+private object Ouverture {
 
-        val attributs = AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_MEDIA)
-            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-            .build()
-        val lecteur = MediaPlayer.create(
-            context, R.raw.son_ouverture, attributs, audio.generateAudioSessionId()
-        ) ?: return
-        lecteur.setVolume(0.6f, 0.6f)
-        lecteur.setOnCompletionListener { it.release() }
-        lecteur.start()
-    } catch (_: Exception) {
-        // Une sonorité qui échoue ne doit jamais retarder l'ouverture.
+    private var lecteur: MediaPlayer? = null
+    private var focus: AudioFocusRequest? = null
+    private var gestionnaire: AudioManager? = null
+
+    @Synchronized
+    fun jouer(context: Context) {
+        // Un seul lecteur à la fois. L'écran de démarrage est recréé à
+        // chaque rotation ou changement de langue ; sans cette libération,
+        // un lecteur de plus resterait derrière à chaque fois.
+        liberer()
+        try {
+            val audio = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+            if (audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
+            gestionnaire = audio
+
+            val attributs = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+
+            /* AUDIO_SESSION_ID_GENERATE, et non generateAudioSessionId().
+               La seconde alloue une session dont l'appelant reste
+               propriétaire : le lecteur ne la rend jamais. D'ouverture en
+               ouverture les sessions s'accumulent, l'allocation finit par
+               échouer et MediaPlayer.create renvoie null. Le son disparaît
+               alors définitivement, sans la moindre erreur visible, jusqu'au
+               redémarrage du téléphone. La constante confie la session au
+               lecteur, qui la restitue en se libérant. */
+            val mp = MediaPlayer.create(
+                context.applicationContext,
+                R.raw.son_ouverture,
+                attributs,
+                AudioManager.AUDIO_SESSION_ID_GENERATE,
+            ) ?: return
+
+            /* Focus transitoire avec atténuation. Un son court joué sans
+               demander le focus se fait interrompre dès qu'une autre
+               application en réclame — ce qui arrive d'autant plus que le
+               nôtre dure quatre secondes et demie. */
+            val demande = AudioFocusRequest
+                .Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+                .setAudioAttributes(attributs)
+                .setWillPauseWhenDucked(false)
+                .build()
+            audio.requestAudioFocus(demande)
+            focus = demande
+
+            mp.setVolume(0.6f, 0.6f)
+            mp.setOnCompletionListener { liberer() }
+            mp.setOnErrorListener { _, _, _ -> liberer(); true }
+            lecteur = mp
+            mp.start()
+        } catch (_: Exception) {
+            // Une sonorité qui échoue ne doit jamais retarder l'ouverture,
+            // mais elle ne doit pas non plus laisser de ressource derrière.
+            liberer()
+        }
+    }
+
+    @Synchronized
+    fun liberer() {
+        lecteur?.let { runCatching { it.release() } }
+        lecteur = null
+        val demande = focus
+        val audio = gestionnaire
+        if (demande != null && audio != null) {
+            runCatching { audio.abandonAudioFocusRequest(demande) }
+        }
+        focus = null
     }
 }
 
@@ -174,7 +232,7 @@ fun SplashScreen(
         )
         val prefs = entree.preferencesRepository()
 
-        if (prefs.sonDemarrage.first()) jouerOuverture(context)
+        if (prefs.sonDemarrage.first()) Ouverture.jouer(context)
 
         // Vérification de mise à jour en arrière-plan : jamais bloquante.
         launch {
