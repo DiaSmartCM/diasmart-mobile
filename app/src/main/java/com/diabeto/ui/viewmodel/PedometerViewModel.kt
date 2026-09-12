@@ -164,7 +164,9 @@ class PedometerViewModel @Inject constructor(
                         )
                     }
                 }
-                delay(1000)
+                // 250 ms : le capteur remonte maintenant chaque pas, il
+                // serait dommage d'ajouter une seconde d'attente a l'affichage.
+                delay(250)
             }
         }
     }

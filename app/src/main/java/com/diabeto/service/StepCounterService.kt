@@ -107,13 +107,32 @@ class StepCounterService : Service(), SensorEventListener {
 
     private lateinit var sensorManager: SensorManager
     private var stepSensor: Sensor? = null
+    private var stepDetector: Sensor? = null
     private var initialSteps: Int = -1
-    private var sessionSteps: Int = 0
+
+    /** Pas de la session tels que les donne le compteur materiel. */
+    private var pasDuCompteur: Int = 0
+
+    /**
+     * Pas detectes depuis la derniere remontee du compteur.
+     *
+     * Le compteur groupe ses envois ; entre deux, ce sont ces pas-la qui
+     * font avancer l'affichage. Ils sont remis a zero des que le compteur
+     * parle, car sa valeur fait autorite.
+     */
+    private var pasDepuisCompteur: Int = 0
+
+    private val sessionSteps: Int
+        get() = pasDuCompteur + pasDepuisCompteur
+
+    /** Derniere mise a jour de la notification, pour ne pas la refaire a chaque pas. */
+    private var derniereNotif: Long = 0L
 
     override fun onCreate() {
         super.onCreate()
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         stepSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
+        stepDetector = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR)
         createNotificationChannel()
     }
 
@@ -148,22 +167,34 @@ class StepCounterService : Service(), SensorEventListener {
         val reprisedeSession = prefs.getBoolean(KEY_IS_TRACKING, false)
         if (reprisedeSession) {
             initialSteps = prefs.getInt(KEY_INITIAL_STEPS, -1)
-            sessionSteps = prefs.getInt(KEY_SESSION_STEPS, 0)
+            // Reprise apres un redemarrage du service par le systeme : les pas
+            // deja comptes sont ceux du compteur, le detecteur repart de zero.
+            pasDuCompteur = prefs.getInt(KEY_SESSION_STEPS, 0)
+            pasDepuisCompteur = 0
         } else {
             // Nouvelle session : la reference sera fixee au premier evenement.
             initialSteps = -1
-            sessionSteps = 0
+            pasDuCompteur = 0
+            pasDepuisCompteur = 0
             prefs.edit()
                 .remove(KEY_INITIAL_STEPS)
                 .putInt(KEY_SESSION_STEPS, 0)
                 .apply()
         }
 
+        /* Le quatrieme parametre est la latence maximale de remontee. A
+           zero, on demande explicitement au coprocesseur de ne PAS grouper
+           les evenements. L'ancienne surcharge a trois parametres laissait
+           le constructeur decider, et la plupart groupent sur plusieurs
+           secondes. */
         sensorManager.registerListener(
-            this,
-            stepSensor,
-            SensorManager.SENSOR_DELAY_NORMAL
+            this, stepSensor, SensorManager.SENSOR_DELAY_FASTEST, 0
         )
+        // Un evenement par pas, sans groupage : c'est lui qui rend
+        // l'affichage immediat entre deux remontees du compteur.
+        stepDetector?.let {
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_FASTEST, 0)
+        }
 
         prefs.edit().putBoolean(KEY_IS_TRACKING, true).apply()
         Log.d(TAG, "Suivi des pas demarré (initial=$initialSteps, session=$sessionSteps)")
@@ -188,7 +219,17 @@ class StepCounterService : Service(), SensorEventListener {
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
-        if (event?.sensor?.type != Sensor.TYPE_STEP_COUNTER) return
+        when (event?.sensor?.type) {
+            Sensor.TYPE_STEP_DETECTOR -> {
+                // Un pas vient d'etre fait. On l'ajoute tout de suite, sans
+                // attendre que le compteur materiel veuille bien parler.
+                pasDepuisCompteur += event.values.firstOrNull()?.toInt()?.coerceAtLeast(1) ?: 1
+                enregistrerEtAfficher()
+                return
+            }
+            Sensor.TYPE_STEP_COUNTER -> Unit
+            else -> return
+        }
 
         val totalStepsFromSensor = event.values[0].toInt()
         val prefsRef = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
@@ -204,13 +245,28 @@ class StepCounterService : Service(), SensorEventListener {
                 .apply()
         }
 
-        sessionSteps = (totalStepsFromSensor - initialSteps).coerceAtLeast(0)
+        // La valeur du compteur fait autorite : elle ECRASE le cumul du
+        // detecteur au lieu de s'y ajouter. C'est ce qui evite tout double
+        // comptage entre les deux capteurs.
+        pasDuCompteur = (totalStepsFromSensor - initialSteps).coerceAtLeast(0)
+        pasDepuisCompteur = 0
+        enregistrerEtAfficher()
+    }
+
+    /**
+     * Ecrit les compteurs et rafraichit la notification.
+     *
+     * Les preferences sont ecrites a chaque pas, parce que c'est la que
+     * l'ecran vient lire. La notification, elle, n'est refaite qu'une fois
+     * par seconde : la reconstruire a chaque pas couterait plus cher que le
+     * comptage lui-meme.
+     */
+    private fun enregistrerEtAfficher() {
         val distance = String.format("%.2f", sessionSteps * 0.00075)
         val calories = String.format("%.0f", sessionSteps * 0.04)
 
-        // Save to prefs
         val today = todayKey()
-        val prefs = prefsRef
+        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
         val lastDate = prefs.getString(KEY_LAST_DATE, "") ?: ""
         // v2.1.72 : total du jour = pas des sessions DEJA terminees aujourd'hui
         // + session en cours. Avant, un `coerceAtLeast` gardait le maximum des
@@ -229,10 +285,13 @@ class StepCounterService : Service(), SensorEventListener {
         // Historique journalier consultable (conserve HISTORY_MAX_DAYS jours).
         upsertHistory(prefs, today, dailySteps)
 
-        // Update notification
-        val notification = createNotification(sessionSteps, distance, calories)
-        val notifManager = getSystemService(NotificationManager::class.java)
-        notifManager.notify(NOTIFICATION_ID, notification)
+        val maintenant = System.currentTimeMillis()
+        if (maintenant - derniereNotif >= 1000L) {
+            derniereNotif = maintenant
+            val notification = createNotification(sessionSteps, distance, calories)
+            getSystemService(NotificationManager::class.java)
+                .notify(NOTIFICATION_ID, notification)
+        }
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}

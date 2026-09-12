@@ -102,6 +102,8 @@
     <string name="notif_channel_medicaments">Rappels de médicaments</string>
     <string name="notif_channel_rdv">Rappels de rendez-vous</string>
     <string name="notif_channel_glycemie">Prédictions glycémiques</string>
+    <string name="card_avis_medecin_title">Avis du médecin</string>
+    <string name="card_avis_medecin_subtitle">Réponses ROLLY relues par votre médecin</string>
     <string name="settings_son_demarrage_title">Son au démarrage</string>
     <string name="settings_son_demarrage_subtitle">Mélodie courte à l’ouverture, muette si le téléphone est en silencieux</string>
     <string name="notif_channel_alarme_medicaments">Alarmes de traitement</string>
@@ -254,6 +256,10 @@
     <string name="validations_title">Validations ROLLY</string>
     <string name="validations_subtitle">Collaboration IA-Médecin</string>
     <string name="validations_none_pending">Aucune validation en attente</string>
+    <string name="validations_banner_medecin">Les réponses de ROLLY nécessitent votre validation médicale. Validez ou corrigez avant confirmation au patient.</string>
+    <string name="validations_banner_patient">Voici les réponses de ROLLY relues par votre médecin, avec son commentaire lorsqu’il en a laissé un.</string>
+    <string name="validations_none_patient">Aucune réponse relue pour le moment</string>
+    <string name="validations_subtitle_patient">Avis de votre médecin</string>
 
     <!-- Profile -->
     <string name="profile_image_read_error">Impossible de lire l\'image</string>

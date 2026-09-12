@@ -174,13 +174,36 @@ class MainActivity : AppCompatActivity() {
      */
     private fun handleNotificationIntent(intent: Intent?) {
         if (intent == null) return
-        val target = intent.getStringExtra("navigate_to") ?: return
+
+        /* v2.1.94 : deux origines possibles, et la seconde etait ignoree.
+         *
+         * Quand l'application tourne, notre DiaSmartFCMService construit la
+         * notification et y place `navigate_to`. Mais quand elle est en
+         * arriere-plan ou fermee — le cas le plus frequent — Firebase affiche
+         * lui-meme la notification et n'appelle jamais notre service. Le tap
+         * ouvre alors l'activite avec, pour seuls extras, les cles du bloc
+         * `data` du message : `type`, `conversationId`. Faute de les lire, on
+         * retombait sur le tableau de bord.
+         */
+        val typeFcm = intent.getStringExtra("type")
+        val target = intent.getStringExtra("navigate_to") ?: when (typeFcm) {
+            "new_message" -> "messagerie"
+            "new_community" -> "community"
+            "new_review" -> "mes_avis"
+            else -> null
+        } ?: return
+
         val conversationId = intent.getStringExtra("conversation_id")
+            ?: intent.getStringExtra("conversationId")
         Log.d("MainActivity", "Deep-link from notif: $target conv=$conversationId")
         DeepLinkBus.post(DeepLinkEvent(target = target, conversationId = conversationId))
         // Nettoie l'intent pour eviter qu'une recreation d'activity (rotation,
         // theme change) ne re-emette le deep-link.
         intent.removeExtra("navigate_to")
         intent.removeExtra("conversation_id")
+        // Les extras venus de Firebase se nettoient aussi, sinon une simple
+        // rotation d'ecran relancerait la navigation.
+        intent.removeExtra("type")
+        intent.removeExtra("conversationId")
     }
 }

@@ -56,7 +56,10 @@ fun ValidationsScreen(
                         Column {
                             Text(stringResource(R.string.validations_title), fontWeight = FontWeight.Bold)
                             Text(
-                                stringResource(R.string.validations_subtitle),
+                                stringResource(
+                                    if (uiState.isMedecin) R.string.validations_subtitle
+                                    else R.string.validations_subtitle_patient
+                                ),
                                 fontSize = 11.sp,
                                 color = Primary
                             )
@@ -90,7 +93,14 @@ fun ValidationsScreen(
                 ) {
                     Text("🤖", fontSize = 24.sp)
                     Text(
-                        "Les réponses de ROLLY nécessitent votre validation médicale. Validez ou corrigez avant confirmation au patient.",
+                        // Le meme ecran sert aux deux roles : le medecin y
+                        // valide, le patient y lit l'avis rendu. Un texte
+                        // unique demanderait au patient de valider ses propres
+                        // questions.
+                        stringResource(
+                            if (uiState.isMedecin) R.string.validations_banner_medecin
+                            else R.string.validations_banner_patient
+                        ),
                         fontSize = 13.sp,
                         color = OnSurface.copy(alpha = 0.7f),
                         lineHeight = 19.sp
@@ -119,7 +129,10 @@ fun ValidationsScreen(
                     )
                     Spacer(Modifier.height(16.dp))
                     Text(
-                        stringResource(R.string.validations_none_pending),
+                        stringResource(
+                            if (uiState.isMedecin) R.string.validations_none_pending
+                            else R.string.validations_none_patient
+                        ),
                         style = MaterialTheme.typography.titleMedium,
                         color = OnSurfaceVariant
                     )

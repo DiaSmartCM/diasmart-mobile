@@ -820,6 +820,29 @@ fun DashboardScreen(
                         )
                     }
                 }
+                item { Spacer(modifier = Modifier.height(12.dp)) }
+                item {
+                    // v2.1.94 : le patient n'avait aucun acces a cet ecran. La
+                    // carte n'existait que dans la section du medecin, alors
+                    // que le depot interroge deja la collection par patientUid
+                    // et que l'ecran affiche le commentaire. Le medecin
+                    // ecrivait donc un avis que personne ne pouvait lire.
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        FeatureCard(
+                            title = stringResource(R.string.card_avis_medecin_title),
+                            subtitle = stringResource(R.string.card_avis_medecin_subtitle),
+                            icon = Icons.Outlined.VerifiedUser,
+                            cardColor = Color(0xFFF0E6FF),
+                            iconTint = Color(0xFF8E24AA),
+                            onClick = onNavigateToValidations,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
             }
 
             item { Spacer(modifier = Modifier.height(24.dp)) }
