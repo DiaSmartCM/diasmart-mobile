@@ -99,6 +99,12 @@
             android:enabled="true"
             android:exported="false" />
 
+        <!-- Reponse saisie dans le volet des notifications -->
+        <receiver
+            android:name=".notifications.ReponseRapideReceiver"
+            android:enabled="true"
+            android:exported="false" />
+
         <!-- Bouton « Arreter » de la notification d'alarme -->
         <receiver
             android:name=".notifications.ArretAlarmeReceiver"

@@ -9,6 +9,7 @@ import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.diabeto.MainActivity
+import com.diabeto.R
 import com.diabeto.voip.CallManagerProvider
 import com.diabeto.voip.IncomingCallActivity
 import com.google.firebase.auth.FirebaseAuth
@@ -344,7 +345,12 @@ class DiaSmartFCMService : FirebaseMessagingService() {
         )
 
         val safeBody = if (body.isBlank()) "Nouveau message" else body
-        val notification = NotificationCompat.Builder(this, channelId)
+        // ID stable par conversation : une nouvelle notif remplace la precedente
+        // pour la meme conversation (evite l'empilement infini).
+        val notifId = if (conversationId.isNotBlank()) conversationId.hashCode()
+                      else System.currentTimeMillis().toInt()
+
+        val batisseur = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(android.R.drawable.ic_dialog_email)
             .setContentTitle(senderNom)
             .setContentText(safeBody)
@@ -353,11 +359,39 @@ class DiaSmartFCMService : FirebaseMessagingService() {
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
-            .build()
 
-        // ID stable par conversation : une nouvelle notif remplace la precedente
-        // pour la meme conversation (evite l'empilement infini).
-        val notifId = if (conversationId.isNotBlank()) conversationId.hashCode() else System.currentTimeMillis().toInt()
+        /* Reponse directe depuis le volet.
+           Elle n'est possible que parce que c'est NOUS qui construisons la
+           notification : tant que le serveur envoyait un bloc `notification`,
+           Firebase l'affichait lui-meme et aucune action ne pouvait y etre
+           attachee. Le message est desormais envoye en `data` seul. */
+        if (conversationId.isNotBlank()) {
+            val saisie = androidx.core.app.RemoteInput
+                .Builder(ReponseRapideReceiver.CLE_REPONSE)
+                .setLabel(getString(R.string.reponse_etiquette))
+                .build()
+            val versRecepteur = Intent(this, ReponseRapideReceiver::class.java).apply {
+                putExtra(ReponseRapideReceiver.EXTRA_CONVERSATION, conversationId)
+                putExtra(ReponseRapideReceiver.EXTRA_NOTIF_ID, notifId)
+            }
+            // MUTABLE : le systeme doit pouvoir y injecter le texte saisi.
+            val enAttente = PendingIntent.getBroadcast(
+                this, notifId, versRecepteur,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
+            )
+            batisseur.addAction(
+                NotificationCompat.Action.Builder(
+                    android.R.drawable.ic_menu_send,
+                    getString(R.string.reponse_action),
+                    enAttente,
+                ).addRemoteInput(saisie)
+                    .setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY)
+                    .setShowsUserInterface(false)
+                    .build()
+            )
+        }
+
+        val notification = batisseur.build()
         notificationManager.notify(notifId, notification)
     }
 

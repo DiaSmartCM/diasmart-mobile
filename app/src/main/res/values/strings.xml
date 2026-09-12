@@ -88,6 +88,11 @@
     <string name="messagerie_choisir_medecin">Choisir un médecin</string>
     <string name="messagerie_saisir_message">Saisir un message…</string>
     <string name="notif_channel_messages">Messages DiaSmart</string>
+    <string name="reponse_action">Répondre</string>
+    <string name="reponse_etiquette">Votre réponse…</string>
+    <string name="reponse_envoi_en_cours">Envoi…</string>
+    <string name="reponse_echec">Envoi impossible. Ouvrez la conversation pour réessayer.</string>
+    <string name="reponse_vous">Vous</string>
 
     <!-- Auth -->
     <string name="auth_login">Connexion</string>

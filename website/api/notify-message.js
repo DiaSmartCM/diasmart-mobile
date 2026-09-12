@@ -138,16 +138,30 @@ module.exports = async (req, res) => {
     try {
       await messaging.send({
         token,
-        notification: { title, body: bodyText },
+        // v2.1.95 : plus de bloc `notification`.
+        //
+        // Tant qu'il etait present, Firebase affichait lui-meme la
+        // notification lorsque l'application etait en arriere-plan, et
+        // onMessageReceived n'etait jamais appele. Aucune action ne pouvait
+        // donc y etre attachee : ni la reponse directe, ni le deep-link.
+        //
+        // En `data` seul, l'application construit la notification a chaque
+        // fois. C'est ce qui rend possible le bouton « Repondre ». La
+        // contrepartie est reelle : un message `data` seul depend du reveil
+        // de l'application, que certains constructeurs retardent quand elle
+        // a ete fermee. La priorite haute et l'exemption d'optimisation de
+        // batterie (v2.1.89) sont la pour limiter ce risque.
         data: {
           type: "new_message",
           conversationId,
           senderUid: decoded.uid,
           senderNom: senderNom.substring(0, 60),
+          title,
+          body: bodyText,
         },
         android: {
           priority: "high",
-          notification: { channelId: "diasmart_messages" },
+          ttl: 3600 * 1000,
         },
       });
       sent++;
