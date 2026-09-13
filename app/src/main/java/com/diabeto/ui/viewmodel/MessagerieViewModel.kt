@@ -112,9 +112,16 @@ class ConversationDetailViewModel @Inject constructor(
         // Firestore par "session de frappe" (debut + arret), quelle que soit
         // sa duree — jamais 1 par caractere.
         private const val TYPING_DEBOUNCE_MS = 3_000L
-        // Au-dela, on ignore un typing=true reste bloque (app fermee en
-        // pleine frappe) sans attendre de nouvel evenement Firestore.
-        private const val TYPING_STALE_MS = 8_000L
+        // v2.1.98 : un message un peu long se tape SANS pause de 3s entre les
+        // mots (frappe mobile normale ~2-3 caracteres/s). typingXAt ne bougeait
+        // qu'au debut de la frappe -> passe "perime" bien avant que l'auteur
+        // ait fini d'ecrire. On rafraichit donc le timestamp toutes les
+        // TYPING_REFRESH_MS tant que la frappe continue (ecriture peu couteuse :
+        // 1 de plus toutes les 8s, jamais par caractere).
+        private const val TYPING_REFRESH_MS = 8_000L
+        // Marge de securite (app fermee en pleine frappe) : strictement au-dela
+        // du cycle de rafraichissement, pour ne jamais perimer une frappe encore active.
+        private const val TYPING_STALE_MS = 12_000L
     }
 
     private val conversationId: String = savedStateHandle["conversationId"] ?: ""
@@ -129,6 +136,7 @@ class ConversationDetailViewModel @Inject constructor(
     private var isMedecin = false
     private var isCurrentlyTyping = false
     private var typingStopJob: Job? = null
+    private var typingRefreshJob: Job? = null
 
     init {
         _uiState.update { it.copy(currentUserId = authRepository.currentUserId) }
@@ -189,6 +197,7 @@ class ConversationDetailViewModel @Inject constructor(
         if (!isCurrentlyTyping) {
             isCurrentlyTyping = true
             viewModelScope.launch { messagerieRepository.setTyping(conversationId, true) }
+            startTypingRefresh()
         }
         typingStopJob?.cancel()
         typingStopJob = viewModelScope.launch {
@@ -197,8 +206,23 @@ class ConversationDetailViewModel @Inject constructor(
         }
     }
 
+    /** Tant que la frappe continue, reecrit typing=true toutes les [TYPING_REFRESH_MS]
+     * pour que l'observateur ne la juge jamais "perimee" en cours de route. */
+    private fun startTypingRefresh() {
+        typingRefreshJob?.cancel()
+        typingRefreshJob = viewModelScope.launch {
+            while (isCurrentlyTyping) {
+                delay(TYPING_REFRESH_MS)
+                if (isCurrentlyTyping) {
+                    messagerieRepository.setTyping(conversationId, true)
+                }
+            }
+        }
+    }
+
     private fun stopTyping() {
         typingStopJob?.cancel()
+        typingRefreshJob?.cancel()
         if (!isCurrentlyTyping) return
         isCurrentlyTyping = false
         viewModelScope.launch { messagerieRepository.setTyping(conversationId, false) }

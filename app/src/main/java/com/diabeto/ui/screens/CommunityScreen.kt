@@ -76,9 +76,15 @@ fun CommunityScreen(
                         Column {
                             Text(stringResource(R.string.community_title), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             Text(
-                                "${uiState.membersCount} membres",
+                                text = when {
+                                    uiState.typersNames.size == 1 -> "${uiState.typersNames[0]} est en train d'écrire..."
+                                    uiState.typersNames.size > 1 -> "${uiState.typersNames.size} personnes écrivent..."
+                                    else -> "${uiState.membersCount} membres"
+                                },
                                 fontSize = 11.sp,
-                                color = StatusGreen
+                                color = StatusGreen,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }

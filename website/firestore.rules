@@ -242,6 +242,13 @@ service cloud.firestore {
                                resource.data.userId == request.auth.uid;
     }
 
+    // v2.1.98 : indicateur de frappe dans la Communaute. Un document par
+    // utilisateur en train d'ecrire, supprime a l'arret (cf. CommunityRepository).
+    match /community_typing/{uid} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(uid);
+    }
+
     // ════════════════════════════════════════════════════════════════
     //  AVIS PATIENT SUR MEDECIN
     //  Doc ID : {doctorUid}_{patientUid}

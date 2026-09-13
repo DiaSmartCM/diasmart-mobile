@@ -8,6 +8,8 @@ import com.diabeto.data.repository.AuthRepository
 import com.diabeto.data.repository.CommunityRepository
 import com.google.firebase.Timestamp
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -28,6 +30,7 @@ data class CommunityUiState(
     val isSending: Boolean = false,
     val currentUserId: String = "",
     val membersCount: Int = 0,
+    val typersNames: List<String> = emptyList(),
     val error: String? = null
 )
 
@@ -38,13 +41,38 @@ class CommunityViewModel @Inject constructor(
     private val notificationApi: NotificationApi
 ) : ViewModel() {
 
+    companion object {
+        // Coherent avec ConversationDetailViewModel (cf. commentaire la-bas).
+        private const val TYPING_DEBOUNCE_MS = 3_000L
+        private const val TYPING_REFRESH_MS = 8_000L
+    }
+
     private val _uiState = MutableStateFlow(CommunityUiState())
     val uiState: StateFlow<CommunityUiState> = _uiState.asStateFlow()
+
+    private var userName: String = "Anonyme"
+    private var isCurrentlyTyping = false
+    private var typingStopJob: Job? = null
+    private var typingRefreshJob: Job? = null
 
     init {
         _uiState.update { it.copy(currentUserId = authRepository.currentUserId ?: "") }
         observeMessages()
+        observeTypers()
         countMembers()
+        viewModelScope.launch {
+            val profile = authRepository.getCurrentUserProfile()
+            userName = profile?.nomComplet?.ifBlank { profile.email } ?: "Anonyme"
+        }
+    }
+
+    private fun observeTypers() {
+        val uid = authRepository.currentUserId ?: return
+        viewModelScope.launch {
+            communityRepository.observeTypers(excludeUid = uid)
+                .catch { /* silencieux : l'indicateur de frappe n'est pas critique */ }
+                .collect { names -> _uiState.update { it.copy(typersNames = names) } }
+        }
     }
 
     private fun observeMessages() {
@@ -64,11 +92,51 @@ class CommunityViewModel @Inject constructor(
 
     fun onInputChange(text: String) {
         _uiState.update { it.copy(inputText = text) }
+
+        if (text.isBlank()) {
+            stopTyping()
+            return
+        }
+        if (!isCurrentlyTyping) {
+            isCurrentlyTyping = true
+            val uid = authRepository.currentUserId
+            if (uid != null) {
+                viewModelScope.launch { communityRepository.setTyping(uid, userName, true) }
+                startTypingRefresh(uid)
+            }
+        }
+        typingStopJob?.cancel()
+        typingStopJob = viewModelScope.launch {
+            delay(TYPING_DEBOUNCE_MS)
+            stopTyping()
+        }
+    }
+
+    private fun startTypingRefresh(uid: String) {
+        typingRefreshJob?.cancel()
+        typingRefreshJob = viewModelScope.launch {
+            while (isCurrentlyTyping) {
+                delay(TYPING_REFRESH_MS)
+                if (isCurrentlyTyping) {
+                    communityRepository.setTyping(uid, userName, true)
+                }
+            }
+        }
+    }
+
+    private fun stopTyping() {
+        typingStopJob?.cancel()
+        typingRefreshJob?.cancel()
+        if (!isCurrentlyTyping) return
+        isCurrentlyTyping = false
+        val uid = authRepository.currentUserId ?: return
+        viewModelScope.launch { communityRepository.setTyping(uid, userName, false) }
     }
 
     fun sendMessage() {
         val text = _uiState.value.inputText.trim()
         if (text.isBlank()) return
+        stopTyping()
 
         viewModelScope.launch {
             _uiState.update { it.copy(isSending = true) }
