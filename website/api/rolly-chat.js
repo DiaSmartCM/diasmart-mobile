@@ -45,10 +45,12 @@ const MAX_REQUESTS_PER_DAY = 200; // par UID
 // des que le quota du premier modele tombait, ROLLY etait en panne pour tout
 // le monde jusqu'a minuit heure du Pacifique. Chaque modele de la chaine
 // apporte son propre quota gratuit.
+//
+// Ne pas remettre gemini-2.5-flash-lite : Google le refuse (404) aux projets
+// crees recemment et renvoie vers gemini-3.5-flash-lite.
 const MODEL_CHAIN = [
   "gemini-2.5-flash",
   "gemini-flash-latest",
-  "gemini-2.5-flash-lite",
   "gemini-3.5-flash-lite",
 ];
 
