@@ -52,7 +52,7 @@ const PLATS = [
     nom: "Couscous de mais",
     famille: "Feculents",
     couleur: "jaune, ou blanc laiteux selon la preparation — les deux existent",
-    forme: "EN BOULE",
+    forme: "EN BOULE, en dome ou en cone faconne a la main",
     texture: "compacte",
     accompagnements: "sauces de legumes, sauces de feuilles, gombo, et surtout le nkui : une boule de couscous de mais blanc a cote d'une sauce brune gluante est le plat de l'Ouest par excellence",
     confusions: [
@@ -104,6 +104,30 @@ const PLATS = [
   { nom: "Achu", famille: "Feculents", couleur: "pate blanche", forme: "tas lisse creuse au centre", texture: "lisse et elastique", accompagnements: "sauce jaune tres huileuse, la couleur jaune de la sauce est caracteristique" },
   { nom: "Plantain mur frit (alloco)", famille: "Feculents", couleur: "dore a brun", forme: "tranches ovales ou biseautees", texture: "bords caramelises, moelleux", accompagnements: "haricots, poisson, soya" },
   { nom: "Plantain vert bouilli", famille: "Feculents", couleur: "jaune pale mat", forme: "gros morceaux", texture: "ferme", accompagnements: "ndole, sauces" },
+  {
+    nom: "Banane malaxee (plantain malaxe)",
+    famille: "Feculents",
+    couleur: "brun-orange a caramel avec la pate d'arachide, ou rouge-orange avec l'huile de palme",
+    forme: "masse epaisse en tas dans laquelle on distingue des formes ALLONGEES enrobees : ce sont les morceaux de plantain",
+    texture: "cremeuse et pateuse, plantain en partie ecrase et melange a la sauce, morceaux de poisson fume dedans",
+    accompagnements: "AVOCAT pose a cote tres souvent, c'est un indice fort",
+    confusions: [
+      { avec: "sauce d'arachide", signe: "les formes allongees enrobees sont du plantain melange au plat : c'est un feculent complet, pas une sauce seule. L'avocat a cote penche pour la banane malaxee" },
+    ],
+    source: "terrain",
+  },
+  {
+    nom: "Legumes verts sautes",
+    famille: "Plats a feuilles",
+    couleur: "vert fonce, avec parfois des morceaux orange ou rouges (piment, tomate, oignon)",
+    forme: "petit tas d'accompagnement",
+    texture: "feuilles coupees GROSSIEREMENT, tiges visibles, luisantes d'huile, SANS liant d'arachide",
+    accompagnements: "couscous de mais et nkui",
+    confusions: [
+      { avec: "ndole", signe: "le ndole est une masse epaisse et mate liee a l'arachide, en petits morceaux ; les legumes sautes sont des feuilles et tiges distinctes, sans liant" },
+    ],
+    source: "terrain",
+  },
   { nom: "Plantain braise", famille: "Feculents", couleur: "jaune avec stries noires de grill", forme: "moities allongees", texture: "ferme", accompagnements: "soya, poisson braise" },
   { nom: "Taro", famille: "Feculents", couleur: "blanc a violace", forme: "morceaux ou pile", texture: "ferme ou pateuse", accompagnements: "sauce jaune" },
   { nom: "Macabo, igname, patate douce", famille: "Feculents", couleur: "blanc a jaune pale", forme: "gros morceaux", texture: "ferme", accompagnements: "sauces, huile de palme" },
@@ -153,9 +177,9 @@ const PLATS = [
   {
     nom: "Okok (mfumbua)",
     famille: "Plats a feuilles",
-    couleur: "VERT TRES FONCE tirant sur le BRUN ou le kaki, jamais vert vif ; parfois un jus rouge-orange d'huile ou de noix de palme sur les bords",
+    couleur: "VERT TRES FONCE tirant sur le BRUN ou le kaki, jamais vert vif ; BEAUCOUP d'huile de palme rouge qui deborde souvent sur les bords",
     forme: "masse compacte en tas, qui se tient",
-    texture: "feuilles hachees EXTREMEMENT fin, presque en fils, collees en grumeaux par la pate d'arachide ; aucune feuille entiere visible",
+    texture: "feuilles hachees EXTREMEMENT fin, presque en fils, collees en grumeaux par la pate d'arachide ; aucune feuille entiere visible. Plat TRES RICHE EN LIPIDES : pate d'arachide ET beaucoup d'huile rouge, les lipides d'une assiette sont eleves",
     accompagnements: "MANIOC BOUILLI en morceaux ou baton de manioc, c'est l'association habituelle",
     confusions: [
       { avec: "eru", signe: "meme feuille, preparation differente : l'eru est vert vif et huileux, avec des feuilles de waterleaf reconnaissables, et se mange avec du water fufu ; l'okok est brun-vert fonce, compact, lie par l'arachide, et se mange avec du manioc" },
@@ -183,7 +207,20 @@ const PLATS = [
     ],
     source: "terrain",
   },
-  { nom: "Sauce d'arachide (nnam owondo, mafe)", famille: "Sauces", couleur: "brun-orange", forme: "sauce nappante", texture: "onctueuse et epaisse, jamais noire", accompagnements: "riz, baton de manioc, viande" },
+  {
+    nom: "Sauce d'arachide (nnam owondo, mafe)",
+    famille: "Sauces",
+    couleur: "brun-orange a caramel, opaque, jamais noire",
+    forme: "sauce nappante qui recouvre les morceaux",
+    texture: "onctueuse, cremeuse et epaisse, parfois legerement granuleuse en surface ; aucune feuille visible",
+    accompagnements: "poisson fume ou viande dans la sauce ; riz, baton de manioc, manioc bouilli, plantain servi A PART",
+    confusions: [
+      { avec: "banane malaxee", signe: "dans la banane malaxee, des morceaux ALLONGES de plantain enrobes sont melanges a la masse et l'avocat est souvent pose a cote ; une sauce d'arachide nappe du poisson ou de la viande, le feculent etant servi a part" },
+      { avec: "nkui", signe: "la sauce d'arachide est cremeuse et opaque, souvent avec du poisson fume ; le nkui est gluant et filant, servi avec une boule de couscous" },
+      { avec: "okok et eru", signe: "la sauce d'arachide ne contient AUCUNE feuille ; l'okok et l'eru sont des masses de feuilles hachees" },
+    ],
+    source: "terrain",
+  },
   {
     nom: "Nkui",
     famille: "Sauces",
@@ -235,6 +272,7 @@ const PLATS = [
   { nom: "Quinoa, boulgour, semoule", famille: "Occidental", couleur: "beige clair", forme: "petites billes ou grains", texture: "le quinoa montre un germe en spirale visible", accompagnements: "legumes, viande" },
   { nom: "Riz saute, nouilles sautees", famille: "Occidental", couleur: "brun dore", forme: "melange saute", texture: "grains ou nouilles avec des des de legumes", accompagnements: "sauce soja, poulet" },
   { nom: "Bouillie de mais ou de mil", famille: "Occidental", couleur: "beige clair", forme: "liquide epais en bol", texture: "lisse et fluide", accompagnements: "beignets, pain" },
+  { nom: "Safou (prune du Cameroun)", famille: "Afrique", couleur: "violet fonce a bleu-noir, chair vert pale a l'interieur", forme: "fruit OVALE allonge de 5 a 8 cm, entier ou fendu", texture: "peau lisse et luisante, chair tendre et grasse une fois cuite", accompagnements: "manioc bouilli, mais grille, plantain ou pain. Fruit tres riche en lipides", confusions: [ { avec: "aubergine ou taro violet", signe: "le safou est un petit fruit ovale entier a peau luisante, pas un legume coupe" } ], source: "terrain" },
   { nom: "Fruits frais", famille: "Occidental", couleur: "variable", forme: "morceaux ou entiers", texture: "banane, mangue, papaye, ananas, orange, pasteque, avocat", accompagnements: "aucun" },
   { nom: "Gateau, tarte, crepes, yaourt", famille: "Occidental", couleur: "variable", forme: "part ou portion", texture: "pate cuite, creme, laitage", accompagnements: "aucun" },
 ];

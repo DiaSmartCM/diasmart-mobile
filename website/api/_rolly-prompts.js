@@ -247,6 +247,51 @@ deux plats voisins — verifie-le explicitement avant de trancher.
 
 ${buildCatalogue()}
 
+═══ PIEGES FREQUENTS — A VERIFIER UN PAR UN ═══
+Ces erreurs ont ete constatees sur de vraies photos de patients.
+
+1. L'HUILE DE PALME NE DESIGNE PAS L'ERU. L'okok, le kpem et bien d'autres
+   plats baignent aussi dans l'huile rouge. Regarde la MASSE DE FEUILLES
+   elle-meme, pas l'huile autour :
+   - vert vif, lanieres ou feuilles de waterleaf distinctes, masse souple = eru ;
+   - BRUN, brun-vert, kaki ou caramel, pateux et en grumeaux, lie par
+     l'arachide, aucune feuille distincte = OKOK.
+   Une masse brune n'est jamais de l'eru.
+2. FECULENT BLANC : cherche les FIBRES et la FORME.
+   - Des MORCEAUX coupes (quartiers, batonnets, coins aux bords anguleux), des
+     fibres ou des fentes dans la longueur = manioc bouilli. A cote d'un okok,
+     des morceaux blancs sont presque toujours du manioc bouilli.
+   - Le water fufu et le fufu sont des pates lisses et moulees d'un seul
+     tenant, sans fibre et sans arete vive : jamais en morceaux coupes.
+   - Une pate blanche faconnee en BOULE, en DOME ou en CONE = couscous. Une
+     boule posee a cote d'une sauce brune est un couscous de mais, pas du fufu.
+3. SAUCE BRUNE OU SOMBRE : trois plats differents.
+   - Masse epaisse brun-orange ou caramel (arachide) ou rouge-orange (huile de
+     palme) dans laquelle on voit des formes ALLONGEES enrobees, qui sont des
+     morceaux de plantain, avec du poisson fume, souvent de l'AVOCAT pose a
+     cote = BANANE MALAXEE. C'est un plat de FECULENT : ses glucides viennent
+     du plantain, ne le reduis jamais a une simple sauce.
+   - Brun-orange ou caramel, onctueuse et opaque, qui nappe du poisson ou de la
+     viande, le feculent etant servi a part = sauce d'arachide.
+   - Brune a tres foncee, LISSE et UNIFORME, SANS aucun morceau de poisson ni
+     de viande dedans, servie a cote d'une boule de couscous = NKUI. Sur une
+     photo, le nkui parait souvent presque noir : ce n'est pas un mbongo pour
+     autant.
+   - Noire d'encre et huileuse, AVEC des morceaux de poisson ou de viande
+     cuits dans la sauce = mbongo tchobi. Pas de poisson ni de viande visible
+     dans la sauce : ce n'est pas un mbongo tchobi.
+   Les legumes verts sautes servis a cote du nkui (feuilles coupees
+   grossierement, tiges visibles, sans liant d'arachide) ne sont PAS du ndole.
+5. LIPIDES JAMAIS A 0 G POUR CES PLATS, qu'ils soient reconnus sur la photo
+   ou indiques par le patient : okok, eru, ndole, kpem, mbongo tchobi, nkui,
+   sauce d'arachide, sauce jaune, banane malaxee, koki, mets de pistache,
+   poulet DG, safou, avocat, arachides. Leur recette contient de l'huile de
+   palme, de l'arachide ou un fruit gras. Estime les lipides d'apres cette
+   recette pour la portion visible.
+4. N'invente jamais un plat que tu ne vois pas. Si aucun plat de feuilles
+   n'est visible, il n'y a ni eru ni okok dans "nom_repas", meme si un
+   feculent habituellement servi avec est present.
+
 ═══ AVANT DE NOMMER ═══
 Cite en pensee le signe distinctif qui t'a fait choisir ce plat plutot que son
 voisin le plus proche. Si ce signe n'est pas visible sur la photo, tu n'as pas
@@ -263,6 +308,7 @@ underscores — l'application les lit tels quels :
 {
   "aliments_identifies": ["element visible 1", "element visible 2"],
   "confiance_identification": "elevee",
+  "indice_decisif": "le signe visible qui separe ce plat de son voisin le plus proche",
   "nom_repas": "nom court du plat",
   "description": "description en 1 phrase, mentionnant toute incertitude",
   "glucides_estimes": 45.5,
