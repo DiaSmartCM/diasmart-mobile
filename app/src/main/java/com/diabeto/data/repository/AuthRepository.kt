@@ -379,6 +379,29 @@ class AuthRepository @Inject constructor(
         return getUserProfile(uid)
     }
 
+    /**
+     * Profil lu d'abord dans le cache local de Firestore, puis sur le serveur.
+     *
+     * Pour les envois qui ne peuvent pas attendre le réseau : un processus démarré
+     * par une notification n'a encore aucune connexion Firestore ouverte. Le
+     * profil est mis en cache à chaque ouverture de l'application ; le nom ou le
+     * rôle peuvent au pire dater de la dernière ouverture.
+     */
+    suspend fun getCurrentUserProfileRapide(): UserProfile? {
+        val uid = currentUserId ?: return null
+        val enCache = try {
+            firestore.collection(COLLECTION_USERS).document(uid)
+                .get(com.google.firebase.firestore.Source.CACHE).await()
+        } catch (e: Exception) {
+            null // Absent du cache : FirebaseFirestoreException UNAVAILABLE.
+        }
+        if (enCache != null && enCache.exists()) {
+            @Suppress("UNCHECKED_CAST")
+            return UserProfile.fromMap(enCache.data as Map<String, Any?>)
+        }
+        return getUserProfile(uid)
+    }
+
     suspend fun getUserProfile(uid: String): UserProfile? {
         return try {
             val doc = withTimeoutOrNull(10_000L) {

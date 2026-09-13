@@ -86,7 +86,10 @@ class MessagerieRepository @Inject constructor(
      */
     suspend fun envoyerMessage(conversationId: String, contenu: String): Result<Unit> {
         return try {
-            val profile = authRepository.getCurrentUserProfile()
+            // v2.1.96 : profil lu d'abord dans le cache local. Envoyé depuis une
+            // notification, application fermée, la lecture serveur dépassait
+            // son délai et le message ne partait pas.
+            val profile = authRepository.getCurrentUserProfileRapide()
                 ?: return Result.failure(Exception("Utilisateur non connecté"))
 
             val message = Message(
