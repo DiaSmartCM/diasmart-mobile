@@ -170,7 +170,7 @@ const PLATS = [
     accompagnements: "water fufu ou fufu presque systematiquement — c'est un indice fort",
     confusions: [
       { avec: "ndole", signe: "lanieres longues et surface brillante pour l'eru ; morceaux courts et surface mate pour le ndole. L'huile de palme rouge visible penche pour l'eru" },
-      { avec: "okok", signe: "c'est la MEME feuille, seule la preparation change. L'eru reste VERT VIF, on reconnait les feuilles de waterleaf et l'huile de palme luit ; l'okok est VERT TRES FONCE tirant sur le BRUN ou le kaki, en masse compacte liee par l'arachide. Brun-vert et compact, ce n'est pas de l'eru" },
+      { avec: "okok", signe: "c'est la MEME feuille, seule la preparation change. L'eru reste VERT VIF, on reconnait les feuilles de waterleaf et l'huile de palme luit ; l'okok est VERT TRES FONCE tirant sur le BRUN ou le kaki, en masse compacte liee par l'arachide ou par la pulpe de noix de palme. Brun-vert et compact, ce n'est pas de l'eru" },
     ],
     source: "terrain",
   },
@@ -179,10 +179,10 @@ const PLATS = [
     famille: "Plats a feuilles",
     couleur: "VERT TRES FONCE tirant sur le BRUN ou le kaki, jamais vert vif ; BEAUCOUP d'huile de palme rouge qui deborde souvent sur les bords",
     forme: "masse compacte en tas, qui se tient",
-    texture: "feuilles hachees EXTREMEMENT fin, presque en fils, collees en grumeaux par la pate d'arachide ; aucune feuille entiere visible. Plat TRES RICHE EN LIPIDES : pate d'arachide ET beaucoup d'huile rouge, les lipides d'une assiette sont eleves",
+    texture: "feuilles hachees EXTREMEMENT fin, presque en fils, collees en grumeaux par la pate d'arachide ou par la pulpe de noix de palme ; aucune feuille entiere visible. Plat TRES RICHE EN LIPIDES : arachide ou pulpe de noix de palme, ET beaucoup d'huile rouge, les lipides d'une assiette sont eleves",
     accompagnements: "MANIOC BOUILLI en morceaux ou baton de manioc, c'est l'association habituelle",
     confusions: [
-      { avec: "eru", signe: "meme feuille, preparation differente : l'eru est vert vif et huileux, avec des feuilles de waterleaf reconnaissables, et se mange avec du water fufu ; l'okok est brun-vert fonce, compact, lie par l'arachide, et se mange avec du manioc" },
+      { avec: "eru", signe: "meme feuille, preparation differente : l'eru est vert vif et huileux, avec des feuilles de waterleaf reconnaissables, et se mange avec du water fufu ; l'okok est brun-vert fonce, compact, lie par l'arachide ou la pulpe de noix de palme, et se mange avec du manioc" },
       { avec: "ndole", signe: "le ndole est vert fonce MAT en petits morceaux de feuille distincts ; l'okok est plus brun, en fils tres fins colles en masse" },
     ],
     source: "terrain",

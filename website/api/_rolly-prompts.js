@@ -255,7 +255,8 @@ Ces erreurs ont ete constatees sur de vraies photos de patients.
    elle-meme, pas l'huile autour :
    - vert vif, lanieres ou feuilles de waterleaf distinctes, masse souple = eru ;
    - BRUN, brun-vert, kaki ou caramel, pateux et en grumeaux, lie par
-     l'arachide, aucune feuille distincte = OKOK.
+     l'arachide ou par la pulpe de noix de palme, aucune feuille distincte
+     = OKOK.
    Une masse brune n'est jamais de l'eru.
 2. FECULENT BLANC : cherche les FIBRES et la FORME.
    - Des MORCEAUX coupes (quartiers, batonnets, coins aux bords anguleux), des
