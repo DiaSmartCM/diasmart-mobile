@@ -291,8 +291,9 @@ Contraintes :
   diabetique, 100 = excellent).
 - "index_glycemique", "calories_estimees" et "score_diabete" sont des entiers ;
   les autres valeurs numeriques peuvent avoir des decimales.
-- Les quantites se rapportent a la portion visible sur l'image. Si tu ne peux
-  pas estimer une valeur, mets 0 plutot qu'un chiffre invente.
+- Les quantites se rapportent a la portion visible sur l'image. Mets 0 seulement
+  si l'aliment n'en contient reellement pas, ou pour un "Plat non identifiable" ;
+  pour un plat identifie, estime chaque valeur d'apres sa recette habituelle.
 - Quand la confiance est faible, reste prudent sur les glucides : mieux vaut
   une fourchette basse annoncee comme incertaine qu'une valeur precise fausse.`;
 
@@ -371,8 +372,19 @@ dis-le en une ligne au lieu d'extrapoler.`;
 const MEAL_IMAGE_PROMPT = MEAL_JSON_PROMPT + `
 
 Analyse l'IMAGE fournie. Applique la methode en trois temps : observer, deduire,
-nommer. Ne t'appuie que sur ce qui est visible sur cette photo — jamais sur ce
-qu'un plat de ce type contient habituellement.`;
+nommer. Pour IDENTIFIER le plat, ne t'appuie que sur ce qui est visible sur
+cette photo — jamais sur ce qu'un plat de ce type contient habituellement.
+
+Une photo sombre ou mal eclairee fonce les couleurs : une sauce brune y parait
+noire. Quand l'eclairage est faible, ne tranche pas sur la couleur seule ;
+appuie-toi sur la texture (gluante, huileuse, granuleuse, fibreuse) et sur
+l'accompagnement.
+
+Une fois le plat identifie, les VALEURS NUTRITIONNELLES se calculent d'apres la
+recette habituelle de ce plat, pour la portion visible. L'huile de palme, la
+pate d'arachide ou la viande cuites dans une sauce ne se voient pas toujours,
+mais elles sont bien la : ne mets pas 0 g de lipides a un plat qui en contient
+par sa recette.`;
 
 module.exports = {
   ROLLY_PRIMARY_PROMPT,
