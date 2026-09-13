@@ -184,6 +184,19 @@ const PLATS = [
     confusions: [
       { avec: "eru", signe: "meme feuille, preparation differente : l'eru est vert vif et huileux, avec des feuilles de waterleaf reconnaissables, et se mange avec du water fufu ; l'okok est brun-vert fonce, compact, lie par l'arachide ou la pulpe de noix de palme, et se mange avec du manioc" },
       { avec: "ndole", signe: "le ndole est vert fonce MAT en petits morceaux de feuille distincts ; l'okok est plus brun, en fils tres fins colles en masse" },
+      { avec: "okok sucre", signe: "l'okok sale contient de la viande ou du poisson visibles ; sans viande ni poisson, c'est un okok sucre" },
+    ],
+    source: "terrain",
+  },
+  {
+    nom: "Okok sucre",
+    famille: "Plats a feuilles",
+    couleur: "meme aspect que l'okok : vert tres fonce tirant sur le brun, beaucoup d'huile de palme rouge",
+    forme: "masse compacte en tas",
+    texture: "feuilles hachees tres fin, liees par l'arachide ou la pulpe de noix de palme, AUCUN morceau de viande ni de poisson : le liant est sucre",
+    accompagnements: "manioc bouilli ou baton de manioc",
+    confusions: [
+      { avec: "okok sale", signe: "le sucre ne se voit pas : c'est l'ABSENCE de viande et de poisson qui signale l'okok sucre. Ses glucides incluent le sucre ajoute, en plus du manioc" },
     ],
     source: "terrain",
   },

@@ -258,6 +258,10 @@ Ces erreurs ont ete constatees sur de vraies photos de patients.
      l'arachide ou par la pulpe de noix de palme, aucune feuille distincte
      = OKOK.
    Une masse brune n'est jamais de l'eru.
+   OKOK SANS VIANDE NI POISSON VISIBLES = OKOK SUCRE. Il est lie avec du
+   sucre : nomme-le "Okok sucre", compte ce sucre dans "glucides_estimes" et
+   previens le patient diabetique dans "impact_glycemique". Avec de la viande
+   ou du poisson, c'est un okok sale.
 2. FECULENT BLANC : cherche les FIBRES et la FORME.
    - Des MORCEAUX coupes (quartiers, batonnets, coins aux bords anguleux), des
      fibres ou des fentes dans la longueur = manioc bouilli. A cote d'un okok,
