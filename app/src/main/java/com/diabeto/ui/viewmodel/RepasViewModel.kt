@@ -39,6 +39,10 @@ import com.diabeto.util.MessageErreur
 data class RepasUiState(
     // Saisie
     val descriptionRepas: String = "",
+    // Vrai des qu'une analyse photo a envoye cette description. Choisir une
+    // autre photo l'efface alors, meme si l'analyse a echoue : sinon le nom
+    // tape pour le premier plat serait impose au suivant.
+    val descriptionConsommee: Boolean = false,
 
     // Image Vision
     val capturedBitmap: Bitmap? = null,
@@ -106,7 +110,8 @@ class RepasViewModel @Inject constructor(
     // ─── Saisie ──────────────────────────────────────────────────────────────
 
     fun onDescriptionChange(text: String) {
-        _uiState.update { it.copy(descriptionRepas = text) }
+        // Le patient retape : c'est une description neuve, pour la photo a venir.
+        _uiState.update { it.copy(descriptionRepas = text, descriptionConsommee = false) }
     }
 
     fun onNomRepasChange(text: String) {
@@ -148,7 +153,21 @@ class RepasViewModel @Inject constructor(
     // ─── Image Vision ────────────────────────────────────────────────────────
 
     fun setCapturedBitmap(bitmap: Bitmap) {
-        _uiState.update { it.copy(capturedBitmap = bitmap, isImageMode = true) }
+        // Une nouvelle photo efface le resultat de la precedente : le laisser
+        // affiche ferait croire que l'analyse porte deja sur ce nouveau plat.
+        _uiState.update {
+            it.copy(
+                capturedBitmap = bitmap,
+                isImageMode = true,
+                analyseResult = null,
+                savedSuccessfully = false,
+                error = null,
+                // Une description deja envoyee pour la photo precedente ne
+                // doit pas etre imposee a celle-ci, meme apres un echec.
+                descriptionRepas = if (it.descriptionConsommee) "" else it.descriptionRepas,
+                descriptionConsommee = false
+            )
+        }
     }
 
     fun clearImage() {
@@ -167,7 +186,14 @@ class RepasViewModel @Inject constructor(
 
         viewModelScope.launch {
             _uiState.update {
-                it.copy(isAnalysing = true, error = null, analyseResult = null, savedSuccessfully = false)
+                it.copy(
+                    isAnalysing = true,
+                    error = null,
+                    analyseResult = null,
+                    savedSuccessfully = false,
+                    // La description part avec cette photo : elle lui appartient.
+                    descriptionConsommee = it.descriptionRepas.isNotBlank()
+                )
             }
 
             try {
@@ -185,7 +211,10 @@ class RepasViewModel @Inject constructor(
                             it.copy(
                                 isAnalysing = false,
                                 analyseResult = analyse,
-                                descriptionRepas = analyse.description,
+                                // La description a servi pour CETTE photo. La
+                                // garder la ferait passer pour le nom du plat
+                                // de la photo suivante, qui serait alors force.
+                                descriptionRepas = "",
                                 nomRepasEdite = analyse.nomRepas,
                                 glucidesEdites = analyse.glucidesEstimes.toString(),
                                 indexGlycemiqueEdite = analyse.indexGlycemique.toString(),
@@ -240,7 +269,6 @@ class RepasViewModel @Inject constructor(
                             it.copy(
                                 isAnalysing = false,
                                 analyseResult = analyse,
-                                descriptionRepas = analyse.description,
                                 // Le nom du patient fait foi, on ne le reecrit pas.
                                 nomRepasEdite = nom,
                                 glucidesEdites = analyse.glucidesEstimes.toString(),
