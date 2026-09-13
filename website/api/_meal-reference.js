@@ -78,7 +78,7 @@ const PLATS = [
   {
     nom: "Baton de manioc (bobolo, miondo)",
     famille: "Feculents",
-    couleur: "blanc",
+    couleur: "BLANC LAITEUX, un peu gris ou translucide, moins blanc que le manioc bouilli",
     forme: "LONG, avec des NOEUDS visibles le long du baton — les ligatures marquent la pate et la decoupent en segments. C'est le signe le plus sur",
     texture: "compacte et lisse, aucun grain",
     accompagnements: "poisson braise, ndole, sauce d'arachide, soya",
@@ -134,7 +134,7 @@ const PLATS = [
   {
     nom: "Manioc bouilli (morceaux de tubercule)",
     famille: "Feculents",
-    couleur: "blanc a blanc jaunatre, parfois legerement translucide",
+    couleur: "BLANC FRANC et opaque, parfois un peu jaunatre ; plus blanc que le baton de manioc, qui est blanc laiteux",
     forme: "MORCEAUX DE RACINE coupes au couteau : troncons ou quartiers allonges, IRREGULIERS, bords anguleux, souvent fendus dans la longueur",
     texture: "FIBREUSE et farineuse : fibres, fentes et craquelures visibles dans la longueur, parfois la fibre centrale. Ce n'est PAS une pate lisse",
     accompagnements: "okok surtout, ndole, sauces de feuilles, poisson",

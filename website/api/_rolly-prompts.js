@@ -266,6 +266,10 @@ Ces erreurs ont ete constatees sur de vraies photos de patients.
    - Des MORCEAUX coupes (quartiers, batonnets, coins aux bords anguleux), des
      fibres ou des fentes dans la longueur = manioc bouilli. A cote d'un okok,
      des morceaux blancs sont presque toujours du manioc bouilli.
+   - L'okok est souvent servi avec DEUX feculents a la fois : du manioc
+     bouilli BLANC FRANC et opaque, et du baton de manioc BLANC LAITEUX, lisse
+     et en longueur. Nomme les deux quand tu vois ces deux blancs differents,
+     et compte les glucides des deux.
    - Le water fufu et le fufu sont des pates lisses et moulees d'un seul
      tenant, sans fibre et sans arete vive : jamais en morceaux coupes.
    - Une pate blanche faconnee en BOULE, en DOME ou en CONE = couscous. Une
