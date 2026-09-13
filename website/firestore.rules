@@ -285,6 +285,17 @@ service cloud.firestore {
     }
 
     // ════════════════════════════════════════════════════════════════
+    //  PRESENCE (v2.1.97 — en ligne/hors ligne, heartbeat cote client)
+    //  - lecture : tout authentifie (necessaire pour voir le statut de
+    //    l'interlocuteur dans la messagerie)
+    //  - ecriture : uniquement son propre document
+    // ════════════════════════════════════════════════════════════════
+    match /presence/{uid} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(uid);
+    }
+
+    // ════════════════════════════════════════════════════════════════
     //  FCM TOKENS (private)
     // ════════════════════════════════════════════════════════════════
     match /fcm_tokens/{tokenId} {

@@ -14,9 +14,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.diabeto.data.repository.CloudBackupRepository
 import com.diabeto.data.repository.PreferencesRepository
+import com.diabeto.data.repository.PresenceRepository
 import com.diabeto.data.repository.ThemeMode
 import com.diabeto.monitoring.CrashlyticsLogger
 import com.diabeto.notifications.DeepLinkBus
@@ -31,6 +34,7 @@ import com.diabeto.ui.theme.DiabetoTheme
 import com.diabeto.voip.CallManager
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -49,6 +53,7 @@ class MainActivity : AppCompatActivity() {
     @Inject lateinit var preferencesRepository: PreferencesRepository
     @Inject lateinit var callManager: CallManager
     @Inject lateinit var cloudBackupRepository: CloudBackupRepository
+    @Inject lateinit var presenceRepository: PresenceRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
@@ -89,6 +94,18 @@ class MainActivity : AppCompatActivity() {
         DiaSmartFCMService.subscribeToUpdatesTopic()
         // Sauvegarder le token FCM dans Firestore
         DiaSmartFCMService.saveTokenToFirestore()
+
+        // v2.1.97 : heartbeat de presence (1 ecriture Firestore/30s, uniquement
+        // quand l'app est au premier plan — repeatOnLifecycle coupe et relance
+        // automatiquement la boucle selon STARTED/STOPPED).
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                while (true) {
+                    presenceRepository.ping()
+                    delay(30_000)
+                }
+            }
+        }
 
         // v2.1.42 : Crashlytics user identity + breadcrumb
         FirebaseAuth.getInstance().currentUser?.let { user ->

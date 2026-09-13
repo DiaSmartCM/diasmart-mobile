@@ -9,7 +9,11 @@ import com.diabeto.data.model.UserProfile
 import com.diabeto.data.model.UserRole
 import com.diabeto.data.repository.AuthRepository
 import com.diabeto.data.repository.MessagerieRepository
+import com.diabeto.data.repository.PresenceRepository
+import com.google.firebase.Timestamp
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -33,7 +37,9 @@ data class ConversationUiState(
     val isLoading: Boolean = false,
     val isSending: Boolean = false,
     val error: String? = null,
-    val currentUserId: String? = null
+    val currentUserId: String? = null,
+    val interlocutorTyping: Boolean = false,
+    val interlocutorOnline: Boolean = false
 )
 
 @HiltViewModel
@@ -97,8 +103,19 @@ class ConversationsViewModel @Inject constructor(
 class ConversationDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val messagerieRepository: MessagerieRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val presenceRepository: PresenceRepository
 ) : ViewModel() {
+
+    companion object {
+        // Delai d'inactivite avant d'ecrire typing=false. Cout : 2 ecritures
+        // Firestore par "session de frappe" (debut + arret), quelle que soit
+        // sa duree — jamais 1 par caractere.
+        private const val TYPING_DEBOUNCE_MS = 3_000L
+        // Au-dela, on ignore un typing=true reste bloque (app fermee en
+        // pleine frappe) sans attendre de nouvel evenement Firestore.
+        private const val TYPING_STALE_MS = 8_000L
+    }
 
     private val conversationId: String = savedStateHandle["conversationId"] ?: ""
 
@@ -109,19 +126,22 @@ class ConversationDetailViewModel @Inject constructor(
     var interlocuteurUid: String = ""
         private set
 
+    private var isMedecin = false
+    private var isCurrentlyTyping = false
+    private var typingStopJob: Job? = null
+
     init {
         _uiState.update { it.copy(currentUserId = authRepository.currentUserId) }
         if (conversationId.isNotBlank()) {
             observerMessages()
             marquerCommeLus()
-            loadInterlocuteurUid()
-        }
-    }
-
-    private fun loadInterlocuteurUid() {
-        viewModelScope.launch {
-            // v2.1.47 : passe par MessagerieRepository au lieu de FirebaseFirestore direct.
-            interlocuteurUid = messagerieRepository.getInterlocuteurUid(conversationId).orEmpty()
+            viewModelScope.launch {
+                isMedecin = authRepository.getCurrentUserProfile()?.role == UserRole.MEDECIN
+                // v2.1.47 : passe par MessagerieRepository au lieu de FirebaseFirestore direct.
+                interlocuteurUid = messagerieRepository.getInterlocuteurUid(conversationId).orEmpty()
+                observerTyping()
+                observerPresence()
+            }
         }
     }
 
@@ -135,11 +155,59 @@ class ConversationDetailViewModel @Inject constructor(
         }
     }
 
-    fun onInputChange(text: String) = _uiState.update { it.copy(inputText = text) }
+    private fun observerTyping() {
+        viewModelScope.launch {
+            messagerieRepository.getConversationFlow(conversationId)
+                .catch { /* silencieux : l'indicateur de frappe n'est pas critique */ }
+                .collect { conversation ->
+                    if (conversation == null) return@collect
+                    val typing = if (isMedecin) conversation.typingPatient else conversation.typingMedecin
+                    val typingAt = if (isMedecin) conversation.typingPatientAt else conversation.typingMedecinAt
+                    val fresh = (Timestamp.now().toDate().time - typingAt.toDate().time) < TYPING_STALE_MS
+                    _uiState.update { it.copy(interlocutorTyping = typing && fresh) }
+                }
+        }
+    }
+
+    private fun observerPresence() {
+        if (interlocuteurUid.isBlank()) return
+        viewModelScope.launch {
+            presenceRepository.observeOnline(interlocuteurUid)
+                .catch { /* silencieux : le statut en ligne n'est pas critique */ }
+                .collect { online -> _uiState.update { it.copy(interlocutorOnline = online) } }
+        }
+    }
+
+    fun onInputChange(text: String) {
+        _uiState.update { it.copy(inputText = text) }
+        if (conversationId.isBlank()) return
+
+        if (text.isBlank()) {
+            stopTyping()
+            return
+        }
+        if (!isCurrentlyTyping) {
+            isCurrentlyTyping = true
+            viewModelScope.launch { messagerieRepository.setTyping(conversationId, true) }
+        }
+        typingStopJob?.cancel()
+        typingStopJob = viewModelScope.launch {
+            delay(TYPING_DEBOUNCE_MS)
+            stopTyping()
+        }
+    }
+
+    private fun stopTyping() {
+        typingStopJob?.cancel()
+        if (!isCurrentlyTyping) return
+        isCurrentlyTyping = false
+        viewModelScope.launch { messagerieRepository.setTyping(conversationId, false) }
+    }
 
     fun envoyerMessage() {
         val text = _uiState.value.inputText.trim()
         if (text.isBlank() || conversationId.isBlank()) return
+        stopTyping()
         viewModelScope.launch {
             _uiState.update { it.copy(isSending = true, inputText = "") }
             val result = messagerieRepository.envoyerMessage(conversationId, text)

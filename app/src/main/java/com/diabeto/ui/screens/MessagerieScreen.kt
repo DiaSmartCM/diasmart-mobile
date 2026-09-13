@@ -380,9 +380,14 @@ fun ConversationDetailScreen(
                         Column {
                             Text(interlocuteurNom, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             Text(
-                                "En ligne",
+                                text = when {
+                                    uiState.interlocutorTyping -> "en train d'écrire..."
+                                    uiState.interlocutorOnline -> "En ligne"
+                                    else -> "Hors ligne"
+                                },
                                 fontSize = 11.sp,
-                                color = Success
+                                color = if (uiState.interlocutorTyping || uiState.interlocutorOnline)
+                                    Success else OnSurfaceVariant
                             )
                         }
                     }

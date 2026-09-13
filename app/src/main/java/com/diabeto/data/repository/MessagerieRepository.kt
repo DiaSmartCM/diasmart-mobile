@@ -60,6 +60,44 @@ class MessagerieRepository @Inject constructor(
     }
 
     /**
+     * Flow en temps réel d'une conversation (utilisé pour l'indicateur de frappe).
+     */
+    fun getConversationFlow(conversationId: String): Flow<Conversation?> = callbackFlow {
+        val listener = firestore.collection(COL_CONVERSATIONS)
+            .document(conversationId)
+            .addSnapshotListener { snap, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                @Suppress("UNCHECKED_CAST")
+                val conversation = snap?.data?.let { Conversation.fromMap(snap.id, it as Map<String, Any?>) }
+                trySend(conversation)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    /**
+     * v2.1.97 : signale que l'utilisateur courant est (ou n'est plus) en train
+     * d'ecrire dans cette conversation. Appele avec debounce cote ViewModel
+     * (1 ecriture au debut de la frappe + 1 a l'arret), jamais par caractere.
+     */
+    suspend fun setTyping(conversationId: String, isTyping: Boolean) {
+        if (conversationId.isBlank()) return
+        val profile = authRepository.getCurrentUserProfileRapide() ?: return
+        val field = if (profile.role == UserRole.MEDECIN) "typingMedecin" else "typingPatient"
+        val fieldAt = if (profile.role == UserRole.MEDECIN) "typingMedecinAt" else "typingPatientAt"
+        try {
+            firestore.collection(COL_CONVERSATIONS)
+                .document(conversationId)
+                .update(mapOf(field to isTyping, fieldAt to Timestamp.now()))
+                .await()
+        } catch (e: Exception) {
+            // best-effort : ne doit jamais faire echouer la saisie
+        }
+    }
+
+    /**
      * Flow en temps réel des messages d'une conversation
      */
     fun getMessagesFlow(conversationId: String): Flow<List<Message>> = callbackFlow {

@@ -15,7 +15,14 @@ data class Conversation(
     val dernierMessage: String = "",
     val dernierMessageAt: Timestamp = Timestamp.now(),
     val nonLusPatient: Int = 0,
-    val nonLusMedecin: Int = 0
+    val nonLusMedecin: Int = 0,
+    // v2.1.97 : indicateur de frappe (debounce cote client, cf. ConversationDetailViewModel).
+    // Le *At est utilise comme garde-fou pour eviter un "en train d'ecrire..." bloque
+    // si le dernier ecrivain a quitte l'app sans que le debounce n'ait pu ecrire false.
+    val typingPatient: Boolean = false,
+    val typingPatientAt: Timestamp = Timestamp(0, 0),
+    val typingMedecin: Boolean = false,
+    val typingMedecinAt: Timestamp = Timestamp(0, 0)
 ) {
     fun toMap(): Map<String, Any> = mapOf(
         "patientId" to patientId,
@@ -25,7 +32,11 @@ data class Conversation(
         "dernierMessage" to dernierMessage,
         "dernierMessageAt" to dernierMessageAt,
         "nonLusPatient" to nonLusPatient,
-        "nonLusMedecin" to nonLusMedecin
+        "nonLusMedecin" to nonLusMedecin,
+        "typingPatient" to typingPatient,
+        "typingPatientAt" to typingPatientAt,
+        "typingMedecin" to typingMedecin,
+        "typingMedecinAt" to typingMedecinAt
     )
 
     companion object {
@@ -38,7 +49,11 @@ data class Conversation(
             dernierMessage = map["dernierMessage"] as? String ?: "",
             dernierMessageAt = map["dernierMessageAt"] as? Timestamp ?: Timestamp.now(),
             nonLusPatient = (map["nonLusPatient"] as? Long)?.toInt() ?: 0,
-            nonLusMedecin = (map["nonLusMedecin"] as? Long)?.toInt() ?: 0
+            nonLusMedecin = (map["nonLusMedecin"] as? Long)?.toInt() ?: 0,
+            typingPatient = map["typingPatient"] as? Boolean ?: false,
+            typingPatientAt = map["typingPatientAt"] as? Timestamp ?: Timestamp(0, 0),
+            typingMedecin = map["typingMedecin"] as? Boolean ?: false,
+            typingMedecinAt = map["typingMedecinAt"] as? Timestamp ?: Timestamp(0, 0)
         )
     }
 }
