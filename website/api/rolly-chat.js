@@ -14,7 +14,7 @@
 //   history?: string,           // historique chat (pour modes chat)
 //   imageBase64?: string,       // pour mode meal_image
 //   stream?: boolean,           // SSE streaming (defaut false)
-//   useFallback?: boolean       // utilise gemini-2.0-flash au lieu de 2.5
+//   useFallback?: boolean       // 2e tentative de l'app : saute le 1er modele
 // }
 //
 // Reponse :
@@ -37,10 +37,37 @@ const {
 const MAX_INPUT_LENGTH = 16000;
 const MAX_REQUESTS_PER_DAY = 200; // par UID
 
+// Chaine de modeles, essayes dans l'ordre.
+//
+// Sur le niveau gratuit, Google compte le quota PAR MODELE : 20 requetes par
+// jour pour gemini-2.5-flash en septembre 2026, pour tous les patients
+// reunis. Le seul secours etait gemini-2.0-flash, que Google a retire (404) :
+// des que le quota du premier modele tombait, ROLLY etait en panne pour tout
+// le monde jusqu'a minuit heure du Pacifique. Chaque modele de la chaine
+// apporte son propre quota gratuit.
+const MODEL_CHAIN = [
+  "gemini-2.5-flash",
+  "gemini-flash-latest",
+  "gemini-2.5-flash-lite",
+  "gemini-3.5-flash-lite",
+];
+
+function modelesAEssayer(useFallback) {
+  // L'app refait un second appel avec useFallback=true apres un echec. Le
+  // premier modele vient d'echouer : inutile de consommer une requete dessus.
+  return useFallback ? MODEL_CHAIN.slice(1) : MODEL_CHAIN;
+}
+
+/** Vrai si l'erreur tient au modele (quota, retrait, surcharge) et non a la requete. */
+function erreurDeModele(e) {
+  const m = (e && e.message) || "";
+  return /\[(429|404|500|503)\b|RESOURCE_EXHAUSTED|no longer available|overloaded|UNAVAILABLE|high demand/i.test(m);
+}
+
 function pickSystemPrompt(mode, useFallback) {
   // v2.1.76 — correction d'un vrai bug, pas d'un reglage.
-  // `useFallback` sert a basculer de gemini-2.5-flash vers gemini-2.0-flash
-  // quand la premiere tentative echoue. Il ne devrait JAMAIS changer le prompt.
+  // `useFallback` sert a passer au modele suivant quand la premiere tentative
+  // echoue. Il ne devrait JAMAIS changer le prompt.
   // Or on renvoyait ici le prompt de discussion generique : sur la 2e tentative,
   // l'analyse repas partait sans schema JSON, sans lexique et sans regle
   // anti-invention — le modele recevait une photo et improvisait. Les modes
@@ -116,10 +143,6 @@ VOCABULAIRE :
 `;
 }
 
-function pickModelName(useFallback) {
-  return useFallback ? "gemini-2.0-flash" : "gemini-2.5-flash";
-}
-
 function buildUserPrompt(mode, message, context, history) {
   const parts = [];
   if (history && history.trim().length > 0) {
@@ -140,7 +163,14 @@ async function checkRateLimit(db, uid) {
   const now = Date.now();
   const windowMs = 24 * 60 * 60 * 1000;
   const snap = await ref.get();
-  const data = snap.exists ? snap.data() : { windowStart: now, count: 0 };
+  // Premier appel d'un utilisateur : le document n'existe pas. `update`
+  // echouait alors en NOT_FOUND, l'erreur etait avalee plus bas et le compteur
+  // ne demarrait jamais.
+  if (!snap.exists) {
+    await ref.set({ windowStart: now, count: 1 });
+    return { ok: true, remaining: MAX_REQUESTS_PER_DAY - 1 };
+  }
+  const data = snap.data();
   if (now - (data.windowStart || 0) > windowMs) {
     await ref.set({ windowStart: now, count: 1 });
     return { ok: true, remaining: MAX_REQUESTS_PER_DAY - 1 };
@@ -214,7 +244,7 @@ module.exports = async (req, res) => {
   if (langPreamble) {
     systemInstruction = langPreamble + systemInstruction;
   }
-  const modelName = pickModelName(useFallback);
+  const modeles = modelesAEssayer(useFallback);
   const userPrompt = buildUserPrompt(mode, message, context, history);
 
   // Construire le contenu (texte + image eventuelle).
@@ -252,11 +282,11 @@ module.exports = async (req, res) => {
     parts = [{ text: userPrompt }];
   }
 
-  // Le modele est instancie APRES la construction des parts : le mode image
+  // Les modeles sont instancies APRES la construction des parts : le mode image
   // peut redefinir systemInstruction juste au-dessus.
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({
-    model: modelName,
+  const creerModele = (nom) => genAI.getGenerativeModel({
+    model: nom,
     systemInstruction,
     generationConfig: {
       // Identifier un plat est une tache d'observation, pas de creation. La
@@ -269,6 +299,7 @@ module.exports = async (req, res) => {
       maxOutputTokens: 8192,
     },
   });
+  const contenu = { contents: [{ role: "user", parts }] };
 
   // ── Mode SSE streaming ──────────────────────────────────────
   if (stream) {
@@ -278,31 +309,64 @@ module.exports = async (req, res) => {
     res.setHeader("X-Accel-Buffering", "no");
     res.flushHeaders?.();
 
-    try {
-      const result = await model.generateContentStream({ contents: [{ role: "user", parts }] });
-      for await (const chunk of result.stream) {
-        const text = chunk.text();
-        if (text) {
-          // SSE : chaque ligne `data: ...` se termine par `\n\n`.
-          // On encode en JSON pour preserver les retours a la ligne.
-          res.write(`data: ${JSON.stringify({ text })}\n\n`);
+    let dejaEnvoye = false;
+    let derniereErreur = null;
+    for (const nom of modeles) {
+      try {
+        const result = await creerModele(nom).generateContentStream(contenu);
+        for await (const chunk of result.stream) {
+          const text = chunk.text();
+          if (text) {
+            dejaEnvoye = true;
+            // SSE : chaque ligne `data: ...` se termine par `\n\n`.
+            // On encode en JSON pour preserver les retours a la ligne.
+            res.write(`data: ${JSON.stringify({ text })}\n\n`);
+          }
         }
+        console.log(`rolly model=${nom} mode=${mode} stream`);
+        derniereErreur = null;
+        break;
+      } catch (e) {
+        derniereErreur = e;
+        console.error(`rolly stream error (${nom}):`, e.message);
+        // Des morceaux sont deja partis : changer de modele collerait deux
+        // reponses differentes l'une a l'autre.
+        if (dejaEnvoye || !erreurDeModele(e)) break;
       }
-      res.write(`data: [DONE]\n\n`);
-      res.end();
-    } catch (e) {
-      console.error("rolly stream error:", e.message);
-      // Si on a deja envoye les headers, on peut juste annoncer l'erreur dans le stream.
-      res.write(`data: ${JSON.stringify({ error: e.message || "stream_failed" })}\n\n`);
-      res.write(`data: [DONE]\n\n`);
-      res.end();
     }
+    if (derniereErreur) {
+      res.write(`data: ${JSON.stringify({ error: derniereErreur.message || "stream_failed" })}\n\n`);
+    }
+    res.write(`data: [DONE]\n\n`);
+    res.end();
     return;
   }
 
   // ── Mode one-shot JSON ──────────────────────────────────────
+  let result = null;
+  let modeleUtilise = null;
+  let derniereErreur = null;
+  for (const nom of modeles) {
+    try {
+      result = await creerModele(nom).generateContent(contenu);
+      modeleUtilise = nom;
+      break;
+    } catch (e) {
+      derniereErreur = e;
+      console.error(`rolly generation error (${nom}):`, e.message);
+      if (!erreurDeModele(e)) break;
+    }
+  }
+  if (!result) {
+    return res.status(502).json({
+      error: "generation_failed",
+      message: (derniereErreur && derniereErreur.message) || "Gemini API a echoue.",
+    });
+  }
+  console.log(`rolly model=${modeleUtilise} mode=${mode}`);
+  res.setHeader("X-Rolly-Model", modeleUtilise);
+
   try {
-    const result = await model.generateContent({ contents: [{ role: "user", parts }] });
     const text = result.response.text() || "";
     // Pour les modes structures (meal_*), on essaie de parser le JSON.
     if (mode === "meal_json" || mode === "meal_image") {
@@ -327,7 +391,7 @@ module.exports = async (req, res) => {
     }
     return res.status(200).json({ text });
   } catch (e) {
-    console.error("rolly generation error:", e.message);
+    console.error(`rolly response error (${modeleUtilise}):`, e.message);
     return res.status(502).json({
       error: "generation_failed",
       message: e.message || "Gemini API a echoue.",
