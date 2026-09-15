@@ -184,7 +184,7 @@ const PLATS = [
     confusions: [
       { avec: "eru", signe: "meme feuille, preparation differente : l'eru est vert vif et huileux, avec des feuilles de waterleaf reconnaissables, et se mange avec du water fufu ; l'okok est brun-vert fonce, compact, lie par l'arachide ou la pulpe de noix de palme, et se mange avec du manioc" },
       { avec: "ndole", signe: "le ndole est vert fonce MAT en petits morceaux de feuille distincts ; l'okok est plus brun, en fils tres fins colles en masse" },
-      { avec: "okok sucre", signe: "l'okok sale contient de la viande ou du poisson visibles ; sans viande ni poisson, c'est un okok sucre" },
+      { avec: "okok sucre", signe: "AUCUN signe visuel fiable ne les distingue : la viande ou le poisson peuvent etre haches trop fin pour se voir, et le sucre ne se voit pas non plus. Sur photo seule, nommer 'Okok' (le sale est de tres loin le plus frequent), confiance faible, et demander au patient de preciser en description plutot que de deviner" },
     ],
     source: "terrain",
   },
@@ -193,10 +193,10 @@ const PLATS = [
     famille: "Plats a feuilles",
     couleur: "meme aspect que l'okok : vert tres fonce tirant sur le brun, beaucoup d'huile de palme rouge",
     forme: "masse compacte en tas",
-    texture: "feuilles hachees tres fin, liees par l'arachide ou la pulpe de noix de palme, AUCUN morceau de viande ni de poisson : le liant est sucre",
+    texture: "feuilles hachees tres fin, liees par l'arachide ou la pulpe de noix de palme, le liant est sucre",
     accompagnements: "manioc bouilli ou baton de manioc",
     confusions: [
-      { avec: "okok sale", signe: "le sucre ne se voit pas : c'est l'ABSENCE de viande et de poisson qui signale l'okok sucre. Ses glucides incluent le sucre ajoute, en plus du manioc" },
+      { avec: "okok sale", signe: "AUCUN signe visuel fiable : l'okok sale peut aussi n'avoir aucun morceau de viande/poisson visible (haches tres fin). Ne jamais deduire 'sucre' de la seule absence de morceaux visibles — demander confirmation au patient en description" },
     ],
     source: "terrain",
   },
@@ -251,7 +251,29 @@ const PLATS = [
   { nom: "Sauce jaune", famille: "Sauces", couleur: "jaune vif et tres huileuse", forme: "sauce", texture: "huileuse, se separe", accompagnements: "achu, taro" },
 
   // ── Viandes et poissons ──
-  { nom: "Poisson braise", famille: "Viandes et poissons", couleur: "brun dore avec marques de grill", forme: "poisson entier ouvert en deux", texture: "peau striee et croustillante", accompagnements: "plantain, baton de manioc, piment" },
+  {
+    nom: "Poisson braise",
+    famille: "Viandes et poissons",
+    couleur: "brun dore avec marques de grill",
+    forme: "poisson entier ouvert en deux",
+    texture: "peau striee et croustillante",
+    accompagnements: "plantain, baton de manioc, piment",
+    confusions: [
+      { avec: "Mabang", signe: "le braise garde une peau brun-dore, on voit les marques de grill en lignes ; le Mabang (poisson fume) est NOIRCI sur toute la surface, sans marques de grill lineaires, la chair est plus seche et retractee" },
+    ],
+  },
+  {
+    nom: "Mabang (poisson fume pimente)",
+    famille: "Viandes et poissons",
+    couleur: "NOIR a brun tres fonce sur toute la peau, homogene, pas de marques de grill en lignes ; souvent du piment rouge visible en surface ou dans les fentes",
+    forme: "poisson entier, souvent tenu en main ou pose sur une brochette/baton",
+    texture: "peau seche et racornie par le fumage, chair retractee et plus ferme/seche que le poisson braise frais, parfois fendue pour l'ouvrir au fumoir",
+    accompagnements: "souvent mange seul comme en-cas tres pimente, ou utilise comme ingredient dans les sauces (nkui, eru, okok, sauce d'arachide)",
+    confusions: [
+      { avec: "poisson braise", signe: "le fumage noircit TOUTE la peau de facon homogene (pas de lignes de grill) et seche la chair ; le braise reste brun dore avec des marques de grill nettes" },
+    ],
+    source: "terrain",
+  },
   { nom: "Soya (brochettes)", famille: "Viandes et poissons", couleur: "brun-rouge d'epices", forme: "brochettes ou lanieres", texture: "grillee, seche en surface", accompagnements: "plantain, oignons" },
   { nom: "Poulet DG", famille: "Viandes et poissons", couleur: "dore et colore", forme: "melange en assiette", texture: "morceaux de poulet, plantain frit dore et legumes en des", accompagnements: "plat complet" },
   { nom: "Poulet ou viande en sauce", famille: "Viandes et poissons", couleur: "selon la sauce", forme: "morceaux en sauce", texture: "variable", accompagnements: "riz, feculents" },
