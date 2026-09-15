@@ -1,2 +1,10 @@
 public/diasmart.apk
 public/*.apk
+public/*.zip
+public/downloads/
+
+# Les binaires ne sont plus servis par le site : le bouton de telechargement
+# pointe vers la release GitHub (DiaSmartCM/diasmart-mobile). Les garder ici
+# faisait repartir ~137 Mo a chaque deploiement, pour un quota gratuit de 10 Go
+# de stockage de deploiement qui n'est jamais purge automatiquement.
+# Les fichiers restent sur le disque local, ils ne sont simplement pas envoyes.
