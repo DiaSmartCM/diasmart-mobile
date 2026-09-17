@@ -13,8 +13,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
+import android.content.ClipData
+import android.content.Context
+import android.content.Intent
+import android.widget.Toast
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.FileProvider
+import com.diabeto.report.FormatExport
+import java.io.File
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -65,6 +74,15 @@ fun DossierPatientScreen(
 
     var choixType by remember { mutableStateOf(false) }
     var edition by remember { mutableStateOf<EntreeDossier?>(null) }
+    var exportOuvert by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    LaunchedEffect(ui.fichierExporte) {
+        val fichier = ui.fichierExporte ?: return@LaunchedEffect
+        val format = ui.formatExporte ?: FormatExport.PDF
+        partagerFichier(context, fichier, format)
+        viewModel.exportPartage()
+    }
 
     Scaffold(
         topBar = {
@@ -88,6 +106,19 @@ fun DossierPatientScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Retour")
+                    }
+                },
+                actions = {
+                    if (ui.exportEnCours) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.padding(end = 16.dp).size(22.dp),
+                            strokeWidth = 2.dp,
+                            color = Primary
+                        )
+                    } else {
+                        IconButton(onClick = { exportOuvert = true }, enabled = !ui.chargement) {
+                            Icon(Icons.Default.Share, "Exporter le dossier", tint = Primary)
+                        }
                     }
                 },
                 colors = diaSmartTopAppBarColors()
@@ -159,6 +190,103 @@ fun DossierPatientScreen(
             },
             onDismiss = { edition = null }
         )
+    }
+
+    if (exportOuvert) {
+        ExportDialog(
+            commePatient = ui.commePatient,
+            nbPrivees = ui.entrees.count { !it.visiblePatient },
+            onExporter = { format, inclurePrivees ->
+                exportOuvert = false
+                viewModel.exporter(format, inclurePrivees)
+            },
+            onDismiss = { exportOuvert = false }
+        )
+    }
+}
+
+@Composable
+private fun ExportDialog(
+    commePatient: Boolean,
+    nbPrivees: Int,
+    onExporter: (FormatExport, Boolean) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var format by remember { mutableStateOf(FormatExport.PDF) }
+    // Par defaut on sort la version partageable : une note privee envoyee par
+    // megarde a un confrere ou au patient ne se rattrape pas.
+    var inclurePrivees by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Default.Share, null, tint = Primary) },
+        title = { Text("Exporter le dossier") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Format du fichier", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                FormatExport.entries.forEach { f ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .selectable(selected = format == f, onClick = { format = f }),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = format == f, onClick = { format = f })
+                        Text(f.libelle)
+                    }
+                }
+                if (!commePatient) {
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Inclure les notes privées", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                            Text(
+                                if (inclurePrivees) "Copie complète, pour votre usage ou un confrère."
+                                else "Seules les fiches visibles par le patient ($nbPrivees note(s) privée(s) exclue(s)).",
+                                fontSize = 12.sp,
+                                color = OnSurfaceVariant
+                            )
+                        }
+                        Switch(checked = inclurePrivees, onCheckedChange = { inclurePrivees = it })
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Le fichier contient des données médicales : partagez-le uniquement avec des personnes autorisées.",
+                    fontSize = 12.sp,
+                    color = OnSurfaceVariant
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onExporter(format, inclurePrivees) }) {
+                Text("Exporter et partager", fontWeight = FontWeight.SemiBold)
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuler") } }
+    )
+}
+
+/**
+ * Ouvre le menu de partage Android (WhatsApp, e-mail, Drive, enregistrement…).
+ * Le ClipData est indispensable : sans lui, les applications recues depuis le
+ * selecteur n'obtiennent pas le droit de lecture sur l'URI du FileProvider.
+ */
+private fun partagerFichier(context: Context, fichier: File, format: FormatExport) {
+    try {
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", fichier)
+        val envoi = Intent(Intent.ACTION_SEND).apply {
+            type = format.mime
+            putExtra(Intent.EXTRA_STREAM, uri)
+            putExtra(Intent.EXTRA_SUBJECT, fichier.nameWithoutExtension.replace('_', ' '))
+            clipData = ClipData.newRawUri(fichier.name, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(
+            Intent.createChooser(envoi, "Partager le dossier").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+    } catch (e: Exception) {
+        Toast.makeText(context, "Partage impossible : ${e.message}", Toast.LENGTH_LONG).show()
     }
 }
 

@@ -1,5 +1,6 @@
 package com.diabeto.ui.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -8,14 +9,20 @@ import com.diabeto.data.model.TypeEntree
 import com.diabeto.data.model.UserProfile
 import com.diabeto.data.repository.AuthRepository
 import com.diabeto.data.repository.DossierRepository
+import com.diabeto.report.DossierExporter
+import com.diabeto.report.FormatExport
 import com.diabeto.util.MessageErreur
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 import javax.inject.Inject
 
 data class DossierUiState(
@@ -23,9 +30,15 @@ data class DossierUiState(
     val commePatient: Boolean = false,
     val patientUid: String = "",
     val medecinUid: String = "",
+    val patientNom: String = "",
+    val medecinNom: String = "",
     val entrees: List<EntreeDossier> = emptyList(),
     val rendezVous: List<Map<String, Any?>> = emptyList(),
     val enregistrement: Boolean = false,
+    val exportEnCours: Boolean = false,
+    /** Fichier pret a partager ; l'ecran le consomme puis appelle [DossierViewModel.exportPartage]. */
+    val fichierExporte: File? = null,
+    val formatExporte: FormatExport? = null,
     val message: String? = null
 )
 
@@ -37,6 +50,7 @@ data class DossierUiState(
 @HiltViewModel
 class DossierViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
+    @ApplicationContext private val appContext: Context,
     private val dossierRepository: DossierRepository,
     private val authRepository: AuthRepository
 ) : ViewModel() {
@@ -65,9 +79,13 @@ class DossierViewModel @Inject constructor(
                 it.copy(commePatient = commePatient, patientUid = patientUid, medecinUid = medecinUid)
             }
 
+            val patient = authRepository.getUserProfile(patientUid)
+            val medecin = authRepository.getUserProfile(medecinUid)
+            _uiState.update {
+                it.copy(patientNom = patient?.nomComplet.orEmpty(), medecinNom = medecin?.nomComplet.orEmpty())
+            }
+
             if (!commePatient) {
-                val medecin = authRepository.getCurrentUserProfileRapide()
-                val patient = authRepository.getUserProfile(patientUid)
                 dossierRepository.assurerDossier(
                     patientUid = patientUid,
                     medecinUid = medecinUid,
@@ -90,8 +108,6 @@ class DossierViewModel @Inject constructor(
                 .collect { fiches -> _uiState.update { it.copy(chargement = false, entrees = fiches) } }
         }
     }
-
-    private fun medecinmedecinNom(profil: UserProfile?) = profil?.nomComplet.orEmpty()
 
     /** Bouton « Importer l'identite » quand le dossier a ete cree cote patient. */
     fun importerIdentite() {
@@ -155,6 +171,37 @@ class DossierViewModel @Inject constructor(
             )
         }
     }
+
+    /**
+     * Genere le fichier du dossier. Le patient n'a de toute facon que les fiches
+     * visibles : `inclurePrivees` ne change rien pour lui.
+     */
+    fun exporter(format: FormatExport, inclurePrivees: Boolean) {
+        val etat = _uiState.value
+        viewModelScope.launch {
+            _uiState.update { it.copy(exportEnCours = true) }
+            try {
+                val fichier = withContext(Dispatchers.IO) {
+                    DossierExporter(appContext).exporter(
+                        DossierExporter.Contenu(
+                            patientNom = etat.patientNom,
+                            medecinNom = etat.medecinNom,
+                            entrees = etat.entrees,
+                            rendezVous = etat.rendezVous,
+                            inclurePrivees = inclurePrivees && !etat.commePatient,
+                            versionPatient = etat.commePatient
+                        ),
+                        format
+                    )
+                }
+                _uiState.update { it.copy(exportEnCours = false, fichierExporte = fichier, formatExporte = format) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(exportEnCours = false, message = "Export impossible : ${MessageErreur.lisible(e)}") }
+            }
+        }
+    }
+
+    fun exportPartage() = _uiState.update { it.copy(fichierExporte = null, formatExporte = null) }
 
     fun effacerMessage() = _uiState.update { it.copy(message = null) }
 }
