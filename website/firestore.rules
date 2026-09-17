@@ -203,6 +203,64 @@ service cloud.firestore {
       allow delete: if isParty();
     }
 
+    // ════════════════════════════════════════════════════════════════
+    //  DOSSIER NUMERIQUE PATIENT (tenu par le medecin)
+    //  Doc ID : {patientUid}_{medecinUid}, identique au lien data_sharing.
+    //  - medecin : lit et ecrit tant que le lien est actif
+    //  - patient : lit le dossier et les seules fiches visiblePatient == true,
+    //    meme apres la fin du lien (droit d'acces a ses donnees) ; n'ecrit
+    //    rien, sauf la creation du dossier vide quand il accepte le lien
+    //  - suppression du dossier : jamais (tracabilite)
+    // ════════════════════════════════════════════════════════════════
+    match /dossiers/{dossierId} {
+      function partiesDossier() {
+        return dossierId.split('_');
+      }
+      function estPatientDossier() {
+        return isSignedIn() && partiesDossier()[0] == request.auth.uid;
+      }
+      function estMedecinLieDossier() {
+        return isSignedIn() &&
+               partiesDossier().size() == 2 &&
+               partiesDossier()[1] == request.auth.uid &&
+               isLinkedDoctorOf(partiesDossier()[0]);
+      }
+      function lienActifDossier() {
+        return exists(/databases/$(database)/documents/data_sharing/$(dossierId)) &&
+               get(/databases/$(database)/documents/data_sharing/$(dossierId)).data.isActive == true;
+      }
+
+      // Deux formes de lecture pour le patient :
+      // - par identifiant (estPatientDossier) : indispensable pour verifier
+      //   qu'un dossier existe avant de le creer. Un document absent n'a pas
+      //   de resource.data, qui seul faisait donc refuser la lecture ;
+      // - par resource.data : autorise sa requete "whereEqualTo(patientUid, moi)".
+      allow read: if estPatientDossier() ||
+                     (isSignedIn() && resource != null && resource.data.patientUid == request.auth.uid) ||
+                     estMedecinLieDossier();
+      allow create: if (estMedecinLieDossier() || (estPatientDossier() && lienActifDossier())) &&
+                       request.resource.data.patientUid == partiesDossier()[0] &&
+                       request.resource.data.medecinUid == partiesDossier()[1];
+      allow update: if estMedecinLieDossier() &&
+                       request.resource.data.patientUid == resource.data.patientUid &&
+                       request.resource.data.medecinUid == resource.data.medecinUid;
+      allow delete: if false;
+
+      match /entrees/{entreeId} {
+        allow read: if estMedecinLieDossier() ||
+                       (estPatientDossier() && resource.data.visiblePatient == true);
+        allow create: if estMedecinLieDossier() &&
+                         request.resource.data.auteurUid == request.auth.uid &&
+                         request.resource.data.patientUid == partiesDossier()[0] &&
+                         request.resource.data.medecinUid == partiesDossier()[1];
+        allow update: if estMedecinLieDossier() &&
+                         request.resource.data.patientUid == resource.data.patientUid &&
+                         request.resource.data.medecinUid == resource.data.medecinUid &&
+                         request.resource.data.auteurUid == resource.data.auteurUid;
+        allow delete: if estMedecinLieDossier();
+      }
+    }
+
     // Ancien collection (compat)
     match /consents/{consentId} {
       allow read, write: if isSignedIn();

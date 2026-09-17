@@ -11,6 +11,7 @@ import com.diabeto.data.model.UserRole
 import com.diabeto.data.repository.AuthRepository
 import com.diabeto.data.repository.DataSharingRepository
 import com.diabeto.data.repository.DoctorReviewRepository
+import com.diabeto.data.repository.DossierRepository
 import com.diabeto.data.repository.GlucoseRepository
 import com.diabeto.data.repository.LocationRepository
 import com.diabeto.data.repository.PatientRepository
@@ -64,7 +65,8 @@ class DataSharingViewModel @Inject constructor(
     private val patientRepository: PatientRepository,
     private val glucoseRepository: GlucoseRepository,
     private val doctorReviewRepository: DoctorReviewRepository,
-    private val locationRepository: LocationRepository
+    private val locationRepository: LocationRepository,
+    private val dossierRepository: DossierRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DataSharingUiState())
@@ -94,9 +96,31 @@ class DataSharingViewModel @Inject constructor(
                         isLoading = false
                     )
                 }
+                creerDossiersManquants(consents)
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, message = MessageErreur.lisible(e)) }
             }
+        }
+    }
+
+    /**
+     * Un dossier numerique pour chaque lien actif. Accepter, accorder ou
+     * reactiver un lien recharge cette liste : le dossier nait donc avec le
+     * lien, quel que soit celui des deux qui l'a etabli. Les dossiers existants
+     * ne sont pas touches.
+     */
+    private fun creerDossiersManquants(consents: List<DataSharingConsent>) {
+        viewModelScope.launch {
+            consents
+                .filter { it.isActive && it.status == com.diabeto.data.model.ConsentStatus.ACCEPTED }
+                .forEach { lien ->
+                    dossierRepository.assurerDossier(
+                        patientUid = lien.patientUid,
+                        medecinUid = lien.medecinUid,
+                        patientNom = lien.patientNom,
+                        medecinNom = lien.medecinNom
+                    ).onFailure { Log.w("DataSharingVM", "Dossier non cree pour ${lien.documentId} : ${it.message}") }
+                }
         }
     }
 

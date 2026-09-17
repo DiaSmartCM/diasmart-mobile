@@ -44,6 +44,7 @@ fun DataSharingScreen(
     onNavigateBack: () -> Unit,
     onNavigateToPatientDetail: (Long) -> Unit = {},
     initialTab: Int = 0,
+    onNavigateToDossier: (medecinUid: String, medecinNom: String) -> Unit = { _, _ -> },
     viewModel: DataSharingViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -90,7 +91,8 @@ fun DataSharingScreen(
                 uiState = uiState,
                 viewModel = viewModel,
                 locPermLauncher = locPermLauncher,
-                initialTab = initialTab
+                initialTab = initialTab,
+                onNavigateToDossier = onNavigateToDossier
             )
         } else {
             DoctorPatientsView(
@@ -136,7 +138,8 @@ private fun PatientDoctorView(
     uiState: DataSharingUiState,
     viewModel: DataSharingViewModel,
     locPermLauncher: androidx.activity.result.ActivityResultLauncher<Array<String>>,
-    initialTab: Int = 0
+    initialTab: Int = 0,
+    onNavigateToDossier: (String, String) -> Unit = { _, _ -> }
 ) {
     var selectedTab by remember { mutableIntStateOf(initialTab.coerceIn(0, 1)) }
 
@@ -162,7 +165,7 @@ private fun PatientDoctorView(
 
         when (selectedTab) {
             0 -> MedecinTabContent(uiState, viewModel, locPermLauncher)
-            1 -> MonMedecinTabContent(uiState, viewModel)
+            1 -> MonMedecinTabContent(uiState, viewModel, onNavigateToDossier)
         }
     }
 }
@@ -326,7 +329,8 @@ private fun BrowseDoctorCard(
 @Composable
 private fun MonMedecinTabContent(
     uiState: DataSharingUiState,
-    viewModel: DataSharingViewModel
+    viewModel: DataSharingViewModel,
+    onNavigateToDossier: (String, String) -> Unit = { _, _ -> }
 ) {
     val treatingDoctors = uiState.consents.filter {
         it.isActive && it.status == ConsentStatus.ACCEPTED
@@ -404,7 +408,8 @@ private fun MonMedecinTabContent(
                     },
                     onRevoke = {
                         viewModel.revokeConsent(consent.medecinUid)
-                    }
+                    },
+                    onOpenDossier = { onNavigateToDossier(consent.medecinUid, consent.medecinNom) }
                 )
             }
         }
@@ -417,7 +422,8 @@ private fun MonMedecinTabContent(
 private fun TreatingDoctorCard(
     consent: DataSharingConsent,
     onRateDoctor: () -> Unit,
-    onRevoke: () -> Unit
+    onRevoke: () -> Unit,
+    onOpenDossier: () -> Unit = {}
 ) {
     // v2.1.60 : dialogue de confirmation pour revocation cote patient
     // (avant, seul le medecin pouvait revoquer — desequilibre RGPD).
@@ -511,6 +517,18 @@ private fun TreatingDoctorCard(
             IconButton(onClick = { showRevokeDialog = true }, modifier = Modifier.size(40.dp)) {
                 Icon(Icons.Default.LinkOff, "Révoquer l'accès", tint = StatusRedDark)
             }
+        }
+        // Le contenu d'une Card s'empile en colonne : le bouton passe sous
+        // l'en-tete, sur toute la largeur, sans serrer les icones du dessus.
+        OutlinedButton(
+            onClick = onOpenDossier,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+        ) {
+            Icon(Icons.Default.Folder, null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Mon dossier médical")
         }
     }
 }

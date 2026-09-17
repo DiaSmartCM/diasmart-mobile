@@ -153,15 +153,34 @@ fun SharedPatientDataScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
+        SharedPatientDataContent(
+            modifier = Modifier.padding(padding),
+            onNavigateToRendezVous = onNavigateToRendezVous,
+            viewModel = viewModel
+        )
+    }
+}
+
+/**
+ * Synthese des donnees partagees par le patient (profil, glycemies, repas).
+ * Sert d'ecran autonome et de premier onglet du dossier numerique.
+ */
+@Composable
+fun SharedPatientDataContent(
+    modifier: Modifier = Modifier,
+    onNavigateToRendezVous: () -> Unit = {},
+    viewModel: SharedPatientDataViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    run {
         if (uiState.isLoading) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+            Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = Primary)
             }
         } else {
             LazyColumn(
-                modifier = Modifier
+                modifier = modifier
                     .fillMaxSize()
-                    .padding(padding)
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(vertical = 16.dp)

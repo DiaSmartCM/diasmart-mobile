@@ -54,6 +54,10 @@ object Routes {
     const val VIDEO_CALL       = "videocall/{roomName}?interlocuteur={interlocuteur}&audioOnly={audioOnly}"
     const val VOIP_CALL        = "voip_call"
     const val SHARED_PATIENT   = "shared_patient/{patientUid}?patientNom={patientNom}"
+    const val MON_DOSSIER      = "mon_dossier/{medecinUid}?medecinNom={medecinNom}"
+
+    fun monDossier(medecinUid: String, medecinNom: String) =
+        "mon_dossier/$medecinUid?medecinNom=${java.net.URLEncoder.encode(medecinNom, "UTF-8")}"
 
     fun patientDetail(patientId: Long, self: Boolean = false) =
         "patient/$patientId?self=$self"
@@ -429,7 +433,8 @@ fun DiabetoNavigation(
             DataSharingScreen(
                 onNavigateBack        = { navController.popBackStack() },
                 onNavigateToPatientDetail = { id -> navController.navigate(Routes.patientDetail(id)) },
-                initialTab = initialTab
+                initialTab = initialTab,
+                onNavigateToDossier = { uid, nom -> navController.navigate(Routes.monDossier(uid, nom)) }
             )
         }
 
@@ -513,11 +518,33 @@ fun DiabetoNavigation(
             val patientUid = back.arguments?.getString("patientUid") ?: ""
             val patientNom = back.arguments?.getString("patientNom")
                 ?.let { java.net.URLDecoder.decode(it, "UTF-8") } ?: ""
-            SharedPatientDataScreen(
-                patientUid        = patientUid,
-                patientNom        = patientNom,
-                onNavigateBack    = { navController.popBackStack() },
-                onNavigateToRendezVous = { navController.navigate(Routes.rendezVous()) }
+            // Le lien « donnees partagees » ouvre desormais le dossier numerique,
+            // dont la synthese reprend l'ancien ecran en premier onglet.
+            DossierPatientScreen(
+                nomAffiche     = patientNom,
+                onNavigateBack = { navController.popBackStack() },
+                synthese       = { modifier ->
+                    SharedPatientDataContent(
+                        modifier = modifier,
+                        onNavigateToRendezVous = { navController.navigate(Routes.rendezVous()) }
+                    )
+                }
+            )
+        }
+
+        // ── Dossier numerique vu par le patient (fiches rendues visibles) ──
+        composable(
+            route     = Routes.MON_DOSSIER,
+            arguments = listOf(
+                navArgument("medecinUid") { type = NavType.StringType },
+                navArgument("medecinNom") { type = NavType.StringType; defaultValue = "" }
+            )
+        ) { back ->
+            val medecinNom = back.arguments?.getString("medecinNom")
+                ?.let { java.net.URLDecoder.decode(it, "UTF-8") } ?: ""
+            DossierPatientScreen(
+                nomAffiche     = if (medecinNom.isBlank()) "Mon dossier" else "Dr $medecinNom",
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 
