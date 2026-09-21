@@ -87,29 +87,85 @@ async function checkRateLimit(db, uid) {
 }
 
 /**
- * Retrouve l'audio dans la reponse.
+ * Retrouve l'audio dans la reponse de l'API Interactions.
  *
- * Le champ documente est `output_audio`. Selon les versions il arrive soit
- * comme une chaine base64 directe, soit comme un objet portant `data` ou
- * `audio_data`, soit encore dans une liste de blocs `output`. On accepte les
- * trois plutot que de casser au premier changement de forme cote Google.
+ * La reponse est une Interaction : une liste d'etapes (`steps`), dont
+ * l'etape `model_output` porte un tableau `content` ou l'audio arrive comme
+ * un bloc { data (base64), mime_type, sample_rate, channels }.
+ *
+ * Les autres formes acceptees ici (output_audio en chaine ou en objet) sont
+ * celles des reponses plus anciennes : elles ne coutent rien a garder et
+ * evitent de tout casser au prochain changement cote Google.
  */
 function extraireAudio(json) {
+  const etapes = Array.isArray(json.steps) ? json.steps : [];
+  for (const etape of etapes) {
+    const blocs = Array.isArray(etape?.content) ? etape.content : [];
+    for (const bloc of blocs) {
+      const data = bloc?.data || bloc?.audio?.data || bloc?.inline_data?.data;
+      if (typeof data === "string" && data.length > 0) {
+        return {
+          data,
+          mimeType: bloc.mime_type || bloc.mimeType || "",
+          sampleRate: Number(bloc.sample_rate || bloc.sampleRate) || 0,
+        };
+      }
+    }
+  }
+
   const direct = json.output_audio ?? json.outputAudio;
-  if (typeof direct === "string" && direct.length > 0) return direct;
+  if (typeof direct === "string" && direct.length > 0) {
+    return { data: direct, mimeType: "", sampleRate: 0 };
+  }
   if (direct && typeof direct === "object") {
     const d = direct.data || direct.audio_data || direct.audioData || direct.b64_json;
-    if (typeof d === "string" && d.length > 0) return d;
-  }
-  const blocs = json.output || json.outputs || json.content || [];
-  for (const bloc of Array.isArray(blocs) ? blocs : [blocs]) {
-    if (!bloc || typeof bloc !== "object") continue;
-    const candidat =
-      bloc.audio?.data || bloc.audio_data || bloc.data ||
-      bloc.inline_data?.data || bloc.inlineData?.data;
-    if (typeof candidat === "string" && candidat.length > 0) return candidat;
+    if (typeof d === "string" && d.length > 0) {
+      return {
+        data: d,
+        mimeType: direct.mime_type || direct.mimeType || "",
+        sampleRate: Number(direct.sample_rate || direct.sampleRate) || 0,
+      };
+    }
   }
   return null;
+}
+
+/**
+ * Ramene l'audio a du PCM brut, que le client joue directement.
+ *
+ * Selon le modele, Google renvoie soit les echantillons nus, soit un WAV
+ * complet. Envoyer un WAV a AudioTrack ferait lire ses 44 octets d'en-tete
+ * comme du son : un claquement au debut de chaque phrase. On enleve donc
+ * l'en-tete ici, et on en profite pour lire la vraie frequence plutot que de
+ * la supposer.
+ */
+function versPcm(base64, sampleRateAnnonce) {
+  const buf = Buffer.from(base64, "base64");
+  const estWav = buf.length > 44 &&
+    buf.toString("ascii", 0, 4) === "RIFF" &&
+    buf.toString("ascii", 8, 12) === "WAVE";
+  if (!estWav) {
+    return { base64, sampleRate: sampleRateAnnonce || SAMPLE_RATE };
+  }
+  let position = 12;
+  let sampleRate = sampleRateAnnonce;
+  while (position + 8 <= buf.length) {
+    const id = buf.toString("ascii", position, position + 4);
+    const taille = buf.readUInt32LE(position + 4);
+    if (id === "fmt " && position + 12 + 4 <= buf.length) {
+      sampleRate = buf.readUInt32LE(position + 12);
+    }
+    if (id === "data") {
+      const debut = position + 8;
+      const longueur = Math.min(taille, buf.length - debut);
+      return {
+        base64: buf.subarray(debut, debut + longueur).toString("base64"),
+        sampleRate: sampleRate || SAMPLE_RATE,
+      };
+    }
+    position += 8 + taille + (taille % 2);
+  }
+  return { base64, sampleRate: sampleRate || SAMPLE_RATE };
 }
 
 module.exports = async (req, res) => {
@@ -183,19 +239,20 @@ module.exports = async (req, res) => {
         continue;
       }
 
-      const audioBase64 = extraireAudio(json);
-      if (!audioBase64) {
+      const audio = extraireAudio(json);
+      if (!audio) {
         derniereErreur = "reponse sans audio";
-        console.error(`rolly-tts (${model}): reponse sans audio`, Object.keys(json));
+        console.error(`rolly-tts (${model}): reponse sans audio`, JSON.stringify(json).slice(0, 600));
         continue;
       }
 
-      console.log(`rolly-tts model=${model} voice=${voixChoisie} chars=${text.length}`);
+      const pcm = versPcm(audio.data, audio.sampleRate);
+      console.log(`rolly-tts model=${model} voice=${voixChoisie} chars=${text.length} rate=${pcm.sampleRate} mime=${audio.mimeType || "brut"}`);
       res.setHeader("X-Rolly-Tts-Model", model);
       return res.status(200).json({
-        audioBase64,
+        audioBase64: pcm.base64,
         mimeType: "audio/L16",
-        sampleRate: SAMPLE_RATE,
+        sampleRate: pcm.sampleRate,
         model,
         voice: voixChoisie,
       });
