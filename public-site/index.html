@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Documents legaux — DiaSmart</title>
+<meta name="description" content="Politique de confidentialite, conditions d'utilisation et licence de l'application DiaSmart.">
+<meta name="robots" content="index, follow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23F2EEE5'/><path d='M50 20 C62 38 72 48 72 60 a22 22 0 0 1-44 0 c0-12 10-22 22-40z' fill='%23A32B1F'/></svg>">
+<style>
+  :root{
+    --papier:#F2EEE5;
+    --papier-creuse:#E9E3D6;
+    --encre:#191713;
+    --encre-pale:#6B655A;
+    --sang:#A32B1F;
+    --filet:#D3CBB9;
+  }
+  *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    margin:0;
+    background:var(--papier);
+    color:var(--encre);
+    font-family:"Newsreader",Georgia,"Times New Roman",serif;
+    font-size:19px;
+    line-height:1.6;
+    /* grain : deux trames fines croisees, moins lourd qu'une image */
+    background-image:
+      repeating-linear-gradient(0deg, rgba(25,23,19,.018) 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(90deg, rgba(25,23,19,.014) 0 1px, transparent 1px 4px);
+  }
+  .page{max-width:760px;margin:0 auto;padding:64px 24px 80px;}
+
+  .entete{
+    display:flex;align-items:baseline;gap:14px;
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:12px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--encre-pale);
+    border-bottom:1px solid var(--filet);
+    padding-bottom:14px;
+  }
+  .entete .marque{color:var(--sang);font-weight:500;}
+  .entete .goutte{
+    width:9px;height:9px;border-radius:0 50% 50% 50%;
+    transform:rotate(45deg);background:var(--sang);
+    display:inline-block;margin-right:2px;
+  }
+
+  h1{
+    font-size:clamp(40px,9vw,68px);
+    font-weight:400;line-height:1.02;letter-spacing:-.02em;
+    margin:48px 0 0;
+  }
+  h1 em{font-style:italic;color:var(--sang);}
+  .chapeau{
+    margin:20px 0 0;max-width:52ch;color:var(--encre-pale);
+    font-size:19px;
+  }
+
+  .registre{margin:56px 0 0;border-top:1px solid var(--filet);}
+  .doc{
+    display:grid;grid-template-columns:44px 1fr auto;align-items:baseline;gap:18px;
+    text-decoration:none;color:inherit;
+    border-bottom:1px solid var(--filet);
+    padding:22px 4px;
+    transition:background .18s ease,padding-left .18s ease;
+  }
+  .doc:hover,.doc:focus-visible{
+    background:var(--papier-creuse);
+    padding-left:14px;outline:none;
+  }
+  .doc .num{
+    font-family:"IBM Plex Mono",monospace;font-size:12px;
+    color:var(--encre-pale);letter-spacing:.08em;
+  }
+  .doc .titre{font-size:24px;line-height:1.25;}
+  .doc .sous{display:block;font-size:16px;color:var(--encre-pale);margin-top:4px;}
+  .doc .fleche{font-family:"IBM Plex Mono",monospace;font-size:15px;color:var(--sang);transition:transform .18s ease;}
+  .doc:hover .fleche{transform:translateX(3px);}
+
+  .ailleurs{
+    margin:64px 0 0;padding:28px;
+    background:var(--papier-creuse);
+    border-left:3px solid var(--sang);
+  }
+  .ailleurs h2{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:12px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--encre-pale);font-weight:500;margin:0 0 10px;
+  }
+  .ailleurs p{margin:0 0 14px;max-width:54ch;}
+  .ailleurs a{color:var(--sang);text-underline-offset:3px;}
+  .ailleurs a:hover{background:var(--sang);color:var(--papier);text-decoration:none;}
+
+  footer{
+    margin-top:56px;padding-top:18px;border-top:1px solid var(--filet);
+    font-family:"IBM Plex Mono",monospace;font-size:12px;line-height:1.9;
+    color:var(--encre-pale);letter-spacing:.03em;
+  }
+  footer a{color:var(--encre-pale);}
+  footer a:hover{color:var(--sang);}
+
+  @media (max-width:520px){
+    body{font-size:18px;}
+    .page{padding:40px 20px 64px;}
+    .doc{grid-template-columns:32px 1fr;gap:12px;}
+    .doc .fleche{display:none;}
+  }
+</style>
+</head>
+<body>
+<main class="page">
+
+  <div class="entete">
+    <span><span class="goutte"></span> DiaSmart</span>
+    <span class="marque">documents legaux</span>
+  </div>
+
+  <h1>Ce que vous<br>signez en <em>installant</em></h1>
+
+  <p class="chapeau">
+    Cette adresse ne sert qu'a heberger les textes que l'application ouvre
+    depuis son ecran de consentement. Vous les lisez ici en entier, avant
+    d'accepter comme apres.
+  </p>
+
+  <nav class="registre">
+    <a class="doc" href="privacy.html">
+      <span class="num">01</span>
+      <span class="titre">Politique de confidentialite
+        <span class="sous">Quelles donnees de sante sont enregistrees, ou elles vivent, qui peut les lire, comment les effacer. Mise a jour en mars 2026.</span>
+      </span>
+      <span class="fleche">&rarr;</span>
+    </a>
+    <a class="doc" href="terms.html">
+      <span class="num">02</span>
+      <span class="titre">Conditions d'utilisation
+        <span class="sous">Ce que l'application fait, ce qu'elle ne fait pas, et pourquoi elle ne remplace jamais un medecin.</span>
+      </span>
+      <span class="fleche">&rarr;</span>
+    </a>
+    <a class="doc" href="license.html">
+      <span class="num">03</span>
+      <span class="titre">Licence
+        <span class="sous">Droits d'usage du logiciel et des contenus.</span>
+      </span>
+      <span class="fleche">&rarr;</span>
+    </a>
+  </nav>
+
+  <section class="ailleurs">
+    <h2>L'application n'est plus ici</h2>
+    <p>
+      Le telechargement et la presentation de DiaSmart ont demenage. Cette
+      adresse ne distribue plus l'application : la version qui y etait
+      proposee, la v1.9.3, remonte au debut de l'annee et ne parle plus aux
+      serveurs actuels.
+    </p>
+    <p>
+      Site officiel : <a href="https://project-d-r1997t.web.app">project-d-r1997t.web.app</a><br>
+      Derniere version Android : <a href="https://github.com/DiaSmartCM/diasmart-mobile/releases/latest">releases GitHub</a>
+    </p>
+  </section>
+
+  <footer>
+    DiaSmart.AI &mdash; Diabetologie intelligente, Cameroun<br>
+    Une question sur ces textes : <a href="mailto:ngostheo30@gmail.com">ngostheo30@gmail.com</a>
+  </footer>
+
+</main>
+</body>
+</html>
