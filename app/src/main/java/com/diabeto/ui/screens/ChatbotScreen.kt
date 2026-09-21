@@ -444,7 +444,17 @@ fun ChatbotScreen(
                 }
 
                 items(uiState.messages, key = { it.id }) { message ->
-                    RollyMessageBubble(message = message)
+                    RollyMessageBubble(
+                        message = message,
+                        onLireAVoixHaute = { texte, fin ->
+                            viewModel.lireAVoixHaute(
+                                texte = texte,
+                                onDone = fin,
+                                onError = { fin() }
+                            )
+                        },
+                        onStopLecture = { com.diabeto.util.VoiceManager.stop() }
+                    )
                 }
             }
 
@@ -578,7 +588,11 @@ fun ChatbotScreen(
 // ══════════════════════════════════════════════════════════════════
 
 @Composable
-private fun RollyMessageBubble(message: ChatbotMessage) {
+private fun RollyMessageBubble(
+    message: ChatbotMessage,
+    onLireAVoixHaute: (texte: String, fin: () -> Unit) -> Unit,
+    onStopLecture: () -> Unit
+) {
     val isUser = message.estUtilisateur
     val isDark = LocalIsDarkTheme.current
 
@@ -646,16 +660,14 @@ private fun RollyMessageBubble(message: ChatbotMessage) {
                         TextButton(
                             onClick = {
                                 if (speaking) {
-                                    com.diabeto.util.VoiceManager.stop()
+                                    onStopLecture()
                                     speaking = false
                                 } else {
                                     speaking = true
-                                    com.diabeto.util.VoiceManager.speak(
-                                        text = message.contenu,
-                                        languageTag = "fr",
-                                        onDone = { speaking = false },
-                                        onError = { speaking = false }
-                                    )
+                                    // v2.1.101 : l'appelant choisit entre la voix
+                                    // naturelle (si le patient l'a activee) et le
+                                    // TextToSpeech local, et gere le repli.
+                                    onLireAVoixHaute(message.contenu) { speaking = false }
                                 }
                             },
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),

@@ -111,6 +111,8 @@
     <string name="card_avis_medecin_subtitle">Réponses ROLLY relues par votre médecin</string>
     <string name="settings_son_demarrage_title">Son au démarrage</string>
     <string name="settings_son_demarrage_subtitle">Mélodie courte à l’ouverture, muette si le téléphone est en silencieux</string>
+    <string name="settings_voix_naturelle_title">Voix naturelle de ROLLY</string>
+    <string name="settings_voix_naturelle_subtitle">Voix de synthèse plus humaine, générée en ligne : consomme des données et demande du réseau. Désactivée, ROLLY parle avec la voix du téléphone.</string>
     <string name="notif_channel_alarme_medicaments">Alarmes de traitement</string>
     <string name="notif_channel_alarme_rdv">Alarmes de rendez-vous</string>
     <string name="alarme_arreter">Arrêter</string>

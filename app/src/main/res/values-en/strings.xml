@@ -335,6 +335,8 @@
     <string name="settings_glucose_reminders_subtitle">Daily measurement reminder</string>
     <string name="settings_rdv_reminders_title">Appointment reminders</string>
     <string name="settings_rdv_reminders_subtitle">Reminder 1h before</string>
+    <string name="settings_voix_naturelle_title">ROLLY natural voice</string>
+    <string name="settings_voix_naturelle_subtitle">A more human-sounding voice, generated online: uses mobile data and needs a connection. When off, ROLLY speaks with the phone voice.</string>
     <string name="settings_lock_title">Lock the app</string>
     <string name="settings_lock_disabled">Disabled</string>
     <string name="settings_cloud_backup_title">Cloud backup</string>

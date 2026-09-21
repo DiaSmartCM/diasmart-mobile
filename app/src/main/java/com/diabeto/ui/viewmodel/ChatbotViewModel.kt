@@ -12,10 +12,14 @@ import com.diabeto.data.repository.ChatSession
 import com.diabeto.data.repository.ChatbotRepository
 import com.diabeto.data.repository.GlucoseRepository
 import com.diabeto.data.repository.PatientRepository
+import com.diabeto.data.repository.PreferencesRepository
 import com.diabeto.data.repository.QuotaRepository
+import com.diabeto.data.repository.RollyTtsClient
 import com.diabeto.data.repository.QuotaStatus
 import com.diabeto.data.repository.ValidationRepository
+import com.diabeto.util.VoiceManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -64,7 +68,9 @@ class ChatbotViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val quotaRepository: QuotaRepository,
     private val validationRepository: ValidationRepository,
-    private val chatHistoryRepository: ChatHistoryRepository
+    private val chatHistoryRepository: ChatHistoryRepository,
+    private val preferencesRepository: PreferencesRepository,
+    private val rollyTtsClient: RollyTtsClient
 ) : ViewModel() {
 
     private val patientId: Long? = savedStateHandle.get<Long>("patientId")?.takeIf { it > 0 }
@@ -83,6 +89,56 @@ class ChatbotViewModel @Inject constructor(
         loadQuota()
         loadDoctors()
         loadChatHistory()
+    }
+
+    // ── Lecture a voix haute ──────────────────────────────────────────
+
+    /**
+     * Lit une reponse de ROLLY a voix haute (v2.1.101).
+     *
+     * Deux chemins, dans cet ordre :
+     *  1. Voix naturelle (modele TTS Gemini via /api/rolly-tts) — seulement si
+     *     le patient a active l'option. Elle coute du quota et des donnees.
+     *  2. TextToSpeech d'Android — gratuit, hors-ligne, toujours disponible.
+     *
+     * Le second sert aussi de filet au premier : quota epuise, reseau coupe,
+     * modele indisponible, et le patient entend quand meme sa reponse. Un
+     * echec de la voix naturelle ne doit jamais se traduire par du silence.
+     */
+    fun lireAVoixHaute(
+        texte: String,
+        languageTag: String = "fr",
+        onStart: () -> Unit = {},
+        onDone: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            val naturelle = runCatching { preferencesRepository.voixNaturelle.first() }
+                .getOrDefault(false)
+
+            if (naturelle) {
+                val resultat = rollyTtsClient.synthetiser(texte)
+                resultat.onSuccess { pcm ->
+                    VoiceManager.playPcm(
+                        pcm = pcm,
+                        sampleRate = RollyTtsClient.SAMPLE_RATE,
+                        onStart = onStart,
+                        onDone = onDone,
+                        onError = { message ->
+                            Log.w(TAG, "Lecture voix naturelle impossible ($message) — repli TTS local")
+                            VoiceManager.speak(texte, languageTag, onStart, onDone, onError)
+                        }
+                    )
+                    return@launch
+                }
+                Log.w(
+                    TAG,
+                    "Voix naturelle indisponible (${resultat.exceptionOrNull()?.message}) — repli TTS local"
+                )
+            }
+
+            VoiceManager.speak(texte, languageTag, onStart, onDone, onError)
+        }
     }
 
     // ── Sessions ──────────────────────────────────────────────────────

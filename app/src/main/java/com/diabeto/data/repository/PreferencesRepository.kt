@@ -68,6 +68,7 @@ class PreferencesRepository @Inject constructor(
         val PENDING_UPDATE_FORCE = booleanPreferencesKey("pending_update_force")
         val APP_LOCK_ENABLED = booleanPreferencesKey("app_lock_enabled")
         val SON_DEMARRAGE = booleanPreferencesKey("son_demarrage")
+        val VOIX_NATURELLE = booleanPreferencesKey("voix_naturelle")
         val APP_LOCK_METHOD = stringPreferencesKey("app_lock_method")
         val APP_LOCK_CREDENTIAL = stringPreferencesKey("app_lock_credential")
         val ONBOARDING_DASHBOARD_SEEN = booleanPreferencesKey("onboarding_dashboard_seen")
@@ -171,6 +172,23 @@ class PreferencesRepository @Inject constructor(
 
     suspend fun setSonDemarrage(actif: Boolean) {
         context.dataStore.edit { it[Keys.SON_DEMARRAGE] = actif }
+    }
+
+    /**
+     * Voix naturelle de ROLLY (v2.1.101).
+     *
+     * Desactivee par defaut, et ce defaut n'est pas un detail : la voix par
+     * defaut est celle d'Android, gratuite et hors-ligne. La voix naturelle
+     * passe par le serveur, consomme le quota Gemini partage par tous les
+     * patients et telecharge de l'audio sur le reseau mobile. C'est au patient
+     * de decider d'en payer le forfait, pas a l'application.
+     */
+    val voixNaturelle: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[Keys.VOIX_NATURELLE] ?: false
+    }
+
+    suspend fun setVoixNaturelle(actif: Boolean) {
+        context.dataStore.edit { it[Keys.VOIX_NATURELLE] = actif }
     }
 
     /**

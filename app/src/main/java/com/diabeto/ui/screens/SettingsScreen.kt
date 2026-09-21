@@ -295,6 +295,22 @@ fun SettingsScreen(
                         subtitleColor = subtitleColor,
                         isDark = isDark
                     )
+                    // v2.1.101 : voix naturelle de ROLLY. Volontairement a cote
+                    // du son de demarrage — tout ce qui parle se regle au meme
+                    // endroit. Le sous-titre dit le prix reel de l'option :
+                    // elle consomme des donnees et demande du reseau.
+                    DayLifeDivider(dividerColor)
+                    DayLifeToggleItem(
+                        icon = Icons.Default.RecordVoiceOver,
+                        iconBg = Color(0xFF7C3AED),
+                        title = stringResource(R.string.settings_voix_naturelle_title),
+                        subtitle = stringResource(R.string.settings_voix_naturelle_subtitle),
+                        checked = uiState.voixNaturelle,
+                        onCheckedChange = viewModel::setVoixNaturelle,
+                        titleColor = titleColor,
+                        subtitleColor = subtitleColor,
+                        isDark = isDark
+                    )
                     DayLifeDivider(dividerColor)
                     DayLifeToggleItem(
                         icon = Icons.Default.CalendarMonth,

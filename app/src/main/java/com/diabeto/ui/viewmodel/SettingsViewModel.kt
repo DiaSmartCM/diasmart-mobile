@@ -29,6 +29,7 @@ data class SettingsUiState(
     val language: AppLanguage = AppLanguage.FRENCH,
     val notificationsEnabled: Boolean = true,
     val sonDemarrage: Boolean = true,
+    val voixNaturelle: Boolean = false,
     val medicationReminders: Boolean = true,
     val measurementReminders: Boolean = true,
     val appointmentReminders: Boolean = true,
@@ -82,6 +83,11 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             preferencesRepository.sonDemarrage.collect { actif ->
                 _uiState.update { it.copy(sonDemarrage = actif) }
+            }
+        }
+        viewModelScope.launch {
+            preferencesRepository.voixNaturelle.collect { actif ->
+                _uiState.update { it.copy(voixNaturelle = actif) }
             }
         }
         viewModelScope.launch {
@@ -209,6 +215,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setSonDemarrage(actif: Boolean) {
         viewModelScope.launch { preferencesRepository.setSonDemarrage(actif) }
+    }
+
+    fun setVoixNaturelle(actif: Boolean) {
+        viewModelScope.launch { preferencesRepository.setVoixNaturelle(actif) }
     }
 
     fun setNotificationsEnabled(enabled: Boolean) {
