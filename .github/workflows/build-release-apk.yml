@@ -134,7 +134,9 @@ jobs:
           set -euo pipefail
           APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
           APKSIGNER=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner
-          "$APKSIGNER" verify --print-certs "$APK" | grep -E "Signer #1 certificate (DN|SHA-256)"
+          # apksigner sort en erreur si la signature est invalide
+          OUT=$("$APKSIGNER" verify --verbose --print-certs "$APK")
+          echo "$OUT" | grep -E "^Verifie|Verified using|certificate (DN|SHA-256)" || echo "$OUT"
           echo "path=$APK" >> "$GITHUB_OUTPUT"
 
       - name: Deposer l'APK (artifact uniquement, jamais publie)
