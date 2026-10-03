@@ -40,6 +40,33 @@ service cloud.firestore {
     function canReadPatientData(ownerUid) {
       return isOwner(ownerUid) || isLinkedDoctorOf(ownerUid) || isFamilyAidantOf(ownerUid);
     }
+    // Espace etablissement (B2B2C) : le compte connecte est-il soignant
+    // (ou administrateur) de l'etablissement ?
+    function estMembreEtablissement(etabId) {
+      return isSignedIn() &&
+             exists(/databases/$(database)/documents/etablissements/$(etabId)/membres/$(request.auth.uid));
+    }
+    function estAdminEtablissement(etabId) {
+      return isSignedIn() &&
+             get(/databases/$(database)/documents/etablissements/$(etabId)).data.adminUid == request.auth.uid;
+    }
+    // Un code d'invitation actif, du bon type, pour cet etablissement.
+    function codeValide(code, etabId, type) {
+      let c = /databases/$(database)/documents/codes_invitation/$(code);
+      return code is string && exists(c) &&
+             get(c).data.etablissementId == etabId &&
+             get(c).data.type == type &&
+             get(c).data.actif == true;
+    }
+    // Le patient s'est inscrit lui-meme (avec le code patient) dans un
+    // etablissement dont le compte connecte est soignant. Lecture seule.
+    function isSoignantEtablissementOf(patientUid) {
+      let aff = /databases/$(database)/documents/affiliations/$(patientUid);
+      return isSignedIn() && exists(aff) &&
+             get(aff).data.role == 'PATIENT' &&
+             estMembreEtablissement(get(aff).data.etablissementId) &&
+             exists(/databases/$(database)/documents/etablissements/$(get(aff).data.etablissementId)/patients/$(patientUid));
+    }
 
     // ════════════════════════════════════════════════════════════════
     //  PROFILS UTILISATEURS
@@ -409,9 +436,65 @@ service cloud.firestore {
       allow write: if isOwner(userId) && request.resource.size() < 100000;
 
       match /{document=**} {
-        allow read: if isOwner(userId) || isLinkedDoctorOf(userId);
+        allow read: if isOwner(userId) || isLinkedDoctorOf(userId) || isSoignantEtablissementOf(userId);
         allow write: if isOwner(userId);
       }
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    //  ESPACE ETABLISSEMENT (B2B2C)
+    //  - etablissements/{id} : le createur en est l'administrateur (adminUid,
+    //    jamais modifiable). Lecture par les membres.
+    //  - membres/{uid} : l'admin a la creation ; un soignant s'ajoute lui-meme
+    //    avec le code soignant ; l'admin peut retirer, un soignant peut partir.
+    //  - patients/{uid} : le patient s'inscrit lui-meme avec le code patient
+    //    (c'est son accord) et peut partir ; l'admin peut le retirer.
+    //  - codes_invitation/{code} : lecture d'un code precis seulement (pas de
+    //    liste) ; cree et desactive par l'admin.
+    //  - affiliations/{uid} : l'etablissement de chaque compte, a lui seul.
+    // ════════════════════════════════════════════════════════════════
+    match /etablissements/{etabId} {
+      allow read: if estMembreEtablissement(etabId);
+      allow create: if isSignedIn() && request.resource.data.adminUid == request.auth.uid;
+      allow update: if estAdminEtablissement(etabId) &&
+                       request.resource.data.adminUid == resource.data.adminUid;
+      allow delete: if false;
+
+      match /membres/{uid} {
+        allow read: if estMembreEtablissement(etabId);
+        allow create: if isOwner(uid) && request.resource.data.uid == uid && (
+          (request.resource.data.role == 'ADMIN' &&
+           getAfter(/databases/$(database)/documents/etablissements/$(etabId)).data.adminUid == request.auth.uid) ||
+          (request.resource.data.role == 'SOIGNANT' &&
+           codeValide(request.resource.data.code, etabId, 'SOIGNANT'))
+        );
+        allow update: if false;
+        allow delete: if (isOwner(uid) && resource.data.role != 'ADMIN') ||
+                         (estAdminEtablissement(etabId) && uid != request.auth.uid);
+      }
+
+      match /patients/{patientUid} {
+        allow read: if isOwner(patientUid) || estMembreEtablissement(etabId);
+        allow create: if isOwner(patientUid) && request.resource.data.uid == patientUid &&
+                         codeValide(request.resource.data.code, etabId, 'PATIENT');
+        allow update: if false;
+        allow delete: if isOwner(patientUid) || estAdminEtablissement(etabId);
+      }
+    }
+
+    match /codes_invitation/{code} {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn() &&
+        getAfter(/databases/$(database)/documents/etablissements/$(request.resource.data.etablissementId)).data.adminUid == request.auth.uid;
+      allow update: if estAdminEtablissement(resource.data.etablissementId) &&
+                       request.resource.data.etablissementId == resource.data.etablissementId &&
+                       request.resource.data.type == resource.data.type;
+      allow delete: if false;
+    }
+
+    match /affiliations/{uid} {
+      allow read, write: if isOwner(uid);
     }
 
     // ════════════════════════════════════════════════════════════════

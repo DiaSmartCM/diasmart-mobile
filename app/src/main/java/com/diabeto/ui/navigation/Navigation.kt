@@ -50,6 +50,7 @@ object Routes {
     const val VALIDATIONS      = "validations"
     const val COMMUNITY        = "community"
     const val FAMILY           = "family"
+    const val ETABLISSEMENT    = "etablissement"
     const val MES_AVIS         = "mes_avis"
     const val VIDEO_CALL       = "videocall/{roomName}?interlocuteur={interlocuteur}&audioOnly={audioOnly}"
     const val VOIP_CALL        = "voip_call"
@@ -552,7 +553,8 @@ fun DiabetoNavigation(
         composable(Routes.SETTINGS) {
             SettingsScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToFamily = { navController.navigate(Routes.FAMILY) }
+                onNavigateToFamily = { navController.navigate(Routes.FAMILY) },
+                onNavigateToEtablissement = { navController.navigate(Routes.ETABLISSEMENT) }
             )
         }
 
@@ -619,6 +621,13 @@ fun DiabetoNavigation(
         // ── Mode famille (v2.1.48) — aidants + owners pour qui je suis aidant ─
         composable(Routes.FAMILY) {
             FamilyScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // ── Espace etablissement (B2B2C) : equipe, tableau de bord, rapport ─
+        composable(Routes.ETABLISSEMENT) {
+            EtablissementScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
