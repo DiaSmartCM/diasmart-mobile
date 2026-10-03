@@ -73,7 +73,7 @@
     <string name="auth_already_account">I already have an account</string>
     <string name="auth_no_account">Create an account</string>
     <string name="auth_tagline">DiaSmart — Smart diabetes management</string>
-    <string name="auth_reset_email_sent">Password reset email sent!</string>
+    <string name="auth_reset_email_sent">If a password account exists for this email, a link has been sent. Check your spam folder too. Signed up with Google? Use the Google button.</string>
 
     <!-- Onboarding -->
     <string name="onboarding_title_1">Smart tracking</string>

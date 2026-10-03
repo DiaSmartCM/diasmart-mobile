@@ -50,6 +50,20 @@ service cloud.firestore {
       return isSignedIn() &&
              get(/databases/$(database)/documents/etablissements/$(etabId)).data.adminUid == request.auth.uid;
     }
+    // Validation des donnees (memes limites que EtablissementRepository).
+    function texteOk(v, min, max) {
+      return v is string && v.size() >= min && v.size() <= max;
+    }
+    function codeFormat(c) {
+      return c is string && c.matches('^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{8}$');
+    }
+    function etablissementValide(d) {
+      return d.keys().hasOnly(['nom', 'ville', 'adminUid', 'codePatient', 'codeSoignant', 'createdAt']) &&
+             texteOk(d.nom, 2, 80) &&
+             texteOk(d.ville, 0, 60) &&
+             codeFormat(d.codePatient) && codeFormat(d.codeSoignant) &&
+             d.createdAt is int;
+    }
     // Un code d'invitation actif, du bon type, pour cet etablissement.
     function codeValide(code, etabId, type) {
       let c = /databases/$(database)/documents/codes_invitation/$(code);
@@ -455,14 +469,20 @@ service cloud.firestore {
     // ════════════════════════════════════════════════════════════════
     match /etablissements/{etabId} {
       allow read: if estMembreEtablissement(etabId);
-      allow create: if isSignedIn() && request.resource.data.adminUid == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.adminUid == request.auth.uid &&
+                       etablissementValide(request.resource.data);
       allow update: if estAdminEtablissement(etabId) &&
-                       request.resource.data.adminUid == resource.data.adminUid;
+                       request.resource.data.adminUid == resource.data.adminUid &&
+                       request.resource.data.createdAt == resource.data.createdAt &&
+                       etablissementValide(request.resource.data);
       allow delete: if false;
 
       match /membres/{uid} {
         allow read: if estMembreEtablissement(etabId);
-        allow create: if isOwner(uid) && request.resource.data.uid == uid && (
+        allow create: if isOwner(uid) && request.resource.data.uid == uid &&
+          request.resource.data.keys().hasOnly(['uid', 'nom', 'role', 'code', 'joinedAt']) &&
+          texteOk(request.resource.data.nom, 0, 100) &&
+          request.resource.data.joinedAt is int && (
           (request.resource.data.role == 'ADMIN' &&
            getAfter(/databases/$(database)/documents/etablissements/$(etabId)).data.adminUid == request.auth.uid) ||
           (request.resource.data.role == 'SOIGNANT' &&
@@ -476,6 +496,9 @@ service cloud.firestore {
       match /patients/{patientUid} {
         allow read: if isOwner(patientUid) || estMembreEtablissement(etabId);
         allow create: if isOwner(patientUid) && request.resource.data.uid == patientUid &&
+                         request.resource.data.keys().hasOnly(['uid', 'nom', 'code', 'inscritAt']) &&
+                         texteOk(request.resource.data.nom, 0, 100) &&
+                         request.resource.data.inscritAt is int &&
                          codeValide(request.resource.data.code, etabId, 'PATIENT');
         allow update: if false;
         allow delete: if isOwner(patientUid) || estAdminEtablissement(etabId);
@@ -485,16 +508,26 @@ service cloud.firestore {
     match /codes_invitation/{code} {
       allow get: if isSignedIn();
       allow list: if false;
-      allow create: if isSignedIn() &&
+      allow create: if isSignedIn() && codeFormat(code) &&
+        request.resource.data.keys().hasOnly(['etablissementId', 'etablissementNom', 'type', 'actif', 'createdAt']) &&
+        texteOk(request.resource.data.etablissementNom, 2, 80) &&
+        request.resource.data.type in ['PATIENT', 'SOIGNANT'] &&
+        request.resource.data.actif == true &&
         getAfter(/databases/$(database)/documents/etablissements/$(request.resource.data.etablissementId)).data.adminUid == request.auth.uid;
+      // Seule modification permise : desactiver le code
       allow update: if estAdminEtablissement(resource.data.etablissementId) &&
-                       request.resource.data.etablissementId == resource.data.etablissementId &&
-                       request.resource.data.type == resource.data.type;
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['actif']) &&
+                       request.resource.data.actif == false;
       allow delete: if false;
     }
 
     match /affiliations/{uid} {
-      allow read, write: if isOwner(uid);
+      allow read, delete: if isOwner(uid);
+      allow create, update: if isOwner(uid) &&
+        request.resource.data.keys().hasOnly(['etablissementId', 'etablissementNom', 'role']) &&
+        texteOk(request.resource.data.etablissementId, 1, 40) &&
+        texteOk(request.resource.data.etablissementNom, 0, 80) &&
+        request.resource.data.role in ['ADMIN', 'SOIGNANT', 'PATIENT'];
     }
 
     // ════════════════════════════════════════════════════════════════

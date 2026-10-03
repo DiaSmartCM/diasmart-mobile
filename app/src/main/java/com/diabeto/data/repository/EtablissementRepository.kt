@@ -58,8 +58,27 @@ class EtablissementRepository @Inject constructor(
             (1..8).map { ALPHABET[random.nextInt(ALPHABET.length)] }.joinToString("")
 
         fun normaliserCode(saisie: String): String =
-            saisie.uppercase().filter { it.isLetterOrDigit() }
+            saisie.uppercase().filter { it in ALPHABET || it in "01ILO" }.take(8)
+
+        /** Code bien forme (8 caracteres de l'alphabet) : meme regle que firestore.rules. */
+        fun codeBienForme(code: String): Boolean = code.length == 8 && code.all { it in ALPHABET }
+
+        // Limites identiques a website/firestore.rules
+        const val NOM_MIN = 2
+        const val NOM_MAX = 80
+        const val VILLE_MAX = 60
+        const val NOM_PERSONNE_MAX = 100
+
+        /** Retire les caracteres invisibles et les espaces en trop. */
+        fun nettoyerTexte(texte: String, max: Int): String =
+            texte.filter { !it.isISOControl() }
+                .replace(Regex("\\s+"), " ")
+                .trim()
+                .take(max)
     }
+
+    /** Code tape inconnu ou desactive (compte comme un essai rate). */
+    class CodeInconnuException : Exception("Code inconnu ou expire")
 
     private fun etabRef(id: String) = firestore.collection(ETABLISSEMENTS).document(id)
 
@@ -110,12 +129,15 @@ class EtablissementRepository @Inject constructor(
         require(profil.role == UserRole.MEDECIN) { "Seul un compte soignant peut creer un etablissement" }
         require(getMonAffiliation() == null) { "Ce compte est deja rattache a un etablissement" }
 
+        val nomPropre = nettoyerTexte(nom, NOM_MAX)
+        val villePropre = nettoyerTexte(ville, VILLE_MAX)
+        require(nomPropre.length >= NOM_MIN) { "Le nom de l'etablissement est trop court" }
         val ref = firestore.collection(ETABLISSEMENTS).document()
         val now = System.currentTimeMillis()
         val etab = Etablissement(
             id = ref.id,
-            nom = nom.trim(),
-            ville = ville.trim(),
+            nom = nomPropre,
+            ville = villePropre,
             adminUid = uid,
             codePatient = genererCode(),
             codeSoignant = genererCode(),
@@ -132,7 +154,7 @@ class EtablissementRepository @Inject constructor(
             ))
             set(ref.collection("membres").document(uid), mapOf(
                 "uid" to uid,
-                "nom" to profil.nomComplet,
+                "nom" to nettoyerTexte(profil.nomComplet, NOM_PERSONNE_MAX),
                 "role" to RoleEtablissement.ADMIN.name,
                 "joinedAt" to now
             ))
@@ -177,9 +199,9 @@ class EtablissementRepository @Inject constructor(
     /** Lit un code (sans rien ecrire) pour afficher le nom du centre avant d'accepter. */
     suspend fun verifierCode(saisie: String): Result<InfoCode> = runCatching {
         val code = normaliserCode(saisie)
-        require(code.length == 8) { "Le code fait 8 caracteres" }
+        require(codeBienForme(code)) { "Le code fait 8 caracteres (lettres et chiffres)" }
         val doc = firestore.collection(CODES).document(code).get().await()
-        require(doc.exists() && doc.getBoolean("actif") == true) { "Code inconnu ou expire" }
+        if (!doc.exists() || doc.getBoolean("actif") != true) throw CodeInconnuException()
         InfoCode(
             code = code,
             etablissementId = doc.getString("etablissementId") ?: error("Code invalide"),
@@ -203,14 +225,14 @@ class EtablissementRepository @Inject constructor(
             if (info.type == TypeCode.PATIENT) {
                 set(ref.collection("patients").document(uid), mapOf(
                     "uid" to uid,
-                    "nom" to profil.nomComplet,
+                    "nom" to nettoyerTexte(profil.nomComplet, NOM_PERSONNE_MAX),
                     "code" to info.code,
                     "inscritAt" to now
                 ))
             } else {
                 set(ref.collection("membres").document(uid), mapOf(
                     "uid" to uid,
-                    "nom" to profil.nomComplet,
+                    "nom" to nettoyerTexte(profil.nomComplet, NOM_PERSONNE_MAX),
                     "role" to RoleEtablissement.SOIGNANT.name,
                     "code" to info.code,
                     "joinedAt" to now

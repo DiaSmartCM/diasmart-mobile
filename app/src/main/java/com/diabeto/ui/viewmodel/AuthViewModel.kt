@@ -474,6 +474,8 @@ class AuthViewModel @Inject constructor(
 
     fun clearError() = _uiState.update { it.copy(error = null) }
 
+    fun clearResetEmailSent() = _uiState.update { it.copy(resetEmailSent = false) }
+
     /**
      * Auto-restore cloud backup if local DB is empty (e.g. after reinstall).
      * Runs silently in background — does not block login.

@@ -35,6 +35,7 @@ import com.diabeto.R
 import com.diabeto.security.AppLockCredential
 import com.diabeto.security.AppLockMethod
 import com.diabeto.util.AppLockManager
+import com.diabeto.util.LimiteurEssais
 
 /**
  * Verrou applicatif a 3 methodes au choix : empreinte (systeme),
@@ -60,6 +61,8 @@ fun AppLockGate(
     var lastBackgroundedAt by remember { mutableStateOf(0L) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var biometricPromptInFlight by remember { mutableStateOf(false) }
+    // Limite les essais de PIN / mot de passe (blocages de plus en plus longs)
+    val limiteur = remember { LimiteurEssais(context, "verrou_appli") }
 
     // Re-verrouillage apres > 30s en arriere-plan
     DisposableEffect(lifecycleOwner, enabled, method) {
@@ -118,12 +121,15 @@ fun AppLockGate(
             AppLockMethod.PIN -> PinLockScreen(
                 errorMessage = errorMessage,
                 onSubmit = { entered ->
-                    val ok = verifyCredential(entered, credentialSerialized)
-                    if (ok) {
+                    if (limiteur.attenteRestanteMs() > 0) {
+                        errorMessage = limiteur.messageBlocage()
+                    } else if (verifyCredential(entered, credentialSerialized)) {
+                        limiteur.reussite()
                         locked = false
                         errorMessage = null
                     } else {
-                        errorMessage = context.getString(R.string.lock_pin_incorrect)
+                        limiteur.echec()
+                        errorMessage = limiteur.messageApresEchec(context.getString(R.string.lock_pin_incorrect))
                     }
                 },
                 onClose = { (context as? Activity)?.finishAffinity() }
@@ -131,12 +137,15 @@ fun AppLockGate(
             AppLockMethod.PASSWORD -> PasswordLockScreen(
                 errorMessage = errorMessage,
                 onSubmit = { entered ->
-                    val ok = verifyCredential(entered, credentialSerialized)
-                    if (ok) {
+                    if (limiteur.attenteRestanteMs() > 0) {
+                        errorMessage = limiteur.messageBlocage()
+                    } else if (verifyCredential(entered, credentialSerialized)) {
+                        limiteur.reussite()
                         locked = false
                         errorMessage = null
                     } else {
-                        errorMessage = context.getString(R.string.lock_password_incorrect)
+                        limiteur.echec()
+                        errorMessage = limiteur.messageApresEchec(context.getString(R.string.lock_password_incorrect))
                     }
                 },
                 onClose = { (context as? Activity)?.finishAffinity() }
