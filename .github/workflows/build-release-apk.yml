@@ -74,7 +74,18 @@ jobs:
           set -euo pipefail
           # app/build.gradle.kts lit ../diasmart-release.jks et local.properties
           if [ -n "$KEYSTORE_BASE64" ] && [ -n "$GOOGLE_SERVICES_JSON" ]; then
-            echo "$KEYSTORE_BASE64" | base64 -d > diasmart-release.jks
+            # Copier-coller depuis Windows : on retire espaces et retours a la ligne
+            KEYSTORE_PASSWORD=${KEYSTORE_PASSWORD//[$'\r\n']/}
+            KEY_PASSWORD=${KEY_PASSWORD//[$'\r\n']/}
+            KEY_ALIAS=$(printf '%s' "$KEY_ALIAS" | tr -d ' \r\n\t')
+            if ! printf '%s' "$KEYSTORE_BASE64" | tr -d ' \r\n\t' | base64 -d > diasmart-release.jks 2>/dev/null; then
+              echo "::error::Le secret KEYSTORE_BASE64 n'est pas valide (texte incomplet ou modifie). Recopier tout le contenu de KEYSTORE_BASE64.txt."
+              exit 1
+            fi
+            if ! keytool -list -keystore diasmart-release.jks -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" > /dev/null 2>&1; then
+              echo "::error::Le keystore ne s'ouvre pas : verifier les secrets KEYSTORE_PASSWORD et KEY_ALIAS."
+              exit 1
+            fi
             printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json
             {
               echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
