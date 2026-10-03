@@ -35,6 +35,10 @@ on:
         description: "Publier l'APK en version de TEST telechargeable (pre-release GitHub, pas la mise a jour automatique)"
         type: boolean
         default: false
+      publier_officiel:
+        description: "Publier l'APK comme version OFFICIELLE (release GitHub v<version>, lien du bouton du site). Ne touche pas app_config/latest_version."
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -186,6 +190,24 @@ jobs:
             --title "DiaSmart ${VERSION} - version de TEST" \
             --notes "Version de test (nouvelle cle de signature). Ne s'installe pas par-dessus l'ancien DiaSmart : desinstaller d'abord, ou utiliser un telephone sans DiaSmart. Ce n'est pas la mise a jour automatique."
           echo "Lien direct : https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/DiaSmart-test.apk" >> "$GITHUB_STEP_SUMMARY"
+
+      # Seulement sur demande (case publier_officiel) : release v<version> avec
+      # app-release.apk, le fichier que pointe le bouton du site. Echoue si la
+      # version existe deja (penser a augmenter versionCode/versionName).
+      - name: Publier la version officielle
+        if: github.event_name == 'workflow_dispatch' && inputs.publier_officiel && steps.prep.outputs.signed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APK: ${{ steps.apk.outputs.path }}
+          VERSION: ${{ steps.prep.outputs.version_name }}
+        run: |
+          set -euo pipefail
+          cp "$APK" app-release.apk
+          gh release create "v${VERSION}" app-release.apk \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest \
+            --title "DiaSmart v${VERSION}" \
+            --notes "Nouvelle cle de signature : desinstaller l'ancien DiaSmart avant d'installer celui-ci (les donnees sauvegardees en ligne sont gardees)."
+          echo "Lien direct : https://github.com/${GITHUB_REPOSITORY}/releases/download/v${VERSION}/app-release.apk" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Effacer cle et configuration
         if: always()
