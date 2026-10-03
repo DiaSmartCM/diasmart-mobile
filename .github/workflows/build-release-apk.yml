@@ -30,6 +30,11 @@ on:
       - '**.md'
   pull_request:
   workflow_dispatch:
+    inputs:
+      publier_test:
+        description: "Publier l'APK en version de TEST telechargeable (pre-release GitHub, pas la mise a jour automatique)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -158,6 +163,26 @@ jobs:
           path: ${{ steps.apk.outputs.path }}
           retention-days: 30
           if-no-files-found: error
+
+      # Seulement sur demande (bouton "Run workflow", case cochee) : page de
+      # telechargement de TEST. Pre-release, jamais "latest" : le site et
+      # app_config/latest_version ne la voient pas.
+      - name: Publier la version de test (pre-release)
+        if: github.event_name == 'workflow_dispatch' && inputs.publier_test && steps.prep.outputs.signed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APK: ${{ steps.apk.outputs.path }}
+          VERSION: ${{ steps.prep.outputs.version_name }}
+        run: |
+          set -euo pipefail
+          TAG="test-v${VERSION}-$(date -u +%Y%m%d-%H%M)"
+          cp "$APK" DiaSmart-test.apk
+          gh release create "$TAG" DiaSmart-test.apk \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --prerelease --latest=false \
+            --title "DiaSmart ${VERSION} - version de TEST" \
+            --notes "Version de test (nouvelle cle de signature). Ne s'installe pas par-dessus l'ancien DiaSmart : desinstaller d'abord, ou utiliser un telephone sans DiaSmart. Ce n'est pas la mise a jour automatique."
+          echo "Lien direct : https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/DiaSmart-test.apk" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Effacer cle et configuration
         if: always()
