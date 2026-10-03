@@ -1,0 +1,164 @@
+name: APK release signe
+
+# Construit l'APK release signe a chaque push (et sur chaque PR).
+#
+# L'APK est SEULEMENT depose comme "artifact" de ce workflow (onglet Actions).
+# Il n'est jamais publie : pas de GitHub Release, pas de copie dans website/,
+# pas d'ecriture dans Firestore app_config/latest_version. Les telephones des
+# utilisateurs ne peuvent donc pas le recuperer par la mise a jour automatique.
+#
+# Secrets attendus (Settings > Secrets and variables > Actions) :
+#   KEYSTORE_BASE64       fichier .jks encode en base64
+#   KEYSTORE_PASSWORD     mot de passe du keystore
+#   KEY_ALIAS             alias de la cle (diasmart)
+#   KEY_PASSWORD          mot de passe de la cle
+#   GOOGLE_SERVICES_JSON  contenu complet de app/google-services.json
+#   TURN_USERNAME         identifiant TURN Metered.ca (optionnel)
+#   TURN_PASSWORD         mot de passe TURN Metered.ca (optionnel)
+#
+# Sans KEYSTORE_BASE64 ou GOOGLE_SERVICES_JSON (ex. PR venant d'un fork), le
+# workflow fait une construction de TEST avec une cle jetable et un faux
+# google-services.json : il verifie que le code compile, sans rien deposer.
+# Details : docs/build-ci.md
+
+on:
+  push:
+    paths-ignore:
+      - 'website/**'
+      - 'public-site/**'
+      - 'docs/**'
+      - '**.md'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Construire l'APK release
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # Le depot n'a pas de gradlew Unix ni de gradle-wrapper.jar (gitignore) :
+      # on installe directement la version du wrapper (gradle-wrapper.properties).
+      - name: Setup Gradle 9.2.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.2.1'
+
+      - name: Preparer cle de signature et configuration
+        id: prep
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+          TURN_USERNAME: ${{ secrets.TURN_USERNAME }}
+          TURN_PASSWORD: ${{ secrets.TURN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          # app/build.gradle.kts lit ../diasmart-release.jks et local.properties
+          if [ -n "$KEYSTORE_BASE64" ] && [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            # Copier-coller depuis Windows : on retire espaces et retours a la ligne
+            KEYSTORE_PASSWORD=${KEYSTORE_PASSWORD//[$'\r\n']/}
+            KEY_PASSWORD=${KEY_PASSWORD//[$'\r\n']/}
+            KEY_ALIAS=$(printf '%s' "$KEY_ALIAS" | tr -d ' \r\n\t')
+            if ! printf '%s' "$KEYSTORE_BASE64" | tr -d ' \r\n\t' | base64 -d > diasmart-release.jks 2>/dev/null; then
+              echo "::error::Le secret KEYSTORE_BASE64 n'est pas valide (texte incomplet ou modifie). Recopier tout le contenu de KEYSTORE_BASE64.txt."
+              exit 1
+            fi
+            if ! keytool -list -keystore diasmart-release.jks -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" > /dev/null 2>&1; then
+              echo "::error::Le keystore ne s'ouvre pas : verifier les secrets KEYSTORE_PASSWORD et KEY_ALIAS."
+              exit 1
+            fi
+            printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json
+            {
+              echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+              echo "KEY_ALIAS=$KEY_ALIAS"
+              echo "KEY_PASSWORD=$KEY_PASSWORD"
+            } > local.properties
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Secrets KEYSTORE_BASE64 / GOOGLE_SERVICES_JSON absents : construction de TEST (cle jetable, aucun APK depose). Voir docs/build-ci.md"
+            TMP_PW=$(openssl rand -hex 16)
+            keytool -genkeypair -keystore diasmart-release.jks -storetype PKCS12 \
+              -alias ci-test -keyalg RSA -keysize 2048 -validity 1 \
+              -storepass "$TMP_PW" -keypass "$TMP_PW" -dname "CN=CI test only"
+            cat > app/google-services.json <<'JSON'
+          {
+            "project_info": {
+              "project_number": "000000000000",
+              "project_id": "ci-test-only",
+              "storage_bucket": "ci-test-only.appspot.com"
+            },
+            "client": [{
+              "client_info": {
+                "mobilesdk_app_id": "1:000000000000:android:0000000000000000",
+                "android_client_info": { "package_name": "com.diabeto" }
+              },
+              "oauth_client": [],
+              "api_key": [{ "current_key": "ci-test-only" }],
+              "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
+            }],
+            "configuration_version": "1"
+          }
+          JSON
+            {
+              echo "KEYSTORE_PASSWORD=$TMP_PW"
+              echo "KEY_ALIAS=ci-test"
+              echo "KEY_PASSWORD=$TMP_PW"
+            } > local.properties
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -n "$TURN_USERNAME" ] && [ -n "$TURN_PASSWORD" ]; then
+            echo "TURN_USERNAME=$TURN_USERNAME" >> local.properties
+            echo "TURN_PASSWORD=$TURN_PASSWORD" >> local.properties
+          else
+            echo "::warning::Secrets TURN_USERNAME / TURN_PASSWORD absents : les appels audio/video n'auront que les serveurs STUN."
+          fi
+          VERSION_NAME=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' app/build.gradle.kts | head -1)
+          VERSION_CODE=$(sed -n 's/.*versionCode = \([0-9]*\).*/\1/p' app/build.gradle.kts | head -1)
+          echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+
+      - name: Construire assembleRelease
+        run: gradle assembleRelease -x uploadCrashlyticsMappingFileRelease --stacktrace
+
+      - name: Verifier la signature de l'APK
+        id: apk
+        run: |
+          set -euo pipefail
+          APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
+          APKSIGNER=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner
+          # apksigner sort en erreur si la signature est invalide
+          OUT=$("$APKSIGNER" verify --verbose --print-certs "$APK")
+          echo "$OUT" | grep -E "^Verifie|Verified using|certificate (DN|SHA-256)" || echo "$OUT"
+          echo "path=$APK" >> "$GITHUB_OUTPUT"
+
+      - name: Deposer l'APK (artifact uniquement, jamais publie)
+        if: steps.prep.outputs.signed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: DiaSmart-v${{ steps.prep.outputs.version_name }}-${{ steps.prep.outputs.version_code }}-${{ github.sha }}
+          path: ${{ steps.apk.outputs.path }}
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Effacer cle et configuration
+        if: always()
+        run: rm -f diasmart-release.jks local.properties app/google-services.json
