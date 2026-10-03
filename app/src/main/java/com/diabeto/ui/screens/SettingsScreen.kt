@@ -56,6 +56,7 @@ import kotlinx.coroutines.launch
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
     onNavigateToFamily: () -> Unit = {},
+    onNavigateToEtablissement: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -637,6 +638,29 @@ fun SettingsScreen(
                 // Cote medecin : ne montre pas la section. Le medecin peut
                 // toujours etre aidant d'un proche s'il a un compte perso,
                 // mais ce n'est pas surface principale.
+            }
+
+            // ── Etablissement de sante (offre B2B2C) ─────────
+            item {
+                DayLifeSectionHeader(
+                    title = "Etablissement de sante",
+                    color = sectionTextColor,
+                    isDark = isDark
+                )
+            }
+            item {
+                DayLifeSettingsCard(cardBg = cardBg) {
+                    DayLifeSettingsItem(
+                        icon = Icons.Default.LocalHospital,
+                        iconBg = Color(0xFF0EA5E9),
+                        title = if (uiState.isMedecin) "Espace etablissement" else "Mon centre de sante",
+                        subtitle = if (uiState.isMedecin) "Equipe, patients a risque, rapport payeur"
+                                   else "Rejoindre mon centre avec son code",
+                        titleColor = titleColor,
+                        subtitleColor = subtitleColor,
+                        onClick = onNavigateToEtablissement
+                    )
+                }
             }
 
             // ── (Section "Partage avec un patient" deplacee vers l'ecran
