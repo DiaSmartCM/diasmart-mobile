@@ -76,9 +76,6 @@ fun SettingsScreen(
     // v2.1.85 : recuperation des dossiers orphelins
     var showClaimOrphansDialog by remember { mutableStateOf(false) }
     var messageRecuperation by remember { mutableStateOf<String?>(null) }
-    // v2.1.87 : diagnostic des alarmes. Trois versions publiees en devinant
-    // pourquoi les rappels ne sonnaient pas — autant donner l'instrument.
-    var rapportAlarmes by remember { mutableStateOf<String?>(null) }
 
     // Le comptage se fait a chaque ouverture de l'ecran : apres une
     // recuperation, la carte doit disparaitre sans redemarrage.
@@ -181,14 +178,16 @@ fun SettingsScreen(
             }
 
             // ── Mesures & Unités ──────────────────────────────
-            item {
+            // Patient uniquement : le medecin ne saisit pas de glycemie sur
+            // son compte, unite et type de mesure ne lui servent a rien.
+            if (!uiState.isMedecin) item {
                 DayLifeSectionHeader(
                     title = stringResource(R.string.settings_section_measures),
                     color = sectionTextColor,
                     isDark = isDark
                 )
             }
-            item {
+            if (!uiState.isMedecin) item {
                 DayLifeSettingsCard(cardBg = cardBg) {
                     DayLifeSettingsItem(
                         icon = Icons.Default.Straighten,
@@ -209,23 +208,19 @@ fun SettingsScreen(
                         subtitleColor = subtitleColor,
                         onClick = { showMeasureTypeDialog = true }
                     )
-                    // Objectif glycemique : patient uniquement (un medecin n'a pas
-                    // de glycemie personnelle a cibler sur son compte)
-                    if (!uiState.isMedecin) {
-                        DayLifeDivider(dividerColor)
-                        DayLifeSettingsItem(
-                            icon = Icons.Default.Analytics,
-                            iconBg = Color(0xFF8B5CF6),
-                            title = stringResource(R.string.settings_target_title),
-                            subtitle = if (uiState.glucoseUnit == GlucoseUnit.MG_DL)
-                                "${uiState.targetMin.toInt()} - ${uiState.targetMax.toInt()} mg/dL"
-                            else
-                                "${"%.1f".format(uiState.targetMin / 18.0182)} - ${"%.1f".format(uiState.targetMax / 18.0182)} mmol/L",
-                            titleColor = titleColor,
-                            subtitleColor = subtitleColor,
-                            onClick = { showTargetDialog = true }
-                        )
-                    }
+                    DayLifeDivider(dividerColor)
+                    DayLifeSettingsItem(
+                        icon = Icons.Default.Analytics,
+                        iconBg = Color(0xFF8B5CF6),
+                        title = stringResource(R.string.settings_target_title),
+                        subtitle = if (uiState.glucoseUnit == GlucoseUnit.MG_DL)
+                            "${uiState.targetMin.toInt()} - ${uiState.targetMax.toInt()} mg/dL"
+                        else
+                            "${"%.1f".format(uiState.targetMin / 18.0182)} - ${"%.1f".format(uiState.targetMax / 18.0182)} mmol/L",
+                        titleColor = titleColor,
+                        subtitleColor = subtitleColor,
+                        onClick = { showTargetDialog = true }
+                    )
                 }
             }
 
@@ -300,18 +295,21 @@ fun SettingsScreen(
                     // du son de demarrage — tout ce qui parle se regle au meme
                     // endroit. Le sous-titre dit le prix reel de l'option :
                     // elle consomme des donnees et demande du reseau.
-                    DayLifeDivider(dividerColor)
-                    DayLifeToggleItem(
-                        icon = Icons.Default.RecordVoiceOver,
-                        iconBg = Color(0xFF7C3AED),
-                        title = stringResource(R.string.settings_voix_naturelle_title),
-                        subtitle = stringResource(R.string.settings_voix_naturelle_subtitle),
-                        checked = uiState.voixNaturelle,
-                        onCheckedChange = viewModel::setVoixNaturelle,
-                        titleColor = titleColor,
-                        subtitleColor = subtitleColor,
-                        isDark = isDark
-                    )
+                    // ROLLY n'est pas propose cote medecin.
+                    if (!uiState.isMedecin) {
+                        DayLifeDivider(dividerColor)
+                        DayLifeToggleItem(
+                            icon = Icons.Default.RecordVoiceOver,
+                            iconBg = Color(0xFF7C3AED),
+                            title = stringResource(R.string.settings_voix_naturelle_title),
+                            subtitle = stringResource(R.string.settings_voix_naturelle_subtitle),
+                            checked = uiState.voixNaturelle,
+                            onCheckedChange = viewModel::setVoixNaturelle,
+                            titleColor = titleColor,
+                            subtitleColor = subtitleColor,
+                            isDark = isDark
+                        )
+                    }
                     DayLifeDivider(dividerColor)
                     DayLifeToggleItem(
                         icon = Icons.Default.CalendarMonth,
@@ -454,115 +452,6 @@ fun SettingsScreen(
                 }
                 item { Spacer(Modifier.height(8.dp)) }
             }
-
-            // ── Diagnostic des rappels ──
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = cardBg),
-                    elevation = CardDefaults.cardElevation(0.dp)
-                ) {
-                    Column(Modifier.padding(18.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Default.NotificationsActive, null,
-                                tint = Primary, modifier = Modifier.size(22.dp)
-                            )
-                            Spacer(Modifier.width(10.dp))
-                            Text(
-                                "Les rappels ne sonnent pas ?",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp,
-                                color = titleColor
-                            )
-                        }
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            "Ce test pose une alarme dans une minute et indique " +
-                            "ce que votre téléphone autorise réellement.",
-                            fontSize = 13.sp,
-                            lineHeight = 18.sp,
-                            color = subtitleColor
-                        )
-                        Spacer(Modifier.height(12.dp))
-
-                        // v2.1.89 : l'exemption de batterie passe en premier.
-                        // C'est la cause la plus frequente du silence — sans
-                        // elle, le systeme suspend l'application ecran eteint
-                        // et ni le podometre, ni les alarmes, ni le GPS ne
-                        // survivent. Le bouton disparait une fois accordee.
-                        if (!com.diabeto.util.OptimisationBatterie.estExemptee(context)) {
-                            Surface(
-                                shape = RoundedCornerShape(14.dp),
-                                color = Color(0xFFF59E0B).copy(alpha = 0.12f),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Column(Modifier.padding(12.dp)) {
-                                    Text(
-                                        "L'application est mise en veille par le système. " +
-                                        "Le podomètre, les rappels et le GPS s'arrêtent " +
-                                        "dès que l'écran s'éteint.",
-                                        fontSize = 12.5.sp,
-                                        lineHeight = 17.sp,
-                                        color = if (isDark) DarkTextPrimary else TextPrimary
-                                    )
-                                    Spacer(Modifier.height(10.dp))
-                                    Button(
-                                        onClick = {
-                                            com.diabeto.util.OptimisationBatterie
-                                                .demanderExemption(context)
-                                        },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        shape = RoundedCornerShape(12.dp),
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = Color(0xFFF59E0B)
-                                        )
-                                    ) { Text("Autoriser le fonctionnement en arrière-plan", fontSize = 13.sp) }
-                                }
-                            }
-                            Spacer(Modifier.height(10.dp))
-                        }
-
-                        // Reglage constructeur : n'apparait que sur les marques
-                        // connues pour fermer les applications malgre l'exemption.
-                        if (com.diabeto.util.OptimisationBatterie.constructeurRestrictif()) {
-                            OutlinedButton(
-                                onClick = {
-                                    com.diabeto.util.OptimisationBatterie
-                                        .ouvrirReglagesConstructeur(context)
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp)
-                            ) { Text("Réglages ${android.os.Build.MANUFACTURER} : démarrage auto", fontSize = 12.5.sp) }
-                            Spacer(Modifier.height(10.dp))
-                        }
-
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(
-                                onClick = {
-                                    rapportAlarmes =
-                                        com.diabeto.notifications.AlarmScheduler.diagnostic(context) +
-                                        "\n" +
-                                        com.diabeto.notifications.AlarmScheduler.testerDansUneMinute(context)
-                                },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(14.dp)
-                            ) { Text("Tester", fontSize = 13.sp) }
-
-                            OutlinedButton(
-                                onClick = {
-                                    com.diabeto.notifications.AlarmScheduler
-                                        .ouvrirReglageAlarmes(context)
-                                },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(14.dp)
-                            ) { Text("Autoriser", fontSize = 13.sp) }
-                        }
-                    }
-                }
-            }
-            item { Spacer(Modifier.height(8.dp)) }
 
             item {
                 DayLifeSectionHeader(
@@ -900,23 +789,6 @@ fun SettingsScreen(
                 pendingMethod = null
             },
             onDismiss = { pendingMethod = null }
-        )
-    }
-
-    rapportAlarmes?.let { rapport ->
-        AlertDialog(
-            onDismissRequest = { rapportAlarmes = null },
-            shape = RoundedCornerShape(24.dp),
-            icon = { Icon(Icons.Default.NotificationsActive, null, tint = Primary) },
-            title = { Text("État des rappels", fontWeight = FontWeight.Bold) },
-            text = {
-                Column(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
-                    Text(rapport, fontSize = 13.sp, lineHeight = 19.sp)
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { rapportAlarmes = null }) { Text("Fermer") }
-            }
         )
     }
 

@@ -395,6 +395,8 @@ class RendezVousViewModel @Inject constructor(
                         lieu = rdv.lieu,
                     )
                 }.onFailure { Log.w(TAG, "Alarme RDV non posee", it) }
+                // Rappel programme : demande les autorisations s'il en manque
+                com.diabeto.ui.components.DemandeAutorisationRappels.verifier(appContext)
 
                 val patientUid = selectedOption?.uid
                 if (patientUid.isNullOrBlank()) {
