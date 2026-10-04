@@ -5,7 +5,9 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
@@ -29,27 +31,46 @@ import java.time.Duration
  */
 class FirebaseRest(
     private val apiKey: String = "AIzaSyCMx0rYw9rua20M_SPJW6LtXZ8xIbTcHvo",
-    projectId: String = "project-d-r1997t"
+    private val projectId: String = "project-d-r1997t"
 ) {
-    class ErreurFirebase(message: String, val code: Int = 0) : Exception(message)
+    class ErreurFirebase(message: String, val code: Int = 0, val identifiantsFaux: Boolean = false) : Exception(message)
 
     data class Session(val uid: String, val email: String, val idToken: String, val refreshToken: String, val expireA: Long)
 
+    /** Date/heure Firestore (timestampValue), ex. "2026-10-04T12:00:00Z". */
+    data class Horodatage(val iso: String)
+
+    /** Une ecriture d'un lot atomique : document entier (set) ou suppression. */
+    sealed class Ecriture {
+        data class Poser(val chemin: String, val champs: Map<String, Any?>) : Ecriture()
+        data class Supprimer(val chemin: String) : Ecriture()
+        /** Change seulement ces champs d'un document existant. */
+        data class Changer(val chemin: String, val champs: Map<String, Any?>) : Ecriture()
+    }
+
     private val http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20)).build()
     private val json = Json { ignoreUnknownKeys = true }
-    private val base = "https://firestore.googleapis.com/v1/projects/$projectId/databases/(default)/documents"
+    private val racine = "projects/$projectId/databases/(default)/documents"
+    private val base = "https://firestore.googleapis.com/v1/$racine"
 
     @Volatile var session: Session? = null
         private set
 
-    suspend fun connexion(email: String, motDePasse: String): Session {
+    // ── Comptes ─────────────────────────────────────────────────────────
+
+    suspend fun connexion(email: String, motDePasse: String): Session =
+        ouvrirSession("accounts:signInWithPassword", email, motDePasse)
+
+    suspend fun inscription(email: String, motDePasse: String): Session =
+        ouvrirSession("accounts:signUp", email, motDePasse)
+
+    private suspend fun ouvrirSession(methode: String, email: String, motDePasse: String): Session {
         val corps = buildJsonObject {
             put("email", email.trim())
             put("password", motDePasse)
             put("returnSecureToken", true)
         }
-        val r = appel("https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=$apiKey", "POST", corps.toString(), jeton = null)
-        val o = r.jsonObject
+        val o = appel("https://identitytoolkit.googleapis.com/v1/$methode?key=$apiKey", "POST", corps.toString(), jeton = null).jsonObject
         val s = Session(
             uid = o.texte("localId"),
             email = o.texte("email"),
@@ -61,12 +82,28 @@ class FirebaseRest(
         return s
     }
 
+    /** Vrai si l'email du compte a ete confirme (code a 6 chiffres). */
+    suspend fun emailVerifie(): Boolean {
+        val corps = buildJsonObject { put("idToken", jetonValide()) }
+        val o = appel("https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=$apiKey", "POST", corps.toString(), jeton = null).jsonObject
+        return (o["users"] as? JsonArray)?.firstOrNull()?.jsonObject?.get("emailVerified")?.jsonPrimitive?.booleanOrNull == true
+    }
+
+    /** Envoie l'email "Mot de passe oublie" de Firebase. */
+    suspend fun motDePasseOublie(email: String) {
+        val corps = buildJsonObject {
+            put("requestType", "PASSWORD_RESET")
+            put("email", email.trim())
+        }
+        appel("https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=$apiKey", "POST", corps.toString(), jeton = null)
+    }
+
     fun deconnexion() { session = null }
 
-    /** Le jeton d'acces dure 1 h : on le renouvelle 5 min avant la fin. */
-    private suspend fun jetonValide(): String {
+    /** Le jeton d'acces dure 1 h : on le renouvelle 5 min avant la fin (ou si [force]). */
+    suspend fun jetonValide(force: Boolean = false): String {
         val s = session ?: throw ErreurFirebase("Non connecte", 401)
-        if (System.currentTimeMillis() < s.expireA - 5 * 60_000) return s.idToken
+        if (!force && System.currentTimeMillis() < s.expireA - 5 * 60_000) return s.idToken
         val corps = "grant_type=refresh_token&refresh_token=" + URLEncoder.encode(s.refreshToken, Charsets.UTF_8)
         val o = appel("https://securetoken.googleapis.com/v1/token?key=$apiKey", "POST", corps, jeton = null,
             typeContenu = "application/x-www-form-urlencoded").jsonObject
@@ -78,6 +115,8 @@ class FirebaseRest(
         session = nouvelle
         return nouvelle.idToken
     }
+
+    // ── Firestore ───────────────────────────────────────────────────────
 
     /** Un document, ou null s'il n'existe pas. Renvoie ses champs. */
     suspend fun document(chemin: String): Map<String, Any?>? = try {
@@ -92,23 +131,90 @@ class FirebaseRest(
         return (o["documents"] as? JsonArray).orEmpty().map { champs(it.jsonObject) }
     }
 
-    /** Les [limite] derniers documents d'une sous-collection, tries par [champ] decroissant. */
-    suspend fun derniers(parent: String, collection: String, champ: String, limite: Int): List<Map<String, Any?>> {
-        val requete = buildJsonObject {
+    /**
+     * Requete sur une collection : filtres "champ == valeur", tri decroissant
+     * optionnel, limite. Renvoie (id du document, champs).
+     */
+    suspend fun requete(
+        parent: String?,
+        collection: String,
+        egalites: Map<String, Any?> = emptyMap(),
+        triDecroissant: String? = null,
+        limite: Int = 300
+    ): List<Pair<String, Map<String, Any?>>> {
+        val q = buildJsonObject {
             put("structuredQuery", buildJsonObject {
                 put("from", buildJsonArray { add(buildJsonObject { put("collectionId", collection) }) })
-                put("orderBy", buildJsonArray {
+                if (egalites.isNotEmpty()) {
+                    val filtres = egalites.map { (champ, v) ->
+                        buildJsonObject {
+                            put("fieldFilter", buildJsonObject {
+                                put("field", buildJsonObject { put("fieldPath", champ) })
+                                put("op", "EQUAL")
+                                put("value", encoder(v))
+                            })
+                        }
+                    }
+                    put("where", if (filtres.size == 1) filtres[0] else buildJsonObject {
+                        put("compositeFilter", buildJsonObject {
+                            put("op", "AND")
+                            put("filters", JsonArray(filtres))
+                        })
+                    })
+                }
+                if (triDecroissant != null) put("orderBy", buildJsonArray {
                     add(buildJsonObject {
-                        put("field", buildJsonObject { put("fieldPath", champ) })
+                        put("field", buildJsonObject { put("fieldPath", triDecroissant) })
                         put("direction", "DESCENDING")
                     })
                 })
                 put("limit", limite)
             })
         }
-        val r = appel("$base/$parent:runQuery", "POST", requete.toString(), jetonValide())
-        return r.jsonArray.mapNotNull { (it.jsonObject["document"] as? JsonObject)?.let(::champs) }
+        val url = if (parent.isNullOrBlank()) "$base:runQuery" else "$base/$parent:runQuery"
+        val r = appel(url, "POST", q.toString(), jetonValide())
+        return r.jsonArray.mapNotNull { el ->
+            (el.jsonObject["document"] as? JsonObject)?.let { d ->
+                d["name"]!!.jsonPrimitive.content.substringAfterLast('/') to champs(d)
+            }
+        }
     }
+
+    /** Les [limite] derniers documents d'une sous-collection, tries par [champ] decroissant. */
+    suspend fun derniers(parent: String, collection: String, champ: String, limite: Int): List<Map<String, Any?>> =
+        requete(parent, collection, triDecroissant = champ, limite = limite).map { it.second }
+
+    /** Ecrit plusieurs documents d'un coup : tout passe, ou rien. */
+    suspend fun lot(ecritures: List<Ecriture>) {
+        val corps = buildJsonObject {
+            put("writes", buildJsonArray {
+                ecritures.forEach { e ->
+                    add(when (e) {
+                        is Ecriture.Poser -> buildJsonObject {
+                            put("update", buildJsonObject {
+                                put("name", "$racine/${e.chemin}")
+                                put("fields", JsonObject(e.champs.mapValues { (_, v) -> encoder(v) }))
+                            })
+                        }
+                        is Ecriture.Supprimer -> buildJsonObject { put("delete", "$racine/${e.chemin}") }
+                        is Ecriture.Changer -> buildJsonObject {
+                            put("update", buildJsonObject {
+                                put("name", "$racine/${e.chemin}")
+                                put("fields", JsonObject(e.champs.mapValues { (_, v) -> encoder(v) }))
+                            })
+                            put("updateMask", buildJsonObject {
+                                put("fieldPaths", JsonArray(e.champs.keys.map { JsonPrimitive(it) }))
+                            })
+                            put("currentDocument", buildJsonObject { put("exists", true) })
+                        }
+                    })
+                }
+            })
+        }
+        appel("$base:commit", "POST", corps.toString(), jetonValide())
+    }
+
+    // ── HTTP ────────────────────────────────────────────────────────────
 
     private suspend fun appel(
         url: String, methode: String, corps: String?, jeton: String?,
@@ -121,31 +227,46 @@ class FirebaseRest(
         val rep = try {
             http.send(b.build(), HttpResponse.BodyHandlers.ofString())
         } catch (e: java.io.IOException) {
-            throw ErreurFirebase("Pas de connexion Internet. Verifiez le reseau puis reessayez.")
+            throw ErreurFirebase("Pas de connexion Internet. Vérifiez le réseau puis réessayez.")
         }
-        if (rep.statusCode() !in 200..299) throw ErreurFirebase(messageErreur(rep.statusCode(), rep.body()), rep.statusCode())
+        if (rep.statusCode() !in 200..299) throw erreur(rep.statusCode(), rep.body())
         json.parseToJsonElement(rep.body())
     }
 
-    private fun messageErreur(code: Int, corps: String): String {
+    private fun erreur(code: Int, corps: String): ErreurFirebase {
         val brut = runCatching {
             json.parseToJsonElement(corps).jsonObject["error"]?.jsonObject?.get("message")?.jsonPrimitive?.content
         }.getOrNull().orEmpty()
+        fun e(m: String, faux: Boolean = false) = ErreurFirebase(m, code, faux)
         return when {
             brut.startsWith("INVALID_LOGIN_CREDENTIALS") || brut.startsWith("INVALID_PASSWORD") ||
-                brut.startsWith("EMAIL_NOT_FOUND") || brut.startsWith("INVALID_EMAIL") ->
-                "Email ou mot de passe incorrect. Les comptes crees avec Google n'ont pas de mot de passe : " +
-                    "la version PC demande pour l'instant un compte email + mot de passe."
-            brut.startsWith("USER_DISABLED") -> "Ce compte est desactive."
-            brut.startsWith("TOO_MANY_ATTEMPTS") -> "Trop d'essais. Reessayez dans quelques minutes."
-            code == 403 -> "Acces refuse par les regles de securite."
-            code == 404 -> "Introuvable."
-            else -> "Erreur du serveur ($code). Reessayez."
+                brut.startsWith("EMAIL_NOT_FOUND") -> e(
+                "Email ou mot de passe incorrect. Les comptes créés avec Google n'ont pas de mot de passe : " +
+                    "la version PC demande un compte email + mot de passe.", faux = true)
+            brut.startsWith("INVALID_EMAIL") -> e("Adresse email invalide.")
+            brut.startsWith("EMAIL_EXISTS") -> e("Un compte existe déjà avec cet email : utilisez « Se connecter ».")
+            brut.startsWith("WEAK_PASSWORD") -> e("Mot de passe trop faible : au moins 6 caractères.")
+            brut.startsWith("USER_DISABLED") -> e("Ce compte est désactivé.")
+            brut.startsWith("TOO_MANY_ATTEMPTS") -> e("Trop d'essais. Réessayez dans quelques minutes.")
+            code == 403 -> e("Accès refusé par les règles de sécurité.")
+            code == 404 -> e("Introuvable.")
+            else -> e("Erreur du serveur ($code). Réessayez.")
         }
     }
 
     companion object {
         private fun JsonObject.texte(cle: String) = this[cle]?.jsonPrimitive?.content.orEmpty()
+
+        /** Valeur Kotlin -> valeur Firestore REST. */
+        fun encoder(v: Any?): JsonObject = when (v) {
+            null -> buildJsonObject { put("nullValue", JsonNull) }
+            is String -> buildJsonObject { put("stringValue", v) }
+            is Boolean -> buildJsonObject { put("booleanValue", v) }
+            is Int, is Long -> buildJsonObject { put("integerValue", v.toString()) }
+            is Double, is Float -> buildJsonObject { put("doubleValue", JsonPrimitive((v as Number).toDouble())) }
+            is Horodatage -> buildJsonObject { put("timestampValue", v.iso) }
+            else -> error("Type non gere : ${v::class.simpleName}")
+        }
 
         /** Convertit les champs Firestore REST ({"stringValue": ...}) en valeurs Kotlin. */
         fun champs(doc: JsonObject): Map<String, Any?> {

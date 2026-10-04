@@ -14,21 +14,13 @@ import android.content.Context
 class LimiteurEssais(
     context: Context,
     private val cle: String,
-    private val essaisLibres: Int = 5
+    private val essaisLibres: Int = ReglesEssais.ESSAIS_LIBRES
 ) {
     companion object {
         private const val PREFS = "limiteur_essais"
-        private val DELAIS_MS = longArrayOf(30_000L, 60_000L, 5 * 60_000L, 15 * 60_000L, 60 * 60_000L)
 
         /** "45 s", "3 min", "1 h" : pour les messages d'attente. */
-        fun formaterAttente(ms: Long): String {
-            val s = (ms + 999) / 1000
-            return when {
-                s < 60 -> "$s s"
-                s < 3600 -> "${(s + 59) / 60} min"
-                else -> "${(s + 3599) / 3600} h"
-            }
-        }
+        fun formaterAttente(ms: Long): String = ReglesEssais.formaterAttente(ms)
     }
 
     private val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -45,7 +37,7 @@ class LimiteurEssais(
     /** Note un échec. Renvoie la durée du blocage qui commence (0 si aucun). */
     fun echec(): Long {
         val n = prefs.getInt(cleEchecs, 0) + 1
-        val delai = if (n >= essaisLibres) DELAIS_MS[(n - essaisLibres).coerceAtMost(DELAIS_MS.lastIndex)] else 0L
+        val delai = ReglesEssais.delaiApres(n, essaisLibres)
         prefs.edit()
             .putInt(cleEchecs, n)
             .putLong(cleBlocage, if (delai > 0) System.currentTimeMillis() + delai else 0L)

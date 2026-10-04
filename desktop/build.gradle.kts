@@ -36,8 +36,9 @@ compose.desktop {
             packageVersion = versionDiaSmart
             description = "DiaSmart pour PC : espace etablissement de sante"
             vendor = "DiaSmart"
-            // java.net.http (appels Firebase) n'est pas dans le runtime minimal
-            modules("java.net.http")
+            // java.net.http (appels Firebase) et java.prefs (compteur d'essais)
+            // ne sont pas dans le runtime minimal
+            modules("java.net.http", "java.prefs")
             windows {
                 menu = true
                 shortcut = true
