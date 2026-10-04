@@ -65,6 +65,7 @@ fun DashboardScreen(
     onNavigateToPedometer: (Long) -> Unit = {},
     onNavigateToPredictive: (Long) -> Unit = {},
     onNavigateToValidations: () -> Unit = {},
+    onNavigateToEtablissement: () -> Unit = {},
     onNavigateToCommunity: () -> Unit = {},
     onNavigateToReports: () -> Unit = {},
     onNavigateToMesAvis: () -> Unit = {},
@@ -727,13 +728,15 @@ fun DashboardScreen(
                             onClick = onNavigateToAddPatient,
                             modifier = Modifier.weight(1f)
                         )
+                        // v2.1.103 : l'espace etablissement remplace la carte
+                        // des validations ROLLY, sans interet cote medecin.
                         FeatureCard(
-                            title = stringResource(R.string.card_validations_title),
-                            subtitle = stringResource(R.string.card_validations_subtitle),
-                            icon = Icons.Outlined.VerifiedUser,
+                            title = "Établissement",
+                            subtitle = "Équipe, patients à risque",
+                            icon = Icons.Outlined.LocalHospital,
                             cardColor = Color(0xFFF0E6FF),
                             iconTint = Color(0xFF8E24AA),
-                            onClick = onNavigateToValidations,
+                            onClick = onNavigateToEtablissement,
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -783,6 +786,22 @@ fun DashboardScreen(
                             cardColor = CardNutrition,
                             iconTint = Color(0xFFAD6A1C),
                             onClick = { uiState.selfPatientId?.let(onNavigateToMaFiche) },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+                // v2.1.103 : le centre de sante du patient, visible depuis
+                // l'accueil (avant : seulement en bas des Parametres).
+                item { Spacer(modifier = Modifier.height(12.dp)) }
+                item {
+                    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+                        FeatureCard(
+                            title = "Mon centre de santé",
+                            subtitle = "Rejoindre ou voir mon établissement",
+                            icon = Icons.Outlined.LocalHospital,
+                            cardColor = Color(0xFFF0E6FF),
+                            iconTint = Color(0xFF8E24AA),
+                            onClick = onNavigateToEtablissement,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }

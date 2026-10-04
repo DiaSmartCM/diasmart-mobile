@@ -150,6 +150,8 @@ class MedicamentViewModel @Inject constructor(
                 }.onFailure {
                     android.util.Log.w("MedicamentVM", "Alarme non posee", it)
                 }
+                // Rappel programme : demande les autorisations s'il en manque
+                if (medicament.rappelActive) com.diabeto.ui.components.DemandeAutorisationRappels.verifier(appContext)
 
                 _uiState.update { it.copy(showAddDialog = false, addSuccess = true) }
                 _addState.value = AddMedicamentState()
@@ -180,6 +182,7 @@ class MedicamentViewModel @Inject constructor(
 
                 // Le rappel vient d'etre bascule : on pose ou on retire
                 // l'alarme en consequence, sans attendre un redemarrage.
+                if (!medicament.rappelActive) com.diabeto.ui.components.DemandeAutorisationRappels.verifier(appContext)
                 runCatching { if (!medicament.rappelActive) {
                     com.diabeto.notifications.AlarmScheduler.programmerMedicament(
                         context = appContext,

@@ -164,6 +164,10 @@ fun DiabetoNavigation(
         }
     }
 
+    // Demande d'autorisation des rappels, affichee juste apres la
+    // programmation d'un rappel (traitement ou rendez-vous).
+    com.diabeto.ui.components.DemandeAutorisationRappelsDialog()
+
     NavHost(
         navController = navController,
         startDestination = startDestination,
@@ -271,6 +275,7 @@ fun DiabetoNavigation(
                 onNavigateToPedometer      = { id -> navController.navigate(Routes.pedometer(id)) },
                 onNavigateToPredictive     = { id -> navController.navigate(Routes.predictive(id)) },
                 onNavigateToValidations    = { navController.navigate(Routes.VALIDATIONS) },
+                onNavigateToEtablissement  = { navController.navigate(Routes.ETABLISSEMENT) },
                 onNavigateToCommunity      = { navController.navigate(Routes.COMMUNITY) },
                 onNavigateToReports        = { navController.navigate(Routes.REPORTS) },
                 onNavigateToMesAvis        = { navController.navigate(Routes.MES_AVIS) },
