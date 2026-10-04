@@ -17,6 +17,10 @@ kotlin {
     jvm("desktop")
 
     sourceSets {
+        commonMain.dependencies {
+            // Dates multiplateformes (sur Android, s'appuie sur java.time)
+            api("org.jetbrains.kotlinx:kotlinx-datetime:0.6.1")
+        }
         commonTest.dependencies {
             implementation(kotlin("test"))
         }

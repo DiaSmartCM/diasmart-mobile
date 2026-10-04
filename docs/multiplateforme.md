@@ -4,7 +4,11 @@ But : une seule base de code Kotlin pour Android, PC (Windows/Mac/Linux) puis iP
 
 ## Etapes
 1. **Module commun `shared/`** (fait) : la logique en Kotlin pur, utilisee par l'app Android.
-2. Version PC (Compose Desktop) qui reutilise `shared/`.
+2. **Version PC `desktop/`** (fait) : Compose Desktop, build Gradle separe qui compile
+   directement `shared/src/commonMain`. Connexion email + mot de passe (API REST
+   Firebase Auth), espace etablissement en lecture (patients, priorites, HbA1c,
+   perdus de vue) et outils de calcul. Installeurs : workflow « Version PC »
+   (Windows .msi, Mac .dmg) ; avec `publier` = true ils sont ajoutes a la release.
 3. Version iPhone (Compose Multiplatform iOS), quand le compte Apple developpeur est pris.
 
 ## Regles du module `shared/`
@@ -24,8 +28,8 @@ But : une seule base de code Kotlin pour Android, PC (Windows/Mac/Linux) puis iP
 - `data/entity/HbA1cInterpretation`.
 
 ## Prochaines pieces a deplacer
-- Dates : passer de `java.time` a `kotlinx-datetime`, puis deplacer `SuiviPatient` et
-  les regles de priorite (`EtablissementRepository.evaluer`).
+- Les regles de priorite sont dans `domain/EvaluationSuivi` (kotlinx-datetime) ;
+  `SuiviPatient` (java.time) reste cote Android.
 - Firebase : `dev.gitlive:firebase-*` (Firestore/Auth multiplateforme).
 - Base locale : Room 2.7+ (multiplateforme). Injection : Koin a la place de Hilt.
 - Restent propres a chaque appareil : alarmes, notifications, podometre, batterie, appels.

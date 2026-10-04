@@ -10,6 +10,8 @@ import com.diabeto.data.model.RoleEtablissement
 import com.diabeto.data.model.SuiviPatient
 import com.diabeto.data.model.TypeCode
 import com.diabeto.data.model.UserRole
+import com.diabeto.domain.EvaluationSuivi
+import com.diabeto.domain.MesureHbA1c
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.async
@@ -18,10 +20,14 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.tasks.await
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toJavaLocalDate
+import kotlinx.datetime.toJavaLocalDateTime
+import kotlinx.datetime.toKotlinLocalDate
+import kotlinx.datetime.toKotlinLocalDateTime
 import java.security.SecureRandom
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -45,7 +51,7 @@ class EtablissementRepository @Inject constructor(
         private const val AFFILIATIONS = "affiliations"
 
         /** Sans mesure depuis ce nombre de jours : patient "perdu de vue". */
-        const val JOURS_PERDU_DE_VUE = 60L
+        const val JOURS_PERDU_DE_VUE = EvaluationSuivi.JOURS_PERDU_DE_VUE
 
         /** Mesures lues par patient pour le tableau de bord (limite le cout Firestore). */
         private const val MAX_MESURES = 150L
@@ -346,63 +352,29 @@ class EtablissementRepository @Inject constructor(
         hba1c: List<Triple<LocalDate, Double, Boolean>>,
         maintenant: LocalDateTime
     ): SuiviPatient {
-        val depuis30 = maintenant.minusDays(30)
-        val recentes = mesures.filter { it.first.isAfter(depuis30) }.map { it.second }
-        val moyenne = recentes.takeIf { it.isNotEmpty() }?.average()
-        val hypos = recentes.count { it < 70 }
-        val hyposSeveres = recentes.count { it < 54 }
-        val derniere = mesures.maxOfOrNull { it.first }
-        // Une vraie HbA1c de labo passe avant une estimation
-        val hReelle = hba1c.filter { !it.third }.maxByOrNull { it.first }
-        val h = hReelle ?: hba1c.maxByOrNull { it.first }
-        val inscritDepuisJours = if (p.inscritAt > 0)
-            ChronoUnit.DAYS.between(
-                java.time.Instant.ofEpochMilli(p.inscritAt).atZone(java.time.ZoneId.systemDefault()).toLocalDateTime(),
-                maintenant
-            ) else 0L
-        val perdu = if (derniere != null)
-            ChronoUnit.DAYS.between(derniere, maintenant) >= JOURS_PERDU_DE_VUE
-        else inscritDepuisJours >= 30
-
-        val haute = mutableListOf<String>()
-        val moyenneR = mutableListOf<String>()
-        if (h != null && h.second >= 9.0) haute += "HbA1c ${fmt(h.second)} %"
-        else if (h != null && h.second >= 7.0) moyenneR += "HbA1c ${fmt(h.second)} %"
-        if (hyposSeveres > 0) haute += "$hyposSeveres glycemie(s) < 54 mg/dL en 30 j"
-        if (hypos >= 3) haute += "$hypos glycemies < 70 mg/dL en 30 j"
-        else if (hypos > 0 && hyposSeveres == 0) moyenneR += "$hypos glycemie(s) < 70 mg/dL en 30 j"
-        if (moyenne != null && moyenne >= 250) haute += "moyenne 30 j ${moyenne.toInt()} mg/dL"
-        else if (moyenne != null && moyenne >= 180) moyenneR += "moyenne 30 j ${moyenne.toInt()} mg/dL"
-        if (h == null || h.first.isBefore(maintenant.toLocalDate().minusMonths(6))) moyenneR += "pas d'HbA1c depuis 6 mois"
-
-        val priorite = when {
-            haute.isNotEmpty() -> PrioriteSuivi.HAUTE
-            recentes.isEmpty() && h == null -> PrioriteSuivi.INCONNUE
-            moyenneR.isNotEmpty() -> PrioriteSuivi.MOYENNE
-            else -> PrioriteSuivi.BASSE
-        }
-        val raisons = buildList {
-            if (perdu) add(if (derniere == null) "aucune mesure partagee" else "aucune mesure depuis ${ChronoUnit.DAYS.between(derniere, maintenant)} jours")
-            addAll(haute)
-            if (priorite != PrioriteSuivi.INCONNUE) addAll(moyenneR)
-        }
+        // Les regles sont dans le module commun (aussi utilisees par la version PC)
+        val r = EvaluationSuivi.evaluer(
+            inscritAt = p.inscritAt,
+            mesures = mesures.map { it.first.toKotlinLocalDateTime() to it.second },
+            hba1c = hba1c.map { MesureHbA1c(it.first.toKotlinLocalDate(), it.second, it.third) },
+            maintenant = maintenant.toKotlinLocalDateTime(),
+            fuseau = TimeZone.currentSystemDefault()
+        )
         return SuiviPatient(
             uid = p.uid,
             nom = p.nom,
             inscritAt = p.inscritAt,
-            derniereMesure = derniere,
-            nbMesures30j = recentes.size,
-            moyenne30j = moyenne,
-            nbHypos30j = hypos,
-            nbHyposSeveres30j = hyposSeveres,
-            derniereHbA1c = h?.second,
-            dateHbA1c = h?.first,
-            hba1cEstimee = h?.third == true,
-            priorite = priorite,
-            raisons = raisons,
-            perduDeVue = perdu
+            derniereMesure = r.derniereMesure?.toJavaLocalDateTime(),
+            nbMesures30j = r.nbMesures30j,
+            moyenne30j = r.moyenne30j,
+            nbHypos30j = r.nbHypos30j,
+            nbHyposSeveres30j = r.nbHyposSeveres30j,
+            derniereHbA1c = r.hba1c?.valeur,
+            dateHbA1c = r.hba1c?.date?.toJavaLocalDate(),
+            hba1cEstimee = r.hba1c?.estimee == true,
+            priorite = r.priorite,
+            raisons = r.raisons,
+            perduDeVue = r.perduDeVue
         )
     }
-
-    private fun fmt(v: Double) = String.format(java.util.Locale.FRANCE, "%.1f", v)
 }
