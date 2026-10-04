@@ -176,7 +176,7 @@
     <string name="auth_already_account">J\'ai déjà un compte</string>
     <string name="auth_no_account">Créer un compte</string>
     <string name="auth_tagline">DiaSmart — Gestion intelligente du diabète</string>
-    <string name="auth_reset_email_sent">Email de réinitialisation envoyé !</string>
+    <string name="auth_reset_email_sent">Si un compte avec mot de passe existe pour cet email, un lien vient d\'être envoyé. Regardez aussi dans les spams. Compte créé avec Google ? Utilisez le bouton Google.</string>
 
     <!-- Onboarding -->
     <string name="onboarding_title_1">Suivi Intelligent</string>

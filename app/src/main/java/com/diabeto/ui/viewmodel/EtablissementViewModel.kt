@@ -14,7 +14,9 @@ import com.diabeto.data.model.UserRole
 import com.diabeto.data.repository.AuthRepository
 import com.diabeto.data.repository.EtablissementRepository
 import com.diabeto.report.RapportPayeurGenerator
+import com.diabeto.util.LimiteurEssais
 import com.diabeto.util.MessageErreur
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,8 +55,12 @@ data class EtablissementUiState(
 @HiltViewModel
 class EtablissementViewModel @Inject constructor(
     private val repository: EtablissementRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    @ApplicationContext appContext: Context
 ) : ViewModel() {
+
+    // Codes d'invitation : 5 essais rates, puis blocages de plus en plus longs
+    private val limiteurCode = LimiteurEssais(appContext, "code_etablissement")
 
     private val _uiState = MutableStateFlow(EtablissementUiState())
     val uiState: StateFlow<EtablissementUiState> = _uiState.asStateFlow()
@@ -119,11 +125,24 @@ class EtablissementViewModel @Inject constructor(
     }
 
     fun verifierCode(saisie: String) {
+        if (limiteurCode.attenteRestanteMs() > 0) {
+            _uiState.update { it.copy(message = limiteurCode.messageBlocage()) }
+            return
+        }
         viewModelScope.launch {
             _uiState.update { it.copy(enCours = true) }
             repository.verifierCode(saisie).fold(
-                onSuccess = { info -> _uiState.update { it.copy(enCours = false, codeAConfirmer = info) } },
-                onFailure = { e -> _uiState.update { it.copy(enCours = false, message = e.message ?: MessageErreur.lisible(e)) } }
+                onSuccess = { info ->
+                    limiteurCode.reussite()
+                    _uiState.update { it.copy(enCours = false, codeAConfirmer = info) }
+                },
+                onFailure = { e ->
+                    val msg = if (e is EtablissementRepository.CodeInconnuException) {
+                        limiteurCode.echec()
+                        limiteurCode.messageApresEchec("Code inconnu ou expire.")
+                    } else e.message ?: MessageErreur.lisible(e)
+                    _uiState.update { it.copy(enCours = false, message = msg) }
+                }
             )
         }
     }

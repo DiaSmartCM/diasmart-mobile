@@ -191,15 +191,15 @@ private fun SoignantSansCentre(ui: EtablissementUiState, vm: EtablissementViewMo
         }
         item { Text("Creer l'espace de mon etablissement", fontWeight = FontWeight.Bold) }
         item {
-            OutlinedTextField(nom, { nom = it }, label = { Text("Nom de l'etablissement") },
+            OutlinedTextField(nom, { nom = it.take(EtablissementRepository.NOM_MAX) }, label = { Text("Nom de l'etablissement") },
                 singleLine = true, modifier = Modifier.fillMaxWidth())
         }
         item {
-            OutlinedTextField(ville, { ville = it }, label = { Text("Ville") },
+            OutlinedTextField(ville, { ville = it.take(EtablissementRepository.VILLE_MAX) }, label = { Text("Ville") },
                 singleLine = true, modifier = Modifier.fillMaxWidth())
         }
         item {
-            Button(onClick = { vm.creer(nom, ville) }, enabled = !ui.enCours && nom.isNotBlank(),
+            Button(onClick = { vm.creer(nom, ville) }, enabled = !ui.enCours && nom.trim().length >= EtablissementRepository.NOM_MIN,
                 modifier = Modifier.fillMaxWidth()) { Text("Creer et devenir administrateur") }
         }
         item { HorizontalDivider(Modifier.padding(vertical = 8.dp)) }

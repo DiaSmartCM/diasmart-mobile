@@ -88,7 +88,14 @@ fun LoginScreen(
         uiState.error?.let { snackbarHostState.showSnackbar(it); viewModel.clearError() }
     }
     LaunchedEffect(uiState.resetEmailSent) {
-        if (uiState.resetEmailSent) snackbarHostState.showSnackbar(context.getString(R.string.auth_reset_email_sent))
+        if (uiState.resetEmailSent) {
+            // Remis a false : sinon un 2e appui sur "Mot de passe oublie" n'affichait plus rien
+            viewModel.clearResetEmailSent()
+            snackbarHostState.showSnackbar(
+                context.getString(R.string.auth_reset_email_sent),
+                duration = SnackbarDuration.Long
+            )
+        }
     }
 
     if (uiState.needsEmailOtp) {
