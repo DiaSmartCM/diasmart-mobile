@@ -20,3 +20,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Diabeto"
 include(":app")
+include(":shared")

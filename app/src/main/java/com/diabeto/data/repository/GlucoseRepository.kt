@@ -146,13 +146,7 @@ class GlucoseRepository @Inject constructor(
     /**
      * Classifie le statut glycémique.
      */
-    fun getGlucoseStatus(valeur: Double): String = when {
-        valeur < 54 -> "Hypoglycémie sévère"
-        valeur < 70 -> "Hypoglycémie"
-        valeur in 70.0..180.0 -> "Dans la cible"
-        valeur in 180.0..250.0 -> "Hyperglycémie"
-        else -> "Hyperglycémie sévère"
-    }
+    fun getGlucoseStatus(valeur: Double): String = com.diabeto.domain.ReglesGlycemie.statutGlycemie(valeur)
 
     /**
      * Génère le rapport CSV d'export.

@@ -1,6 +1,8 @@
 package com.diabeto.domain.prediction
 
 import kotlin.math.exp
+import kotlin.math.pow
+import kotlin.math.sqrt
 import kotlin.math.roundToInt
 
 /**
@@ -126,7 +128,7 @@ object GlucosePrediction {
     fun forme(minutes: Double, tau: Double): Double {
         if (minutes <= 0.0) return 0.0
         val x = minutes / tau
-        return Math.pow(x, N) * exp(N * (1.0 - x))
+        return x.pow(N) * exp(N * (1.0 - x))
     }
 
     /** Montee attendue, en mg/dL, a l'instant t apres le repas. */
@@ -246,7 +248,7 @@ object GlucosePrediction {
      */
     fun incertitude(montee: Double, calibration: Calibration): Double {
         val part = if (!calibration.personnalise) 0.40
-        else (0.30 / Math.sqrt(calibration.nombreObservations.toDouble())).coerceAtLeast(0.12)
+        else (0.30 / sqrt(calibration.nombreObservations.toDouble())).coerceAtLeast(0.12)
         return (kotlin.math.abs(montee) * part).coerceAtLeast(12.0)
     }
 

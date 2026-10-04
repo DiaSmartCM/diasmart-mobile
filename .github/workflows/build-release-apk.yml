@@ -148,6 +148,9 @@ jobs:
           echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
           echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
 
+      - name: Tester le module commun (multiplateforme)
+        run: gradle :shared:desktopTest --stacktrace
+
       - name: Construire assembleRelease
         run: gradle assembleRelease -x uploadCrashlyticsMappingFileRelease --stacktrace
 
