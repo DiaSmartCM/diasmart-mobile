@@ -105,6 +105,7 @@
     <string name="glucose_tab_glycemie">Sugar</string>
     <string name="glucose_tab_hba1c">HbA1c</string>
     <string name="glucose_tab_suivi">Follow</string>
+    <string name="glucose_tab_tension">Blood pressure</string>
     <string name="glucose_add_hba1c">Put HbA1c result</string>
     <string name="glucose_invalid_value">Number no good</string>
     <string name="glucose_value_too_high">Number too plenty</string>
@@ -331,7 +332,7 @@
     <string name="card_send_report_title">Sen ripot</string>
     <string name="card_send_report_subtitle">PDF for ma dokta</string>
     <string name="card_glucose_title">Sugar &amp; HbA1c</string>
-    <string name="card_glucose_subtitle">Put ma rezult</string>
+    <string name="card_glucose_subtitle">Sugar, HbA1c, blood pressure</string>
     <string name="pedometer_history_title">Day by day histri</string>
     <string name="pedometer_history_subtitle">Yur step evri day, e dey keep 90 days for fone.</string>
     <string name="pedometer_history_steps">%1$d step</string>

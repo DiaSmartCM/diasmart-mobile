@@ -1,0 +1,75 @@
+# Version PC de DiaSmart (Compose Desktop) : installeur Windows (.msi) et Mac (.dmg).
+# - A chaque push / PR touchant le PC ou le module commun : construit les installeurs
+#   (Actions > ce run > Artifacts).
+# - Lancement manuel avec "publier" = true : ajoute les installeurs a la release
+#   GitHub v<version> deja creee par "APK release signe" (publier_officiel).
+name: Version PC
+
+on:
+  push:
+    branches: [master, 'claude/**']
+    paths: ['desktop/**', 'shared/**', 'app/build.gradle.kts', '.github/workflows/build-desktop.yml']
+  pull_request:
+    paths: ['desktop/**', 'shared/**', 'app/build.gradle.kts', '.github/workflows/build-desktop.yml']
+  workflow_dispatch:
+    inputs:
+      publier:
+        description: "Ajouter les installeurs a la release v<version> existante"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  installeur:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            tache: packageMsi
+            format: msi
+          - os: macos-latest
+            tache: packageDmg
+            format: dmg
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Construire l'installeur
+        run: gradle -p desktop ${{ matrix.tache }} --stacktrace
+
+      - name: Retrouver le fichier
+        id: fichier
+        shell: bash
+        run: |
+          set -euo pipefail
+          F=$(ls desktop/build/compose/binaries/main/${{ matrix.format }}/*.${{ matrix.format }} | head -1)
+          echo "chemin=$F" >> "$GITHUB_OUTPUT"
+          echo "nom=$(basename "$F")" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DiaSmart-PC-${{ matrix.format }}
+          path: ${{ steps.fichier.outputs.chemin }}
+          retention-days: 30
+
+      - name: Ajouter a la release
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.publier }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' app/build.gradle.kts | head -1)
+          gh release upload "v$VERSION" "${{ steps.fichier.outputs.chemin }}" --clobber

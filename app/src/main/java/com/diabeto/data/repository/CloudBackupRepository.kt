@@ -17,6 +17,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import com.diabeto.domain.ReglesTension
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -30,6 +31,7 @@ import javax.inject.Singleton
  *   backups/{uid}/medicaments/{id}
  *   backups/{uid}/rendezvous/{id}
  *   backups/{uid}/journal/{id}
+ *   backups/{uid}/tension/{id}   (aussi ecrit par l'app web, id texte)
  *   backups/{uid}/metadata/info  → { lastBackupAt, counts... }
  *
  * Auto-backup: called after each write operation.
@@ -44,6 +46,7 @@ class CloudBackupRepository @Inject constructor(
     private val medicamentDao: MedicamentDao,
     private val rendezVousDao: RendezVousDao,
     private val journalDao: JournalDao,
+    private val tensionDao: TensionDao,
     private val pendingOperationDao: PendingOperationDao
 ) {
     companion object {
@@ -95,7 +98,8 @@ class CloudBackupRepository @Inject constructor(
             val meds = medicamentDao.getMedicamentsModifiedSince(since, moi)
             val rdvs = rendezVousDao.getRendezVousModifiedSince(since, moi)
             val journals = journalDao.getEntriesModifiedSince(since, moi)
-            val total = patients.size + glucose.size + hba1cs.size + meds.size + rdvs.size + journals.size
+            val tensions = tensionDao.getTensionsModifiedSince(since, moi)
+            val total = patients.size + glucose.size + hba1cs.size + meds.size + rdvs.size + journals.size + tensions.size
 
             if (total == 0) {
                 Log.d(TAG, "Incremental backup : aucun delta depuis $since")
@@ -118,6 +122,7 @@ class CloudBackupRepository @Inject constructor(
                 meds.forEach { add(Item("medicaments", it.id.toString(), medicamentToMap(it))) }
                 rdvs.forEach { add(Item("rendezvous", it.id.toString(), rendezVousToMap(it))) }
                 journals.forEach { add(Item("journal", it.id.toString(), journalToMap(it))) }
+                tensions.forEach { add(Item("tension", it.id.toString(), tensionToMap(it))) }
             }
 
             items.chunked(BATCH_LIMIT).forEach { chunk ->
@@ -221,7 +226,16 @@ class CloudBackupRepository @Inject constructor(
                 }
             }
 
-            // 7. Metadata
+            // 7. Tension
+            for (p in patients) {
+                for (t in tensionDao.getTensionsByPatientList(p.id)) {
+                    userRef.collection("tension").document(t.id.toString())
+                        .set(tensionToMap(t), SetOptions.merge()).await()
+                    totalDocs++
+                }
+            }
+
+            // 8. Metadata
             userRef.collection("metadata").document("info").set(
                 mapOf(
                     "lastBackupAt" to LocalDateTime.now().toString(),
@@ -265,6 +279,10 @@ class CloudBackupRepository @Inject constructor(
                 val medDocs = userRef.collection("medicaments").get().await()
                 val rdvDocs = userRef.collection("rendezvous").get().await()
                 val journalDocs = userRef.collection("journal").get().await()
+                // Sans patientId (mesures saisies sur le site) : rattachees au
+                // dossier du compte, s'il n'y en a qu'un.
+                val tensionDocs = runCatching { userRef.collection("tension").get().await().documents }
+                    .getOrDefault(emptyList())
 
                 // Insert all data in a single Room transaction — atomic: all or nothing
                 var totalDocs = 0
@@ -313,6 +331,15 @@ class CloudBackupRepository @Inject constructor(
                         journalDao.insertEntry(entry.copy(id = 0, patientId = newPatientId))
                         totalDocs++
                     }
+
+                    val seulDossier = patientIdMap.values.singleOrNull()
+                    for (doc in tensionDocs) {
+                        val t = mapToTension(doc.data ?: continue) ?: continue
+                        val newPatientId = patientIdMap[t.patientId] ?: seulDossier ?: continue
+                        // lastModified = 0 : deja dans le cloud, inutile de la renvoyer
+                        tensionDao.insertTension(t.copy(id = 0, patientId = newPatientId, lastModified = 0))
+                        totalDocs++
+                    }
                 }
 
                 Log.d(TAG, "Full restore: $totalDocs documents restored (atomic transaction)")
@@ -334,6 +361,7 @@ class CloudBackupRepository @Inject constructor(
     suspend fun backupMedicament(med: MedicamentEntity) = backupDoc("medicaments", med.id.toString(), medicamentToMap(med))
     suspend fun backupRendezVous(rdv: RendezVousEntity) = backupDoc("rendezvous", rdv.id.toString(), rendezVousToMap(rdv))
     suspend fun backupJournal(entry: JournalEntity) = backupDoc("journal", entry.id.toString(), journalToMap(entry))
+    suspend fun backupTension(t: TensionEntity) = backupDoc("tension", t.id.toString(), tensionToMap(t))
 
     suspend fun deleteBackupDoc(collection: String, docId: String) {
         val userId = uid ?: return
@@ -483,6 +511,39 @@ class CloudBackupRepository @Inject constructor(
         notes = m["notes"] as? String ?: "",
         createdAt = (m["createdAt"] as? String)?.let { LocalDateTime.parse(it) } ?: LocalDateTime.now()
     )
+
+    // Memes champs que l'app web et la version PC (backups/{uid}/tension)
+    private fun tensionToMap(t: TensionEntity) = mapOf(
+        "id" to t.id,
+        "patientId" to t.patientId,
+        "systolique" to t.systolique,
+        "diastolique" to t.diastolique,
+        "pouls" to t.pouls,
+        "dateHeure" to t.dateHeure.toString(),
+        "position" to t.position,
+        "bras" to t.bras,
+        "traitementAntihypertenseur" to t.traitement,
+        "notes" to t.notes,
+        "lastModified" to t.lastModified
+    )
+
+    private fun mapToTension(m: Map<String, Any?>): TensionEntity? {
+        val sys = (m["systolique"] as? Number)?.toInt() ?: return null
+        val dia = (m["diastolique"] as? Number)?.toInt() ?: return null
+        return TensionEntity(
+            id = (m["id"] as? Number)?.toLong() ?: 0,
+            patientId = (m["patientId"] as? Number)?.toLong() ?: 0,
+            systolique = sys,
+            diastolique = dia,
+            pouls = (m["pouls"] as? Number)?.toInt(),
+            dateHeure = (m["dateHeure"] as? String)?.let { runCatching { LocalDateTime.parse(it) }.getOrNull() }
+                ?: LocalDateTime.now(),
+            position = (m["position"] as? String)?.takeIf { it in ReglesTension.POSITIONS || it == ReglesTension.DEBOUT } ?: ReglesTension.ASSIS,
+            bras = (m["bras"] as? String)?.takeIf { it == ReglesTension.GAUCHE || it == ReglesTension.DROIT } ?: ReglesTension.GAUCHE,
+            traitement = m["traitementAntihypertenseur"] == true,
+            notes = m["notes"] as? String ?: ""
+        )
+    }
 
     private fun hba1cToMap(h: HbA1cEntity) = mapOf(
         "id" to h.id,

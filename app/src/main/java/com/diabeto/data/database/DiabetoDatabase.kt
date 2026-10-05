@@ -33,10 +33,11 @@ import javax.crypto.spec.GCMParameterSpec
         HbA1cEntity::class,
         JournalEntity::class,
         AiCacheEntity::class,
-        PendingOperationEntity::class
+        PendingOperationEntity::class,
+        TensionEntity::class
     ],
-    version = 10,
-    exportSchema = false
+    version = 11,
+    exportSchema = true
 )
 @TypeConverters(Converters::class)
 abstract class DiabetoDatabase : RoomDatabase() {
@@ -49,6 +50,7 @@ abstract class DiabetoDatabase : RoomDatabase() {
     abstract fun journalDao(): JournalDao
     abstract fun aiCacheDao(): AiCacheDao
     abstract fun pendingOperationDao(): PendingOperationDao
+    abstract fun tensionDao(): TensionDao
 
     companion object {
         const val DATABASE_NAME = "diabeto_database.db"
@@ -252,6 +254,34 @@ abstract class DiabetoDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v11 — suivi de l'hypertension : table tension_lectures.
+         * Le SQL doit etre EXACTEMENT celui que Room genere pour TensionEntity
+         * (colonnes, cle etrangere, index), sinon Room refuse d'ouvrir la base.
+         */
+        private val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `tension_lectures` (" +
+                        "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "`patientId` INTEGER NOT NULL, " +
+                        "`systolique` INTEGER NOT NULL, " +
+                        "`diastolique` INTEGER NOT NULL, " +
+                        "`pouls` INTEGER, " +
+                        "`dateHeure` TEXT NOT NULL, " +
+                        "`position` TEXT NOT NULL, " +
+                        "`bras` TEXT NOT NULL, " +
+                        "`traitement` INTEGER NOT NULL, " +
+                        "`notes` TEXT NOT NULL, " +
+                        "`lastModified` INTEGER NOT NULL, " +
+                        "FOREIGN KEY(`patientId`) REFERENCES `patients`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_tension_lectures_patientId` ON `tension_lectures` (`patientId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_tension_lectures_dateHeure` ON `tension_lectures` (`dateHeure`)")
+                Log.d(TAG, "Migration 10→11 : table tension_lectures creee")
+            }
+        }
+
         @Volatile
         private var INSTANCE: DiabetoDatabase? = null
 
@@ -287,7 +317,7 @@ abstract class DiabetoDatabase : RoomDatabase() {
             .openHelperFactory(factory)
             .addMigrations(
                 MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
-                MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10
+                MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11
             )
             .fallbackToDestructiveMigrationOnDowngrade()
             .build()

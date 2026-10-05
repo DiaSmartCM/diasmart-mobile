@@ -1,0 +1,59 @@
+name: Deployer l'API (ROLLY)
+
+# Deploie website/ sur le projet Vercel "diasmart-cm"
+# (https://website-omega-umber-20.vercel.app : ROLLY, codes email, suppression de compte).
+# Ce projet n'est pas relie a GitHub : rien ne part tout seul, il faut lancer
+# ce workflow a la main (Actions > Deployer l'API (ROLLY) > Run workflow).
+# Secret necessaire : VERCEL_TOKEN (cree sur https://vercel.com/account/tokens).
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-api
+  cancel-in-progress: false
+
+jobs:
+  deployer:
+    name: Deployer sur Vercel (production)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: team_KVLJU7gfGgO04xbIVdTWcN6T
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verifier le secret
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::error::Le secret VERCEL_TOKEN est absent. Creez un jeton sur https://vercel.com/account/tokens puis ajoutez-le dans Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+      - name: Relier au projet diasmart-cm
+        run: |
+          rm -rf .vercel
+          npx --yes vercel@latest link --yes --project diasmart-cm --scope "$VERCEL_ORG_ID" --token "$VERCEL_TOKEN"
+          cat .vercel/project.json | grep -o '"projectName":"[^"]*"'
+
+      - name: Deployer en production
+        run: |
+          set -o pipefail
+          npx --yes vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN" 2>&1 | tee deploy.log
+          if ! grep -q "website-omega-umber-20.vercel.app" deploy.log; then
+            URL=$(grep -o 'https://[a-z0-9.-]*\.vercel\.app' deploy.log | tail -1)
+            npx --yes vercel@latest inspect "$URL" --token "$VERCEL_TOKEN" 2>&1 | tee -a deploy.log || true
+            grep -q "website-omega-umber-20.vercel.app" deploy.log || echo "::warning::L'adresse website-omega-umber-20.vercel.app n'apparait pas dans la sortie : verifier sur Vercel."
+          fi
+
+      - name: Verifier que ROLLY repond
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" -X POST https://website-omega-umber-20.vercel.app/api/rolly-chat -H "Content-Type: application/json" -d '{}')
+          echo "Reponse de l'API ROLLY : HTTP $code (401 ou 400 = l'API tourne et refuse une requete sans connexion)"
+          case "$code" in 5*|000) echo "::error::L'API ne repond pas correctement (HTTP $code)"; exit 1;; esac

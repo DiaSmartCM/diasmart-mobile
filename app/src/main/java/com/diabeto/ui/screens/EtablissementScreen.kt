@@ -368,6 +368,13 @@ private fun CartePatient(s: SuiviPatient, peutRetirer: Boolean, onRetirer: () ->
                 "Derniere mesure : ${s.derniereMesure?.toLocalDate()?.format(formatDate) ?: "jamais"}",
                 fontSize = 13.sp
             )
+            if (s.derniereTension != null) {
+                Text(
+                    "Tension : ${s.derniereTension} mmHg" +
+                        (s.tensionMoyenne30j?.let { " (moyenne 30 j $it)" } ?: ""),
+                    fontSize = 13.sp
+                )
+            }
             if (s.raisons.isNotEmpty()) {
                 Spacer(Modifier.height(4.dp))
                 Text(s.raisons.joinToString(" · "), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)

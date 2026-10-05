@@ -122,6 +122,7 @@
     <string name="glucose_tab_glycemie">Blood sugar</string>
     <string name="glucose_tab_hba1c">HbA1c</string>
     <string name="glucose_tab_suivi">Follow-up</string>
+    <string name="glucose_tab_tension">Blood pressure</string>
     <string name="glucose_add_hba1c">Add an HbA1c result</string>
     <string name="glucose_invalid_value">Invalid value</string>
     <string name="glucose_value_too_high">Value too high</string>
@@ -312,7 +313,7 @@
     <string name="card_send_report_title">Send a report</string>
     <string name="card_send_report_subtitle">PDF to my doctor</string>
     <string name="card_glucose_title">Glucose &amp; HbA1c</string>
-    <string name="card_glucose_subtitle">Enter my results</string>
+    <string name="card_glucose_subtitle">Glucose, HbA1c, blood pressure</string>
     <string name="pedometer_history_title">Daily history</string>
     <string name="pedometer_history_subtitle">Your steps day by day, kept 90 days on the phone.</string>
     <string name="pedometer_history_steps">%1$d steps</string>

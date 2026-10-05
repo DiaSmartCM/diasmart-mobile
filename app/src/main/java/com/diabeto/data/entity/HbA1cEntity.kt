@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.diabeto.domain.ReglesGlycemie
 import java.time.LocalDate
 import java.time.LocalDateTime
 
@@ -49,20 +50,13 @@ data class HbA1cEntity(
     /**
      * Interprétation clinique de la valeur HbA1c
      */
-    fun getInterpretation(): HbA1cInterpretation = when {
-        valeur < 5.7 -> HbA1cInterpretation.NORMAL
-        valeur in 5.7..6.4 -> HbA1cInterpretation.PREDIABETE
-        valeur in 6.5..7.0 -> HbA1cInterpretation.CIBLE_ATTEINTE
-        valeur in 7.0..8.0 -> HbA1cInterpretation.AU_DESSUS_CIBLE
-        valeur in 8.0..9.0 -> HbA1cInterpretation.MAUVAIS_CONTROLE
-        else -> HbA1cInterpretation.TRES_MAUVAIS_CONTROLE
-    }
+    fun getInterpretation(): HbA1cInterpretation = ReglesGlycemie.interpreterHbA1c(valeur)
 
     /**
      * Glycémie moyenne estimée (eAG) à partir de l'HbA1c
      * Formule ADAG : eAG (mg/dL) = 28.7 × HbA1c − 46.7
      */
-    fun getGlycemieMoyenneEstimee(): Double = 28.7 * valeur - 46.7
+    fun getGlycemieMoyenneEstimee(): Double = ReglesGlycemie.glycemieMoyenneDepuisHbA1c(valeur)
 
     companion object {
         /**
@@ -70,34 +64,7 @@ data class HbA1cEntity(
          * Formule inverse ADAG : HbA1c = (eAG + 46.7) / 28.7
          */
         fun estimerDepuisGlycemieMoyenne(glycemieMoyenne: Double): Double {
-            return (glycemieMoyenne + 46.7) / 28.7
+            return ReglesGlycemie.hba1cDepuisGlycemieMoyenne(glycemieMoyenne)
         }
-    }
-}
-
-enum class HbA1cInterpretation {
-    NORMAL,              // < 5.7%
-    PREDIABETE,          // 5.7 - 6.4%
-    CIBLE_ATTEINTE,      // 6.5 - 7.0%
-    AU_DESSUS_CIBLE,     // 7.0 - 8.0%
-    MAUVAIS_CONTROLE,    // 8.0 - 9.0%
-    TRES_MAUVAIS_CONTROLE; // > 9.0%
-
-    fun getDisplayName(): String = when (this) {
-        NORMAL -> "Normal"
-        PREDIABETE -> "Prédiabète"
-        CIBLE_ATTEINTE -> "Cible atteinte"
-        AU_DESSUS_CIBLE -> "Au-dessus de la cible"
-        MAUVAIS_CONTROLE -> "Mauvais contrôle"
-        TRES_MAUVAIS_CONTROLE -> "Très mauvais contrôle"
-    }
-
-    fun getDescription(): String = when (this) {
-        NORMAL -> "Glycémie dans les valeurs normales"
-        PREDIABETE -> "Risque de diabète, surveillance recommandée"
-        CIBLE_ATTEINTE -> "Bon contrôle du diabète, continuez ainsi"
-        AU_DESSUS_CIBLE -> "Ajustement thérapeutique recommandé"
-        MAUVAIS_CONTROLE -> "Risque accru de complications, consultez"
-        TRES_MAUVAIS_CONTROLE -> "Urgence : consultation médicale nécessaire"
     }
 }

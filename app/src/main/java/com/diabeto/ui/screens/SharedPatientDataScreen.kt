@@ -43,6 +43,7 @@ data class SharedPatientUiState(
     val isLoading: Boolean = true,
     val patientProfile: UserProfile? = null,
     val glucoseData: List<Map<String, Any?>> = emptyList(),
+    val tensionData: List<Map<String, Any?>> = emptyList(),
     val repasData: List<Map<String, Any?>> = emptyList(),
     val error: String? = null
 )
@@ -70,12 +71,14 @@ class SharedPatientDataViewModel @Inject constructor(
                 val profile = authRepository.getUserProfile(patientUid)
                 val glucose = dataSharingRepository.getPatientGlucoseData(patientUid)
                 val repas = dataSharingRepository.getPatientRepasData(patientUid)
+                val tensions = dataSharingRepository.getPatientTensionData(patientUid)
 
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         patientProfile = profile,
                         glucoseData = glucose,
+                        tensionData = tensions,
                         repasData = repas
                     )
                 }
@@ -233,6 +236,17 @@ fun SharedPatientDataContent(
                     }
                 }
 
+                // ── Tension ──
+                item {
+                    SectionHeader("Tension", Icons.Default.Favorite, uiState.tensionData.size)
+                }
+                if (uiState.tensionData.isEmpty()) {
+                    item { EmptyDataCard("Aucune mesure de tension partagee") }
+                } else {
+                    item { TensionResumeCard(uiState.tensionData) }
+                    items(uiState.tensionData.take(15)) { t -> TensionDataCard(t) }
+                }
+
                 // ── Repas ──
                 item {
                     SectionHeader("Analyse de repas", Icons.Default.Restaurant, uiState.repasData.size)
@@ -355,6 +369,71 @@ private fun SectionHeader(title: String, icon: ImageVector, count: Int) {
                 color = Primary,
                 fontWeight = FontWeight.Medium
             )
+        }
+    }
+}
+
+@Composable
+private fun TensionResumeCard(data: List<Map<String, Any?>>) {
+    val depuis = java.time.LocalDateTime.now().minusDays(30).toString()
+    val recentes = data.filter { (it["dateHeure"] as? String ?: "") >= depuis }.mapNotNull { m ->
+        val s = (m["systolique"] as? Number)?.toInt(); val d = (m["diastolique"] as? Number)?.toInt()
+        if (s != null && d != null) s to d else null
+    }
+    if (recentes.isEmpty()) return
+    val sys = recentes.map { it.first }.average().toInt()
+    val dia = recentes.map { it.second }.average().toInt()
+    val cat = com.diabeto.domain.ReglesTension.categorie(sys, dia)
+    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = cat.couleur().copy(alpha = 0.08f))) {
+        Column(Modifier.padding(12.dp)) {
+            Text("Moyenne 30 jours : $sys/$dia mmHg (${recentes.size} mesures)", fontWeight = FontWeight.SemiBold)
+            Text("Pression pulsée moyenne : ${sys - dia} mmHg · PAM ${com.diabeto.domain.ReglesTension.pam(sys, dia)}" +
+                (if (data.firstOrNull()?.get("traitementAntihypertenseur") == true) " · traitement antihypertenseur en cours" else ""),
+                fontSize = 12.sp)
+            Text(cat.libelle + " · aide au suivi, pas un diagnostic", fontSize = 12.sp, color = cat.couleur())
+            val mesures = data.mapNotNull { versMesureTension(it) }
+            com.diabeto.domain.ReglesTension.testsOrthostatiques(mesures).firstOrNull()?.let { o ->
+                Text("Dernier test couché/debout : baisse ${o.baissePas}/${o.baissePad} mmHg" +
+                    if (o.positif) " · hypotension orthostatique possible" else " · normal",
+                    fontSize = 12.sp, color = if (o.positif) Color(0xFFF57C00) else OnSurfaceVariant)
+            }
+            if (com.diabeto.domain.ReglesTension.tachycardiePersistante(mesures))
+                Text("Tachycardie de repos persistante : neuropathie autonome possible", fontSize = 12.sp, color = Color(0xFFF57C00))
+            if (sys - dia > 60)
+                Text("Pression pulsée > 60 : rigidité artérielle possible", fontSize = 12.sp, color = Color(0xFFF57C00))
+        }
+    }
+}
+
+private fun versMesureTension(m: Map<String, Any?>): com.diabeto.domain.MesureTension? {
+    val s = (m["systolique"] as? Number)?.toInt() ?: return null
+    val d = (m["diastolique"] as? Number)?.toInt() ?: return null
+    val date = (m["dateHeure"] as? String)?.let { runCatching { kotlinx.datetime.LocalDateTime.parse(it) }.getOrNull() } ?: return null
+    return com.diabeto.domain.MesureTension(date, s, d, (m["pouls"] as? Number)?.toInt(),
+        m["position"] as? String ?: "", m["bras"] as? String ?: "", m["traitementAntihypertenseur"] as? Boolean)
+}
+
+@Composable
+private fun TensionDataCard(m: Map<String, Any?>) {
+    val s = (m["systolique"] as? Number)?.toInt() ?: return
+    val d = (m["diastolique"] as? Number)?.toInt() ?: return
+    val cat = com.diabeto.domain.ReglesTension.categorie(s, d)
+    val date = (m["dateHeure"] as? String)?.let {
+        runCatching { java.time.LocalDateTime.parse(it).format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) }.getOrNull()
+    } ?: ""
+    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp), elevation = CardDefaults.cardElevation(1.dp)) {
+        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("$s/$d", fontWeight = FontWeight.Bold, color = cat.couleur(), fontSize = 16.sp)
+            Spacer(Modifier.width(8.dp))
+            Column(Modifier.weight(1f)) {
+                Text("mmHg" + ((m["pouls"] as? Number)?.let { " · FC ${it.toInt()}" } ?: "") +
+                    " · PP ${s - d} · PAM ${com.diabeto.domain.ReglesTension.pam(s, d)}" +
+                    ((m["position"] as? String)?.let { " · " + com.diabeto.domain.ReglesTension.libellePosition(it) } ?: "") +
+                    ((m["bras"] as? String)?.let { ", bras " + com.diabeto.domain.ReglesTension.libelleBras(it) } ?: ""),
+                    fontSize = 13.sp)
+                Text("${cat.libelle} · $date", fontSize = 12.sp, color = OnSurfaceVariant)
+            }
         }
     }
 }

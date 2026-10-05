@@ -103,6 +103,9 @@ android {
 }
 
 dependencies {
+    // Module commun (Kotlin Multiplatform) : regles et calculs partages
+    implementation(project(":shared"))
+
     // WebRTC (native peer-to-peer audio/video)
     implementation("io.getstream:stream-webrtc-android:1.1.1")
 

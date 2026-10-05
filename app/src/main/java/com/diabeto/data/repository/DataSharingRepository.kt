@@ -395,6 +395,24 @@ class DataSharingRepository @Inject constructor(
         } catch (e: Exception) { Log.w("DataSharing", "Glucose query failed: ${e.message}"); emptyList() }
     }
 
+    /** Tensions du patient (backups/{uid}/tension), plus recentes d'abord, sans doublons. */
+    suspend fun getPatientTensionData(patientUid: String): List<Map<String, Any?>> {
+        val medecinUid = authRepository.currentUserId ?: return emptyList()
+        if (!hasAccess(patientUid, medecinUid)) return emptyList()
+        return try {
+            firestore.collection("backups")
+                .document(patientUid)
+                .collection("tension")
+                .get().await()
+                .documents.mapNotNull {
+                    @Suppress("UNCHECKED_CAST")
+                    it.data as? Map<String, Any?>
+                }
+                .distinctBy { Triple(it["dateHeure"], it["systolique"], it["diastolique"]) }
+                .sortedByDescending { it["dateHeure"] as? String ?: "" }
+        } catch (e: Exception) { Log.w("DataSharing", "Tension query failed: ${e.message}"); emptyList() }
+    }
+
     suspend fun getPatientRepasData(patientUid: String): List<Map<String, Any?>> {
         val medecinUid = authRepository.currentUserId ?: return emptyList()
         if (!hasAccess(patientUid, medecinUid)) {

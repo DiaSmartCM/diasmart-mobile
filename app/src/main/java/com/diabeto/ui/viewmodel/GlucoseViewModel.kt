@@ -20,7 +20,7 @@ import com.diabeto.util.MessageErreur
  * Onglet actif dans l'écran de suivi
  */
 enum class GlucoseTab {
-    GLYCEMIE, HBA1C, SUIVI
+    GLYCEMIE, HBA1C, SUIVI, TENSION
 }
 
 data class GlucoseUiState(

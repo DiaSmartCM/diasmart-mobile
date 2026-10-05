@@ -558,8 +558,7 @@ fun DiabetoNavigation(
         composable(Routes.SETTINGS) {
             SettingsScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToFamily = { navController.navigate(Routes.FAMILY) },
-                onNavigateToEtablissement = { navController.navigate(Routes.ETABLISSEMENT) }
+                onNavigateToFamily = { navController.navigate(Routes.FAMILY) }
             )
         }
 

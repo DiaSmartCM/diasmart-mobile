@@ -1,8 +1,5 @@
 package com.diabeto.data.model
 
-import java.time.LocalDate
-import java.time.LocalDateTime
-
 /**
  * Espace etablissement (offre B2B2C) : un centre de sante, un administrateur,
  * plusieurs soignants, et les patients que le centre suit.
@@ -103,21 +100,3 @@ enum class PrioriteSuivi(val libelle: String) {
     BASSE("Stable"),
     INCONNUE("Pas assez de donnees")
 }
-
-/** Ligne du tableau de bord : un patient inscrit et ses indicateurs. */
-data class SuiviPatient(
-    val uid: String,
-    val nom: String,
-    val inscritAt: Long,
-    val derniereMesure: LocalDateTime?,
-    val nbMesures30j: Int,
-    val moyenne30j: Double?,
-    val nbHypos30j: Int,          // < 70 mg/dL
-    val nbHyposSeveres30j: Int,   // < 54 mg/dL
-    val derniereHbA1c: Double?,
-    val dateHbA1c: LocalDate?,
-    val hba1cEstimee: Boolean,
-    val priorite: PrioriteSuivi,
-    val raisons: List<String>,
-    val perduDeVue: Boolean
-)
