@@ -587,6 +587,11 @@ body{display:flex;flex-direction:column}
 
     <div class="dash-section-title mt-24">Sante & Suivi</div>
     <div class="feature-grid">
+      <div class="feature-card" onclick="navigate('tension')">
+        <div class="feat-icon">&#10084;&#65039;</div>
+        <div class="feat-name">Tension</div>
+        <div class="feat-desc">Suivi hypertension</div>
+      </div>
       <div class="feature-card" onclick="navigate('medicaments')">
         <div class="feat-icon">&#128138;</div>
         <div class="feat-name">Medicaments</div>
@@ -641,6 +646,31 @@ body{display:flex;flex-direction:column}
     <button class="nav-item" onclick="navigate('patients')"><span class="nav-icon">&#128101;</span>Patients</button>
     <button class="nav-item" onclick="navigate('settings')"><span class="nav-icon">&#9881;</span>Reglages</button>
   </nav>
+</div>
+
+<!-- ══════════ TENSION ══════════ -->
+<div id="tension" class="screen">
+  <div class="top-bar">
+    <button class="back-btn" onclick="navigate('dashboard')">&#8592;</button>
+    <h2>Tension arterielle</h2>
+  </div>
+  <div class="screen-content">
+    <div class="glucose-current">
+      <div class="glucose-value" id="tensionVal">--</div>
+      <div class="glucose-unit" id="tensionUnit">mmHg</div>
+      <div class="glucose-status status-normal" id="tensionStatus">Aucune mesure</div>
+      <p id="tensionConseil" style="font-size:13px;color:var(--text2);margin-top:10px;line-height:1.5"></p>
+    </div>
+    <div class="glucose-chart">
+      <div id="tensionMoyenne" style="font-size:13px;color:var(--text2);margin-bottom:8px"></div>
+      <canvas id="tensionChart"></canvas>
+      <div style="font-size:11px;color:var(--text3);margin-top:6px">Bleu : haut (systolique) &middot; vert : bas (diastolique) &middot; pointilles : 140 et 90</div>
+    </div>
+    <h3 style="font-size:15px;margin-bottom:12px">Historique</h3>
+    <div class="glucose-list" id="tensionList"></div>
+    <p style="font-size:11px;color:var(--text3);margin-top:16px">Indication pour suivre votre tension, pas un diagnostic. Vos mesures sont visibles par vos soignants si vous les partagez.</p>
+  </div>
+  <button class="glucose-add" onclick="openTensionModal()">+</button>
 </div>
 
 <!-- ══════════ GLUCOSE ══════════ -->
@@ -1112,6 +1142,27 @@ body{display:flex;flex-direction:column}
 </div>
 
 <!-- ══════════ MODALS ══════════ -->
+<div class="modal-overlay" id="tensionModal">
+  <div class="modal">
+    <h3>Nouvelle mesure de tension</h3>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:12px">Assis, au repos depuis 5 minutes, le bras a hauteur du coeur.</p>
+    <div class="input-group">
+      <label>Haut - systolique (mmHg)</label>
+      <input type="number" id="newTensionSys" placeholder="Ex: 130" min="50" max="300">
+    </div>
+    <div class="input-group">
+      <label>Bas - diastolique (mmHg)</label>
+      <input type="number" id="newTensionDia" placeholder="Ex: 85" min="30" max="200">
+    </div>
+    <div class="input-group">
+      <label>Pouls (optionnel)</label>
+      <input type="number" id="newTensionPouls" placeholder="Ex: 72" min="30" max="220">
+    </div>
+    <button class="btn btn-cyan mt-16" onclick="saveTension()">Enregistrer</button>
+    <button class="btn btn-outline" onclick="closeModal('tensionModal')">Annuler</button>
+  </div>
+</div>
+
 <div class="modal-overlay" id="glucoseModal">
   <div class="modal">
     <h3>Nouvelle mesure</h3>
@@ -1379,6 +1430,30 @@ window._checkAuth=()=>{
   } else {
     showScreen('onboarding');
   }
+};
+
+// ── Tension (meme emplacement que l'app Android : backups/{uid}/tension) ──
+window.loadTensionData=async()=>{
+  if(!auth.currentUser)return;
+  try{
+    const q=query(collection(db,'backups',auth.currentUser.uid,'tension'),orderBy('dateHeure','desc'),limit(60));
+    const snap=await getDocs(q);
+    const rows=[];const vus=new Set();
+    snap.forEach(d=>{const r={id:d.id,...d.data()};const k=r.dateHeure+'|'+r.systolique+'|'+r.diastolique;if(!vus.has(k)){vus.add(k);rows.push(r)}});
+    window._tensionData=rows;
+    renderTension(rows);
+  }catch(e){console.log('Tension load:',e);renderTension([])}
+};
+
+window.saveTensionToDb=async(sys,dia,pouls)=>{
+  if(!auth.currentUser){alert('Veuillez vous reconnecter');return}
+  const n=new Date();const z=v=>String(v).padStart(2,'0');
+  // Heure locale sans fuseau, comme LocalDateTime sur Android
+  const dateHeure=n.getFullYear()+'-'+z(n.getMonth()+1)+'-'+z(n.getDate())+'T'+z(n.getHours())+':'+z(n.getMinutes())+':'+z(n.getSeconds());
+  await addDoc(collection(db,'backups',auth.currentUser.uid,'tension'),{
+    systolique:sys,diastolique:dia,pouls:pouls||null,dateHeure,notes:'',source:'web',lastModified:Date.now()
+  });
+  loadTensionData();
 };
 
 // ── Glucose data ──
@@ -2519,6 +2594,79 @@ async function saveGlucose(){
 }
 window.saveGlucose=saveGlucose;
 
+// ── Tension ── (memes seuils que ReglesTension du module commun)
+function categorieTension(s,d){
+  if(s>=180||d>=110)return{l:'Tres elevee',c:'#C62828',k:'Reposez-vous 5 minutes et reprenez la mesure. Si elle reste aussi haute, ou en cas de mal de tete, douleur dans la poitrine ou trouble de la vue : consultez en urgence.'};
+  if(s>=160||d>=100)return{l:'Hypertension (grade 2)',c:'#FF5252',k:'Parlez-en rapidement a votre soignant.'};
+  if(s>=140||d>=90)return{l:'Hypertension (grade 1)',c:'#FF9800',k:'Reprenez la mesure au repos. Si elle reste elevee, parlez-en a votre soignant.'};
+  if(s>=130||d>=85)return{l:'Normale haute',c:'#FBC02D',k:'A surveiller : moins de sel, activite physique, et reprenez la mesure.'};
+  if(s<90||d<60)return{l:'Tension basse',c:'#42A5F5',k:'Si vous avez des vertiges ou un malaise, asseyez-vous et parlez-en a votre soignant.'};
+  return{l:'Normale',c:'#4CAF50',k:'Continuez ainsi.'};
+}
+function renderTension(rows){
+  const list=document.getElementById('tensionList');
+  if(!list)return;
+  const val=document.getElementById('tensionVal'),st=document.getElementById('tensionStatus'),cs=document.getElementById('tensionConseil'),moy=document.getElementById('tensionMoyenne');
+  if(rows.length){
+    const t=rows[0],c=categorieTension(t.systolique,t.diastolique);
+    val.textContent=t.systolique+'/'+t.diastolique;val.style.color=c.c;
+    document.getElementById('tensionUnit').textContent='mmHg'+(t.pouls?' - pouls '+t.pouls:'');
+    st.textContent=c.l;st.className='glucose-status';st.style.background=c.c+'22';st.style.color=c.c;
+    cs.textContent=c.k;
+  }else{val.textContent='--';val.style.color='';st.textContent='Aucune mesure';cs.textContent='Appuyez sur + pour ajouter votre premiere mesure.'}
+  const lim=new Date(Date.now()-30*864e5);
+  const r30=rows.filter(r=>new Date(r.dateHeure)>=lim);
+  moy.textContent=r30.length?('Moyenne 30 jours : '+Math.round(r30.reduce((a,r)=>a+r.systolique,0)/r30.length)+'/'+Math.round(r30.reduce((a,r)=>a+r.diastolique,0)/r30.length)+' mmHg ('+r30.length+' mesures)'):'';
+  const esc=s=>String(s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  list.innerHTML=rows.slice(0,30).map(r=>{
+    const c=categorieTension(r.systolique,r.diastolique);
+    const date=new Date(r.dateHeure).toLocaleString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+    return`<div class="glucose-item"><div class="gi-left"><div class="gi-dot" style="background:${c.c}"></div><div><div class="gi-val">${esc(r.systolique)}/${esc(r.diastolique)} mmHg${r.pouls?' &middot; pouls '+esc(r.pouls):''}</div><div class="gi-time">${esc(c.l)} - ${esc(date)}</div></div></div></div>`;
+  }).join('');
+  drawTensionChart(r30.slice().reverse());
+}
+window.renderTension=renderTension;
+
+function drawTensionChart(data){
+  const canvas=document.getElementById('tensionChart');
+  if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  const dpr=window.devicePixelRatio||1;
+  const rect=canvas.parentElement.getBoundingClientRect();
+  canvas.width=rect.width*dpr;canvas.height=200*dpr;
+  canvas.style.width=rect.width+'px';canvas.style.height='200px';
+  ctx.scale(dpr,dpr);
+  const W=rect.width,H=200;ctx.clearRect(0,0,W,H);
+  if(data.length<2){ctx.fillStyle='rgba(255,255,255,.3)';ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText('Ajoutez des mesures pour voir le graphique',W/2,H/2);return}
+  const minV=Math.min(50,...data.map(d=>d.diastolique-10)),maxV=Math.max(180,...data.map(d=>d.systolique+10));
+  const pad={t:12,b:12,l:10,r:10},cW=W-pad.l-pad.r,cH=H-pad.t-pad.b;
+  const y=v=>pad.t+cH*(1-(v-minV)/(maxV-minV)),x=i=>pad.l+i*(cW/(data.length-1));
+  ctx.strokeStyle='rgba(255,152,0,.5)';ctx.setLineDash([4,4]);
+  [140,90].forEach(v=>{ctx.beginPath();ctx.moveTo(pad.l,y(v));ctx.lineTo(W-pad.r,y(v));ctx.stroke()});
+  ctx.setLineDash([]);
+  [['systolique','#00D2FF'],['diastolique','#26A69A']].forEach(([k,col])=>{
+    ctx.beginPath();data.forEach((d,i)=>i?ctx.lineTo(x(i),y(d[k])):ctx.moveTo(x(i),y(d[k])));
+    ctx.strokeStyle=col;ctx.lineWidth=2.5;ctx.stroke();
+    data.forEach((d,i)=>{ctx.beginPath();ctx.arc(x(i),y(d[k]),3.5,0,Math.PI*2);ctx.fillStyle=col;ctx.fill()});
+  });
+}
+
+function openTensionModal(){
+  ['newTensionSys','newTensionDia','newTensionPouls'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('tensionModal').classList.add('active');
+}
+window.openTensionModal=openTensionModal;
+
+async function saveTension(){
+  const s=parseInt(document.getElementById('newTensionSys').value),d=parseInt(document.getElementById('newTensionDia').value);
+  const p=parseInt(document.getElementById('newTensionPouls').value)||null;
+  if(!s||!d||s<50||s>300||d<30||d>200||s<=d){alert('Valeurs invalides : le premier chiffre (haut) doit etre plus grand que le second (bas), ex. 130 / 85.');return}
+  if(p&&(p<30||p>220)){alert('Pouls invalide (30 a 220)');return}
+  try{await window.saveTensionToDb(s,d,p);closeModal('tensionModal')}
+  catch(e){console.error('saveTension:',e);alert('Erreur: '+e.message)}
+}
+window.saveTension=saveTension;
+
 // ── Patients ──
 function renderPatients(patients){
   const list=document.getElementById('patientList');
@@ -3474,6 +3622,7 @@ window.navigate=function(id){
   origNavigate(id);
   if(id==='predictive')generatePredictions();
   if(id==='chatbot')loadChatHistory();
+  if(id==='tension'&&window.loadTensionData)window.loadTensionData();
   if(id==='medicaments'&&window.loadMedicaments)window.loadMedicaments();
   if(id==='rendezvous'&&window.loadRendezVous)window.loadRendezVous();
   if(id==='journal'&&window.loadJournal)window.loadJournal();

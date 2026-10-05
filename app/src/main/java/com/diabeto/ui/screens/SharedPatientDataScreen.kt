@@ -43,6 +43,7 @@ data class SharedPatientUiState(
     val isLoading: Boolean = true,
     val patientProfile: UserProfile? = null,
     val glucoseData: List<Map<String, Any?>> = emptyList(),
+    val tensionData: List<Map<String, Any?>> = emptyList(),
     val repasData: List<Map<String, Any?>> = emptyList(),
     val error: String? = null
 )
@@ -70,12 +71,14 @@ class SharedPatientDataViewModel @Inject constructor(
                 val profile = authRepository.getUserProfile(patientUid)
                 val glucose = dataSharingRepository.getPatientGlucoseData(patientUid)
                 val repas = dataSharingRepository.getPatientRepasData(patientUid)
+                val tensions = dataSharingRepository.getPatientTensionData(patientUid)
 
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         patientProfile = profile,
                         glucoseData = glucose,
+                        tensionData = tensions,
                         repasData = repas
                     )
                 }
@@ -233,6 +236,17 @@ fun SharedPatientDataContent(
                     }
                 }
 
+                // ── Tension ──
+                item {
+                    SectionHeader("Tension", Icons.Default.Favorite, uiState.tensionData.size)
+                }
+                if (uiState.tensionData.isEmpty()) {
+                    item { EmptyDataCard("Aucune mesure de tension partagee") }
+                } else {
+                    item { TensionResumeCard(uiState.tensionData) }
+                    items(uiState.tensionData.take(15)) { t -> TensionDataCard(t) }
+                }
+
                 // ── Repas ──
                 item {
                     SectionHeader("Analyse de repas", Icons.Default.Restaurant, uiState.repasData.size)
@@ -355,6 +369,46 @@ private fun SectionHeader(title: String, icon: ImageVector, count: Int) {
                 color = Primary,
                 fontWeight = FontWeight.Medium
             )
+        }
+    }
+}
+
+@Composable
+private fun TensionResumeCard(data: List<Map<String, Any?>>) {
+    val depuis = java.time.LocalDateTime.now().minusDays(30).toString()
+    val recentes = data.filter { (it["dateHeure"] as? String ?: "") >= depuis }.mapNotNull { m ->
+        val s = (m["systolique"] as? Number)?.toInt(); val d = (m["diastolique"] as? Number)?.toInt()
+        if (s != null && d != null) s to d else null
+    }
+    if (recentes.isEmpty()) return
+    val sys = recentes.map { it.first }.average().toInt()
+    val dia = recentes.map { it.second }.average().toInt()
+    val cat = com.diabeto.domain.ReglesTension.categorie(sys, dia)
+    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = cat.couleur().copy(alpha = 0.08f))) {
+        Column(Modifier.padding(12.dp)) {
+            Text("Moyenne 30 jours : $sys/$dia mmHg (${recentes.size} mesures)", fontWeight = FontWeight.SemiBold)
+            Text(cat.libelle + " · aide au suivi, pas un diagnostic", fontSize = 12.sp, color = cat.couleur())
+        }
+    }
+}
+
+@Composable
+private fun TensionDataCard(m: Map<String, Any?>) {
+    val s = (m["systolique"] as? Number)?.toInt() ?: return
+    val d = (m["diastolique"] as? Number)?.toInt() ?: return
+    val cat = com.diabeto.domain.ReglesTension.categorie(s, d)
+    val date = (m["dateHeure"] as? String)?.let {
+        runCatching { java.time.LocalDateTime.parse(it).format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) }.getOrNull()
+    } ?: ""
+    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp), elevation = CardDefaults.cardElevation(1.dp)) {
+        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("$s/$d", fontWeight = FontWeight.Bold, color = cat.couleur(), fontSize = 16.sp)
+            Spacer(Modifier.width(8.dp))
+            Column(Modifier.weight(1f)) {
+                Text("mmHg" + ((m["pouls"] as? Number)?.let { " · pouls ${it.toInt()}" } ?: ""), fontSize = 13.sp)
+                Text("${cat.libelle} · $date", fontSize = 12.sp, color = OnSurfaceVariant)
+            }
         }
     }
 }

@@ -212,6 +212,7 @@
     <string name="glucose_tab_glycemie">Glycémie</string>
     <string name="glucose_tab_hba1c">HbA1c</string>
     <string name="glucose_tab_suivi">Suivi</string>
+    <string name="glucose_tab_tension">Tension</string>
     <string name="glucose_add_hba1c">Ajouter un résultat HbA1c</string>
     <string name="glucose_invalid_value">Valeur invalide</string>
     <string name="glucose_value_too_high">Valeur trop élevée</string>
@@ -336,7 +337,7 @@
          (glycemie glucometre + HbA1c labo). La carte glycemie de l'en-tete
          etait deja cliquable depuis v2.1.71 mais restait introuvable. -->
     <string name="card_glucose_title">Glycémie &amp; HbA1c</string>
-    <string name="card_glucose_subtitle">Saisir mes résultats</string>
+    <string name="card_glucose_subtitle">Glycémie, HbA1c, tension</string>
     <!-- v2.1.72 : historique journalier du podometre (local, hors ligne) -->
     <string name="pedometer_history_title">Historique journalier</string>
     <string name="pedometer_history_subtitle">Vos pas jour par jour, conservés 90 jours sur le téléphone.</string>

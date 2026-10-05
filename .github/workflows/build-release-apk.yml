@@ -154,6 +154,16 @@ jobs:
       - name: Construire assembleRelease
         run: gradle assembleRelease -x uploadCrashlyticsMappingFileRelease --stacktrace
 
+      - name: Afficher le schema Room de la table tension (controle de la migration 10->11)
+        if: always()
+        run: |
+          f=$(ls app/schemas/com.diabeto.data.database.DiabetoDatabase/11.json 2>/dev/null || true)
+          if [ -n "$f" ]; then
+            python3 -c "import json,sys; d=json.load(open('$f'))['database']; t=[e for e in d['entities'] if e['tableName']=='tension_lectures'][0]; print(t['createSql']); [print(i['createSql']) for i in t.get('indices',[])]"
+          else
+            echo "schema 11 absent"
+          fi
+
       - name: Verifier la signature de l'APK
         id: apk
         run: |

@@ -45,6 +45,8 @@ import androidx.compose.ui.unit.sp
 import com.diabeto.data.model.PrioriteSuivi
 import com.diabeto.domain.EvaluationSuivi
 import com.diabeto.domain.MesureHbA1c
+import com.diabeto.domain.MesureTension
+import com.diabeto.domain.ReglesTension
 import kotlinx.coroutines.launch
 
 private enum class Filtre(val libelle: String) { TOUS("Tous"), A_RISQUE("À revoir en priorité"), PERDUS("Perdus de vue") }
@@ -62,7 +64,7 @@ fun EcranPatients(etat: EtatApp, patientOuvert: String?, onOuvrir: (String?) -> 
     else ListePatients(etat, onOuvrir)
 }
 
-private val colonnes = listOf(0.20f, 0.14f, 0.12f, 0.11f, 0.09f, 0.10f, 0.24f)
+private val colonnes = listOf(0.18f, 0.13f, 0.11f, 0.10f, 0.08f, 0.09f, 0.09f, 0.22f)
 
 @Composable
 private fun ListePatients(etat: EtatApp, onOuvrir: (String) -> Unit) {
@@ -99,7 +101,7 @@ private fun ListePatients(etat: EtatApp, onOuvrir: (String) -> Unit) {
         Spacer(Modifier.height(8.dp))
         Card(Modifier.fillMaxSize()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
-                listOf("Patient", "Priorité", "Dernière mesure", "Moyenne 30 j", "HbA1c", "Suivi par", "Pourquoi").forEachIndexed { i, t ->
+                listOf("Patient", "Priorité", "Dernière mesure", "Moyenne 30 j", "HbA1c", "Tension 30 j", "Suivi par", "Pourquoi").forEachIndexed { i, t ->
                     Text(t, Modifier.weight(colonnes[i]), fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = Color.Gray)
                 }
             }
@@ -131,8 +133,10 @@ private fun LignePatient(p: PatientSuivi, onClic: () -> Unit) {
         Text(r.moyenne30j?.let { "${it.toInt()} mg/dL" } ?: "—", Modifier.weight(colonnes[3]), fontSize = 13.sp)
         Text(r.hba1c?.let { "${EvaluationSuivi.unChiffre(it.valeur)} %" + if (it.estimee) " (est.)" else "" } ?: "—",
             Modifier.weight(colonnes[4]), fontSize = 13.sp)
-        Text(p.origine.libelle, Modifier.weight(colonnes[5]), fontSize = 12.sp, color = Color.Gray)
-        Text(r.raisons.joinToString(" · ").ifBlank { "—" }, Modifier.weight(colonnes[6]), fontSize = 12.sp, color = Color.DarkGray)
+        Text(r.tensionMoyenne30j?.let { "${it.first}/${it.second}" } ?: "—", Modifier.weight(colonnes[5]), fontSize = 13.sp,
+            color = r.tensionMoyenne30j?.let { ReglesTension.categorie(it.first, it.second).couleur() } ?: Color.Unspecified)
+        Text(p.origine.libelle, Modifier.weight(colonnes[6]), fontSize = 12.sp, color = Color.Gray)
+        Text(r.raisons.joinToString(" · ").ifBlank { "—" }, Modifier.weight(colonnes[7]), fontSize = 12.sp, color = Color.DarkGray)
     }
 }
 
@@ -145,12 +149,14 @@ private fun FichePatient(etat: EtatApp, p: PatientSuivi, onRetour: () -> Unit) {
     var jours by remember { mutableIntStateOf(30) }
     var mesures by remember(p.uid) { mutableStateOf(p.mesures) }
     var hba1c by remember(p.uid) { mutableStateOf<List<MesureHbA1c>>(emptyList()) }
+    var tensions by remember(p.uid) { mutableStateOf(p.tensions) }
     var chargement by remember(p.uid) { mutableStateOf(true) }
     LaunchedEffect(p.uid) {
         // Plus de mesures que la liste (3 mois) pour la courbe 90 jours
         val toutes = etat.patientsService.mesures(p.uid, 600)
         if (toutes.isNotEmpty()) mesures = toutes
         hba1c = etat.patientsService.hba1c(p.uid)
+        etat.patientsService.tensions(p.uid, 300).takeIf { it.isNotEmpty() }?.let { tensions = it }
         chargement = false
     }
     val r = p.resultat
@@ -198,6 +204,8 @@ private fun FichePatient(etat: EtatApp, p: PatientSuivi, onRetour: () -> Unit) {
             }
         }
 
+        CarteTension(tensions, debut, fin, jours)
+
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Card(Modifier.weight(1f)) {
                 Column(Modifier.padding(16.dp)) {
@@ -231,5 +239,34 @@ private fun FichePatient(etat: EtatApp, p: PatientSuivi, onRetour: () -> Unit) {
             }
         }
         Text("Aide au suivi, pas un diagnostic : la décision reste au soignant.", fontSize = 12.sp, color = Color.Gray)
+    }
+}
+
+@Composable
+private fun CarteTension(tensions: List<MesureTension>, debut: Long, fin: Long, jours: Int) {
+    val periode = tensions.filter { it.date.ms() >= debut }
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp)) {
+            Text("Tension artérielle ($jours jours)", fontWeight = FontWeight.SemiBold)
+            if (tensions.isEmpty()) {
+                Text("Aucune mesure de tension partagée.", color = Color.Gray, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+                return@Column
+            }
+            val derniere = tensions.maxBy { it.date }
+            val cat = ReglesTension.categorie(derniere.systolique, derniere.diastolique)
+            val moy = ReglesTension.moyenne(periode)
+            Text(
+                "Dernière : ${derniere.systolique}/${derniere.diastolique} mmHg le ${derniere.date.jour()} (${cat.libelle})" +
+                    (moy?.let { " · moyenne ${it.first}/${it.second} sur ${periode.size} mesures" } ?: ""),
+                fontSize = 13.sp, color = Color.Gray
+            )
+            Spacer(Modifier.height(8.dp))
+            if (periode.isEmpty()) Text("Aucune mesure sur cette période.", color = Color.Gray, fontSize = 13.sp,
+                modifier = Modifier.padding(vertical = 16.dp))
+            else CourbeTension(periode.map { Triple(it.date.ms(), it.systolique, it.diastolique) }, debut, fin,
+                Modifier.fillMaxWidth().height(200.dp))
+            Text("Indigo : haut (systolique) · vert : bas (diastolique) · pointillés : 140 et 90 mmHg",
+                fontSize = 12.sp, color = Color.Gray)
+        }
     }
 }

@@ -125,6 +125,7 @@ fun GlucoseTrackingScreen(
                     GlucoseTab.GLYCEMIE -> 0
                     GlucoseTab.HBA1C -> 1
                     GlucoseTab.SUIVI -> 2
+                    GlucoseTab.TENSION -> 3
                 },
                 containerColor = Background,
                 contentColor = Primary
@@ -153,6 +154,14 @@ fun GlucoseTrackingScreen(
                     text = { Text(stringResource(R.string.glucose_tab_suivi), fontSize = 12.sp) },
                     icon = { Icon(Icons.Outlined.Timeline, null, Modifier.size(18.dp)) }
                 )
+                Tab(
+                    selected = uiState.activeTab == GlucoseTab.TENSION,
+                    onClick = { viewModel.setActiveTab(GlucoseTab.TENSION) },
+                    selectedContentColor = Primary,
+                    unselectedContentColor = TextPrimary,
+                    text = { Text(stringResource(R.string.glucose_tab_tension), fontSize = 12.sp) },
+                    icon = { Icon(Icons.Outlined.MonitorHeart, null, Modifier.size(18.dp)) }
+                )
             }
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -160,6 +169,7 @@ fun GlucoseTrackingScreen(
                 GlucoseTab.GLYCEMIE -> GlycemieContent(uiState, viewModel) { showContexteMenu = it }
                 GlucoseTab.HBA1C -> HbA1cContent(uiState, viewModel)
                 GlucoseTab.SUIVI -> SuiviContent(uiState, viewModel)
+                GlucoseTab.TENSION -> TensionContent()
             }
         }
         }  // v2.1.46 : closes outer Column wrapping the tooltip

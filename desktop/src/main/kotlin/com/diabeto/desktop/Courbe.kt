@@ -76,3 +76,49 @@ fun CourbeGlycemie(points: List<PointCourbe>, debut: Long, fin: Long, modifier: 
         visibles.forEach { p -> drawCircle(couleurGlycemie(p.valeur), radius = 3.5f, center = Offset(x(p.t), y(p.valeur))) }
     }
 }
+
+/** Courbe de tension : systolique (indigo) et diastolique (vert-bleu), reperes 140 et 90 mmHg. */
+@Composable
+fun CourbeTension(points: List<Triple<Long, Int, Int>>, debut: Long, fin: Long, modifier: Modifier = Modifier) {
+    val mesureur = rememberTextMeasurer()
+    val style = TextStyle(fontSize = 11.sp, color = Color.Gray)
+    val couleurDia = Color(0xFF26A69A)
+    Canvas(modifier) {
+        val gauche = 44f
+        val bas = 22f
+        val largeur = size.width - gauche - 8f
+        val hauteur = size.height - bas - 8f
+        if (largeur <= 0f || hauteur <= 0f) return@Canvas
+        val visibles = points.filter { it.first in debut..fin }.sortedBy { it.first }
+        val yMin = minOf(50, (visibles.minOfOrNull { it.third } ?: 60) - 10).toFloat()
+        val yMax = maxOf(180, (visibles.maxOfOrNull { it.second } ?: 160) + 10).toFloat()
+        val duree = (fin - debut).coerceAtLeast(1L)
+        fun x(t: Long) = gauche + largeur * ((t - debut).toFloat() / duree)
+        fun y(v: Int) = 8f + hauteur * (1f - (v - yMin) / (yMax - yMin))
+
+        val tirets = PathEffect.dashPathEffect(floatArrayOf(6f, 6f))
+        listOf(140, 90).forEach { v ->
+            drawLine(Orange.copy(alpha = 0.6f), Offset(gauche, y(v)), Offset(gauche + largeur, y(v)), 1f, pathEffect = tirets)
+            val r = mesureur.measure(v.toString(), style)
+            drawText(r, topLeft = Offset(gauche - r.size.width - 6f, y(v) - r.size.height / 2f))
+        }
+        drawLine(Color.LightGray, Offset(gauche, 8f), Offset(gauche, 8f + hauteur))
+        drawLine(Color.LightGray, Offset(gauche, 8f + hauteur), Offset(gauche + largeur, 8f + hauteur))
+        listOf(debut, debut + duree / 2, fin).forEachIndexed { i, t ->
+            val d = Instant.fromEpochMilliseconds(t).toLocalDateTime(fuseau)
+            val r = mesureur.measure("%02d/%02d".format(d.dayOfMonth, d.monthNumber), style)
+            val px = when (i) { 0 -> gauche; 2 -> gauche + largeur - r.size.width; else -> x(t) - r.size.width / 2f }
+            drawText(r, topLeft = Offset(px, 8f + hauteur + 4f))
+        }
+        fun serie(valeur: (Triple<Long, Int, Int>) -> Int, couleur: Color) {
+            if (visibles.size > 1) {
+                val chemin = Path()
+                visibles.forEachIndexed { i, p -> if (i == 0) chemin.moveTo(x(p.first), y(valeur(p))) else chemin.lineTo(x(p.first), y(valeur(p))) }
+                drawPath(chemin, couleur.copy(alpha = 0.8f), style = Stroke(width = 2f))
+            }
+            visibles.forEach { p -> drawCircle(couleur, radius = 3.5f, center = Offset(x(p.first), y(valeur(p)))) }
+        }
+        serie({ it.second }, Indigo)
+        serie({ it.third }, couleurDia)
+    }
+}

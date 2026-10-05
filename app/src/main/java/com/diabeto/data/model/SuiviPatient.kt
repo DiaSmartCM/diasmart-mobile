@@ -21,5 +21,7 @@ data class SuiviPatient(
     val hba1cEstimee: Boolean,
     val priorite: PrioriteSuivi,
     val raisons: List<String>,
-    val perduDeVue: Boolean
+    val perduDeVue: Boolean,
+    val tensionMoyenne30j: String? = null,   // ex. "145/92"
+    val derniereTension: String? = null
 )

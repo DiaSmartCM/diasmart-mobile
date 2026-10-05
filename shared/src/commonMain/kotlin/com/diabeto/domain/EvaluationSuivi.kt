@@ -26,7 +26,9 @@ data class ResultatSuivi(
     val hba1c: MesureHbA1c?,
     val priorite: PrioriteSuivi,
     val raisons: List<String>,
-    val perduDeVue: Boolean
+    val perduDeVue: Boolean,
+    val derniereTension: MesureTension? = null,
+    val tensionMoyenne30j: Pair<Int, Int>? = null
 )
 
 /**
@@ -38,6 +40,8 @@ data class ResultatSuivi(
  *  - MOYENNE : HbA1c >= 7 %, moyenne 30 j >= 180 mg/dL, 1 ou 2 glycemies
  *              < 70 mg/dL, ou aucune HbA1c depuis 6 mois
  *  - BASSE : rien de tout cela, avec des donnees recentes
+ *  - Tension (si le patient en partage) : HAUTE si une mesure >= 180/110
+ *    sur 30 jours ou une moyenne >= 160/100 ; MOYENNE si moyenne >= 140/90
  *  - Perdu de vue : aucune mesure depuis [JOURS_PERDU_DE_VUE] jours
  *    (ou aucune mesure du tout, inscrit depuis plus de 30 jours)
  */
@@ -49,7 +53,8 @@ object EvaluationSuivi {
         mesures: List<Pair<LocalDateTime, Double>>,
         hba1c: List<MesureHbA1c>,
         maintenant: LocalDateTime,
-        fuseau: TimeZone
+        fuseau: TimeZone,
+        tensions: List<MesureTension> = emptyList()
     ): ResultatSuivi {
         val depuis30 = moinsJours(maintenant, 30)
         val recentes = mesures.filter { it.first > depuis30 }.map { it.second }
@@ -63,7 +68,9 @@ object EvaluationSuivi {
         val inscritDepuisJours = if (inscritAt > 0)
             joursEntre(Instant.fromEpochMilliseconds(inscritAt).toLocalDateTime(fuseau), maintenant)
         else 0L
-        val perdu = if (derniere != null) joursEntre(derniere, maintenant) >= JOURS_PERDU_DE_VUE
+        // Une mesure de tension compte aussi comme signe de suivi
+        val derniereActivite = listOfNotNull(derniere, tensions.maxOfOrNull { it.date }).maxOrNull()
+        val perdu = if (derniereActivite != null) joursEntre(derniereActivite, maintenant) >= JOURS_PERDU_DE_VUE
         else inscritDepuisJours >= 30
 
         val haute = mutableListOf<String>()
@@ -77,14 +84,24 @@ object EvaluationSuivi {
         else if (moyenne != null && moyenne >= 180) moyenneR += "moyenne 30 j ${moyenne.toInt()} mg/dL"
         if (h == null || h.date < maintenant.date.minus(6, DateTimeUnit.MONTH)) moyenneR += "pas d'HbA1c depuis 6 mois"
 
+        val tensions30 = tensions.filter { it.date > depuis30 }
+        val tMoy = ReglesTension.moyenne(tensions30)
+        val tMax = tensions30.filter { it.systolique >= 180 || it.diastolique >= 110 }
+        if (tMax.isNotEmpty()) haute += "${tMax.size} tension(s) >= 180/110 en 30 j"
+        if (tMoy != null) {
+            val (s, d) = tMoy
+            if (s >= 160 || d >= 100) haute += "tension moyenne 30 j $s/$d"
+            else if (s >= 140 || d >= 90) moyenneR += "tension moyenne 30 j $s/$d"
+        }
+
         val priorite = when {
             haute.isNotEmpty() -> PrioriteSuivi.HAUTE
-            recentes.isEmpty() && h == null -> PrioriteSuivi.INCONNUE
+            recentes.isEmpty() && h == null && tensions30.isEmpty() -> PrioriteSuivi.INCONNUE
             moyenneR.isNotEmpty() -> PrioriteSuivi.MOYENNE
             else -> PrioriteSuivi.BASSE
         }
         val raisons = buildList {
-            if (perdu) add(if (derniere == null) "aucune mesure partagee" else "aucune mesure depuis ${joursEntre(derniere, maintenant)} jours")
+            if (perdu) add(if (derniereActivite == null) "aucune mesure partagee" else "aucune mesure depuis ${joursEntre(derniereActivite, maintenant)} jours")
             addAll(haute)
             if (priorite != PrioriteSuivi.INCONNUE) addAll(moyenneR)
         }
@@ -97,7 +114,9 @@ object EvaluationSuivi {
             hba1c = h,
             priorite = priorite,
             raisons = raisons,
-            perduDeVue = perdu
+            perduDeVue = perdu,
+            derniereTension = tensions.maxByOrNull { it.date },
+            tensionMoyenne30j = tMoy
         )
     }
 

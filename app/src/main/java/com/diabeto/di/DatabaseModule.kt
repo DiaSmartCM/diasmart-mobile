@@ -49,6 +49,11 @@ object DatabaseModule {
     }
 
     @Provides
+    fun provideTensionDao(database: DiabetoDatabase): TensionDao {
+        return database.tensionDao()
+    }
+
+    @Provides
     fun provideJournalDao(database: DiabetoDatabase): JournalDao {
         return database.journalDao()
     }

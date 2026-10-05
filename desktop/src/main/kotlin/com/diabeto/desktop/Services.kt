@@ -8,6 +8,7 @@ import com.diabeto.data.model.RoleEtablissement
 import com.diabeto.data.model.TypeCode
 import com.diabeto.domain.EvaluationSuivi
 import com.diabeto.domain.MesureHbA1c
+import com.diabeto.domain.MesureTension
 import com.diabeto.domain.ResultatSuivi
 import com.diabeto.util.ReglesEssais
 import kotlinx.coroutines.Dispatchers
@@ -211,7 +212,7 @@ enum class Origine(val libelle: String) { LIEN("Lien direct"), ETABLISSEMENT("É
 
 data class PatientSuivi(
     val uid: String, val nom: String, val origine: Origine, val inscritAt: Long,
-    val resultat: ResultatSuivi, val mesures: List<Mesure>
+    val resultat: ResultatSuivi, val mesures: List<Mesure>, val tensions: List<MesureTension> = emptyList()
 )
 
 data class Mesure(val date: LocalDateTime, val valeur: Double, val contexte: String)
@@ -239,8 +240,9 @@ class ServicePatients(private val fb: FirebaseRest) {
             async {
                 limite.withPermit {
                     val m = mesures(uid, 150)
+                    val tn = tensions(uid, 60)
                     PatientSuivi(uid, t.first, t.second, t.third,
-                        EvaluationSuivi.evaluer(t.third, m.map { it.date to it.valeur }, hba1c(uid), maintenant, fuseau), m)
+                        EvaluationSuivi.evaluer(t.third, m.map { it.date to it.valeur }, hba1c(uid), maintenant, fuseau, tn), m, tn)
                 }
             }
         }.awaitAll().sortedWith(compareBy<PatientSuivi>({ it.resultat.priorite.ordinal }, { !it.resultat.perduDeVue }, { it.nom }))
@@ -252,6 +254,16 @@ class ServicePatients(private val fb: FirebaseRest) {
             val valeur = (m["valeur"] as? Number)?.toDouble()
             if (date != null && valeur != null) Mesure(date, valeur, m["contexte"] as? String ?: "") else null
         }
+    }.getOrDefault(emptyList())
+
+    /** Tensions (backups/{uid}/tension), ecrites par le telephone ou le site ; sans doublons. */
+    suspend fun tensions(uid: String, limite: Int): List<MesureTension> = runCatching {
+        fb.derniers("backups/$uid", "tension", "dateHeure", limite).mapNotNull { m ->
+            val date = (m["dateHeure"] as? String)?.let { runCatching { LocalDateTime.parse(it) }.getOrNull() }
+            val sys = (m["systolique"] as? Number)?.toInt()
+            val dia = (m["diastolique"] as? Number)?.toInt()
+            if (date != null && sys != null && dia != null) MesureTension(date, sys, dia, (m["pouls"] as? Number)?.toInt()) else null
+        }.distinctBy { Triple(it.date, it.systolique, it.diastolique) }
     }.getOrDefault(emptyList())
 
     suspend fun hba1c(uid: String): List<MesureHbA1c> = runCatching {

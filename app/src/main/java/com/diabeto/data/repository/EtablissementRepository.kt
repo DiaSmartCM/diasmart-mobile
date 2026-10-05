@@ -11,6 +11,7 @@ import com.diabeto.data.model.SuiviPatient
 import com.diabeto.data.model.TypeCode
 import com.diabeto.data.model.UserRole
 import com.diabeto.domain.EvaluationSuivi
+import com.diabeto.domain.MesureTension
 import com.diabeto.domain.MesureHbA1c
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -333,7 +334,24 @@ class EtablissementRepository @Inject constructor(
             Log.w(TAG, "HbA1c illisibles pour ${p.uid} : ${e.message}")
             emptyList()
         }
-        return evaluer(p, mesures, hba1c, maintenant)
+        val tensions = try {
+            backup.collection("tension")
+                .orderBy("dateHeure", Query.Direction.DESCENDING)
+                .limit(60)
+                .get().await().documents
+                .mapNotNull { d ->
+                    val date = d.getString("dateHeure")?.let { runCatching { LocalDateTime.parse(it) }.getOrNull() }
+                    val sys = (d.get("systolique") as? Number)?.toInt()
+                    val dia = (d.get("diastolique") as? Number)?.toInt()
+                    if (date != null && sys != null && dia != null)
+                        MesureTension(date.toKotlinLocalDateTime(), sys, dia, (d.get("pouls") as? Number)?.toInt())
+                    else null
+                }
+        } catch (e: Exception) {
+            Log.w(TAG, "Tensions illisibles pour ${p.uid} : ${e.message}")
+            emptyList()
+        }
+        return evaluer(p, mesures, hba1c, maintenant, tensions)
     }
 
     /**
@@ -350,7 +368,8 @@ class EtablissementRepository @Inject constructor(
         p: PatientInscrit,
         mesures: List<Pair<LocalDateTime, Double>>,
         hba1c: List<Triple<LocalDate, Double, Boolean>>,
-        maintenant: LocalDateTime
+        maintenant: LocalDateTime,
+        tensions: List<MesureTension> = emptyList()
     ): SuiviPatient {
         // Les regles sont dans le module commun (aussi utilisees par la version PC)
         val r = EvaluationSuivi.evaluer(
@@ -358,7 +377,8 @@ class EtablissementRepository @Inject constructor(
             mesures = mesures.map { it.first.toKotlinLocalDateTime() to it.second },
             hba1c = hba1c.map { MesureHbA1c(it.first.toKotlinLocalDate(), it.second, it.third) },
             maintenant = maintenant.toKotlinLocalDateTime(),
-            fuseau = TimeZone.currentSystemDefault()
+            fuseau = TimeZone.currentSystemDefault(),
+            tensions = tensions
         )
         return SuiviPatient(
             uid = p.uid,
@@ -374,7 +394,9 @@ class EtablissementRepository @Inject constructor(
             hba1cEstimee = r.hba1c?.estimee == true,
             priorite = r.priorite,
             raisons = r.raisons,
-            perduDeVue = r.perduDeVue
+            perduDeVue = r.perduDeVue,
+            tensionMoyenne30j = r.tensionMoyenne30j?.let { "${it.first}/${it.second}" },
+            derniereTension = r.derniereTension?.let { "${it.systolique}/${it.diastolique}" }
         )
     }
 }
