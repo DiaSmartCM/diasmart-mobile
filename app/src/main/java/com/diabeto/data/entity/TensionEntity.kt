@@ -42,7 +42,7 @@ data class TensionEntity(
     val lastModified: Long = System.currentTimeMillis()
 ) {
     /** [age] du patient : objectif assoupli a partir de 65 ans. */
-    fun categorie(age: Int? = null): CategorieTension = ReglesTension.categorie(systolique, diastolique, age)
+    fun categorie(age: Int? = null, objectif: com.diabeto.domain.ObjectifTension? = null): CategorieTension = ReglesTension.categorie(systolique, diastolique, age, objectif)
     fun pressionPulsee(): Int = ReglesTension.pressionPulsee(systolique, diastolique)
     fun pam(): Int = ReglesTension.pam(systolique, diastolique)
     fun positionTexte(): String = ReglesTension.libellePosition(position)

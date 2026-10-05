@@ -57,7 +57,11 @@ class AlarmReceiver : BroadcastReceiver() {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra(
                 "navigate_to",
-                if (type == AlarmScheduler.TYPE_RENDEZ_VOUS) "rendezvous" else "medicaments"
+                when (type) {
+                    AlarmScheduler.TYPE_RENDEZ_VOUS -> "rendezvous"
+                    AlarmScheduler.TYPE_TENSION -> "tension"
+                    else -> "medicaments"
+                }
             )
         }
         val pi = android.app.PendingIntent.getActivity(

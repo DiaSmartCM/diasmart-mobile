@@ -668,6 +668,7 @@ body{display:flex;flex-direction:column}
     </div>
     <h3 style="font-size:15px;margin-bottom:12px">Historique</h3>
     <div class="glucose-list" id="tensionList"></div>
+    <div style="margin-top:16px;padding:14px;border-radius:12px;background:var(--card,rgba(255,255,255,.05));border:1px solid rgba(255,255,255,.08)"><div style="font-weight:600;margin-bottom:6px">Automesure : regle des 3</div><div style="font-size:13px;color:var(--text2);line-height:1.5">Pendant 3 jours, le matin (avant le petit-dejeuner et les medicaments) et le soir (avant le coucher), assis au calme depuis 5 minutes : faites 3 mesures a 1 minute d'intervalle et notez-les ici. L'application Android peut vous le rappeler automatiquement.</div></div>
     <p style="font-size:11px;color:var(--text3);margin-top:16px">Ces seuils sont des reperes generaux (ADA 2025 / ESC 2024). Vos objectifs personnels sont fixes par votre medecin traitant. Indication pour suivre votre tension, pas un diagnostic. Vos mesures sont visibles par vos soignants si vous les partagez.</p>
   </div>
   <button class="glucose-add" onclick="openTensionModal()">+</button>
@@ -1456,6 +1457,10 @@ window.loadTensionData=async()=>{
     const rows=[];const vus=new Set();
     snap.forEach(d=>{const r={id:d.id,...d.data()};const k=r.dateHeure+'|'+r.systolique+'|'+r.diastolique;if(!vus.has(k)){vus.add(k);rows.push(r)}});
     window._tensionData=rows;
+    // Objectif personnel fixe par le medecin (objectifs_tension/{uid})
+    try{const o=await getDoc(doc(db,'objectifs_tension',auth.currentUser.uid));
+      window._objectifTension=o.exists()&&o.data().systolique?{sys:o.data().systolique,dia:o.data().diastolique,auteur:o.data().auteurNom||''}:null;
+    }catch(e){window._objectifTension=null}
     renderTension(rows);
   }catch(e){console.log('Tension load:',e);renderTension([])}
 };
@@ -1468,6 +1473,17 @@ window.saveTensionToDb=async(m)=>{
     notes:'',source:'web',lastModified:Date.now()
   });
   loadTensionData();
+  // Tension tres elevee : le medecin et les soignants sont prevenus
+  if(m.sys>=180||m.dia>=110){
+    try{
+      const t=await auth.currentUser.getIdToken(false);
+      const r=await fetch('https://website-omega-umber-20.vercel.app/api/notify-tension',{method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+t},
+        body:JSON.stringify({systolique:m.sys,diastolique:m.dia,dateHeure:m.dateHeure})});
+      const j=await r.json();
+      if(j.prevenus>0)alert('Votre medecin a ete prevenu. Reposez-vous 5 minutes et reprenez la mesure.');
+    }catch(e){console.log('notify-tension:',e)}
+  }
 };
 
 // ── Glucose data ──
@@ -2612,6 +2628,11 @@ window.saveGlucose=saveGlucose;
 
 // ── Tension ── (memes seuils que ReglesTension du module commun : ADA 2025 / ESC 2024)
 function categorieTension(s,d){
+  const o=window._objectifTension;
+  if(o&&s<180&&d<110&&s>=90){
+    if(s<o.sys&&d<o.dia)return{l:'Dans l\'objectif fixe par votre medecin (< '+o.sys+'/'+o.dia+')',c:'#43A047',k:'Continuez ainsi.'};
+    if(s<135&&d<85)return{l:'Au-dessus de votre objectif (< '+o.sys+'/'+o.dia+')',c:'#F9A825',k:'A surveiller : moins de sel, activite physique, et reprenez la mesure au repos.'};
+  }
   if(s>=180||d>=110)return{l:'Alerte : tres elevee (>= 180/110)',c:'#C62828',k:'Reposez-vous 5 minutes et reprenez la mesure. Si elle reste aussi haute, ou en cas de mal de tete, douleur dans la poitrine, trouble de la vue ou faiblesse d\'un cote : urgence.'};
   if(s<90)return{l:'Tension basse (PAS < 90)',c:'#1E88E5',k:'En cas de malaise, vertiges ou evanouissement : allongez-vous et appelez les secours. Sinon, parlez-en a votre medecin.'};
   if(s>=135||d>=85)return{l:'Hypertension en automesure (>= 135/85)',c:'#F57C00',k:'Si c\'est confirme sur plusieurs jours, parlez-en a votre medecin.'};
@@ -2667,7 +2688,8 @@ function renderTension(rows){
   const lim=new Date(Date.now()-30*864e5);
   const r30=rows.filter(r=>new Date(r.dateHeure)>=lim);
   const ms=r30.length?Math.round(r30.reduce((a,r)=>a+r.systolique,0)/r30.length):0,md=r30.length?Math.round(r30.reduce((a,r)=>a+r.diastolique,0)/r30.length):0;
-  moy.innerHTML=(r30.length?esc('Moyenne 30 jours : '+ms+'/'+md+' mmHg ('+r30.length+' mesures) - PP '+(ms-md)+' - PAM '+Math.round(md+(ms-md)/3)):'')+
+  const o=window._objectifTension;
+  moy.innerHTML=(o?'<div style="margin-bottom:6px;color:var(--text)">Votre objectif, fixe par '+esc(o.auteur||'votre medecin')+' : &lt; '+esc(o.sys)+'/'+esc(o.dia)+' mmHg</div>':'')+(r30.length?esc('Moyenne 30 jours : '+ms+'/'+md+' mmHg ('+r30.length+' mesures) - PP '+(ms-md)+' - PAM '+Math.round(md+(ms-md)/3)):'')+
     alertesTension(rows).map(x=>`<div style="margin-top:8px;padding:8px 10px;border-radius:8px;border-left:4px solid ${x.c};background:${x.c}18;color:var(--text)">${esc(x.t)}</div>`).join('');
   list.innerHTML=rows.slice(0,30).map(r=>{
     const c=categorieTension(r.systolique,r.diastolique);

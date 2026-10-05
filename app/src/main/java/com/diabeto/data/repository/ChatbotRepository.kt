@@ -43,6 +43,7 @@ class ChatbotRepository @Inject constructor(
     private val rollyClient: RollyChatClient,
     private val aiCacheDao: AiCacheDao,
     private val tensionDao: com.diabeto.data.dao.TensionDao,
+    private val objectifTensionRepository: ObjectifTensionRepository,
     @ApplicationContext private val context: Context
 ) {
     /** Verifie la connectivite reseau via le ConnectivityManager systeme. */
@@ -76,7 +77,10 @@ class ChatbotRepository @Inject constructor(
     }
 
     /** Bloc "tension arterielle" du contexte envoye a ROLLY. */
-    private fun contexteTension(tensions: List<com.diabeto.data.entity.TensionEntity>, age: Int?): String {
+    private fun contexteTension(
+        tensions: List<com.diabeto.data.entity.TensionEntity>, age: Int?,
+        objectif: com.diabeto.domain.ObjectifTension? = null
+    ): String {
         val fmt = DateTimeFormatter.ofPattern("dd/MM HH:mm")
         val sb = StringBuilder()
         val mesures = tensions.map {
@@ -85,11 +89,12 @@ class ChatbotRepository @Inject constructor(
         }
         val recentes = mesures.filter { it.date.toJavaLocalDateTime().isAfter(java.time.LocalDateTime.now().minusDays(30)) }
         sb.appendLine("Tension artérielle en automesure (${tensions.size} mesures ; repères ADA 2025 / ESC 2024, objectifs individuels fixés par le médecin) :")
+        objectif?.let { sb.appendLine("  Objectif personnel fixé par le médecin${if (it.auteurNom.isNotBlank()) " (${it.auteurNom})" else ""} : ${it.texte}") }
         tensions.firstOrNull()?.let { sb.appendLine("  Traitement antihypertenseur en cours : ${if (it.traitement) "oui" else "non"}") }
         tensions.take(10).forEach { t ->
             sb.appendLine("  - ${t.dateHeure.format(fmt)} : PAS ${t.systolique} / PAD ${t.diastolique} mmHg" +
                 (t.pouls?.let { ", FC $it" } ?: "") +
-                ", PP ${t.pressionPulsee()}, PAM ${t.pam()}, ${t.positionTexte()}, bras ${t.brasTexte()} — ${t.categorie(age).libelle}")
+                ", PP ${t.pressionPulsee()}, PAM ${t.pam()}, ${t.positionTexte()}, bras ${t.brasTexte()} — ${t.categorie(age, objectif).libelle}")
         }
         com.diabeto.domain.ReglesTension.moyenne(recentes)?.let { (ps, pd) ->
             sb.appendLine("  Moyenne 30 j : $ps/$pd mmHg sur ${recentes.size} mesures, PP moyenne ${ps - pd}, PAM moyenne ${com.diabeto.domain.ReglesTension.pam(ps, pd)}")
@@ -687,7 +692,7 @@ class ChatbotRepository @Inject constructor(
 
         patient?.let { p ->
             val tensions = runCatching { tensionDao.getTensionsByPatientList(p.id) }.getOrDefault(emptyList())
-            if (tensions.isNotEmpty()) sb.appendLine(contexteTension(tensions, p.age))
+            if (tensions.isNotEmpty()) sb.appendLine(contexteTension(tensions, p.age, objectifTensionRepository.lireMien()))
         }
 
         return sb.toString().trim()

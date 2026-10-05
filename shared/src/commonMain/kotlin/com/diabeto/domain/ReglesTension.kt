@@ -33,12 +33,18 @@ enum class CategorieTension(val libelle: String, val conseil: String) {
         "En cas de malaise, vertiges ou évanouissement : allongez-vous et appelez les secours. Sinon, parlez-en à votre médecin."),
     OBJECTIF("Dans l'objectif (< 130/80)", "Continuez ainsi."),
     OBJECTIF_AGE("Dans l'objectif assoupli (sujet âgé)", "Objectif assoupli (PAS 130-139) : continuez ainsi, selon l'avis de votre médecin."),
+    OBJECTIF_PERSO("Dans l'objectif fixé par votre médecin", "Continuez ainsi."),
     AU_DESSUS_OBJECTIF("Au-dessus de l'objectif (≥ 130/80)",
         "À surveiller : moins de sel, activité physique, et reprenez la mesure au repos."),
     HTA_DOMICILE("Hypertension en automesure (≥ 135/85)",
         "Si c'est confirmé sur plusieurs jours, parlez-en à votre médecin."),
     URGENCE("Alerte : très élevée (≥ 180/110)",
         "Reposez-vous 5 minutes et reprenez la mesure. Si elle reste aussi haute, ou en cas de mal de tête, douleur dans la poitrine, trouble de la vue ou faiblesse d'un côté : urgence.")
+}
+
+/** Objectif personnel fixe par le medecin ou un soignant : la mesure doit rester en dessous. */
+data class ObjectifTension(val systolique: Int, val diastolique: Int, val auteurNom: String = "") {
+    val texte: String get() = "< $systolique/$diastolique mmHg"
 }
 
 object ReglesTension {
@@ -62,6 +68,25 @@ object ReglesTension {
     /** Age a partir duquel l'objectif est assoupli (PAS 130-139). */
     const val AGE_OBJECTIF_ASSOUPLI = 65
 
+    /** Bornes acceptees pour un objectif personnel. */
+    val OBJECTIF_SYS_BORNES = 100..170
+    val OBJECTIF_DIA_BORNES = 60..110
+    fun objectifValide(systolique: Int, diastolique: Int) =
+        systolique in OBJECTIF_SYS_BORNES && diastolique in OBJECTIF_DIA_BORNES && systolique > diastolique
+
+    /** Alerte au soignant : mesure tres elevee. */
+    fun alerteSoignant(systolique: Int, diastolique: Int) = systolique >= 180 || diastolique >= 110
+
+    /**
+     * Regle des 3 : 3 jours de suite, matin et soir, 3 mesures a 1 minute
+     * d'intervalle, assis au repos. Renvoie les 6 creneaux (jour 0..2, heure).
+     */
+    fun creneauxRegleDes3(heureMatin: Int = 7, heureSoir: Int = 19): List<Pair<Int, Int>> =
+        (0..2).flatMap { j -> listOf(j to heureMatin, j to heureSoir) }
+
+    const val REGLE_DES_3 = "Règle des 3 : pendant 3 jours, matin (avant le petit-déjeuner et les médicaments) " +
+        "et soir (avant le coucher), assis au calme depuis 5 minutes, faites 3 mesures à 1 minute d'intervalle."
+
     /** Rappel affiche avec chaque interpretation. */
     const val AVERTISSEMENT = "Ces seuils sont des repères généraux (ADA 2025 / ESC 2024). " +
         "Vos objectifs personnels sont fixés par votre médecin traitant."
@@ -72,10 +97,15 @@ object ReglesTension {
     /**
      * Categorie d'une mesure. [age] (annees) assouplit l'objectif a partir
      * de [AGE_OBJECTIF_ASSOUPLI] ans : PAS 130-139 reste dans l'objectif.
+     * Un [objectif] fixe par le medecin remplace l'objectif general (et
+     * l'assouplissement par l'age) ; urgence et tension basse restent.
      */
-    fun categorie(systolique: Int, diastolique: Int, age: Int? = null): CategorieTension = when {
+    fun categorie(systolique: Int, diastolique: Int, age: Int? = null, objectif: ObjectifTension? = null): CategorieTension = when {
         systolique >= 180 || diastolique >= 110 -> CategorieTension.URGENCE
         systolique < 90 -> CategorieTension.BASSE
+        objectif != null && systolique < objectif.systolique && diastolique < objectif.diastolique ->
+            CategorieTension.OBJECTIF_PERSO
+        objectif != null && systolique < 135 && diastolique < 85 -> CategorieTension.AU_DESSUS_OBJECTIF
         age != null && age >= AGE_OBJECTIF_ASSOUPLI && systolique in 130..139 && diastolique < 80 ->
             CategorieTension.OBJECTIF_AGE
         systolique >= 135 || diastolique >= 85 -> CategorieTension.HTA_DOMICILE

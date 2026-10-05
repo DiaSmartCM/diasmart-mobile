@@ -270,6 +270,30 @@ class ServicePatients(private val fb: FirebaseRest) {
         }.distinctBy { Triple(it.date, it.systolique, it.diastolique) }
     }.getOrDefault(emptyList())
 
+    /** Objectif de tension personnel (objectifs_tension/{uid}), ou null. */
+    suspend fun objectifTension(uid: String): com.diabeto.domain.ObjectifTension? = runCatching {
+        fb.document("objectifs_tension/$uid")?.let { m ->
+            val s = (m["systolique"] as? Number)?.toInt()
+            val d = (m["diastolique"] as? Number)?.toInt()
+            if (s != null && d != null) com.diabeto.domain.ObjectifTension(s, d, m["auteurNom"] as? String ?: "") else null
+        }
+    }.getOrNull()
+
+    suspend fun fixerObjectifTension(uid: String, systolique: Int, diastolique: Int, auteur: Profil) {
+        require(com.diabeto.domain.ReglesTension.objectifValide(systolique, diastolique)) {
+            "Objectif invalide : PAS entre 100 et 170, PAD entre 60 et 110."
+        }
+        fb.lot(listOf(FirebaseRest.Ecriture.Poser("objectifs_tension/$uid", mapOf(
+            "systolique" to systolique, "diastolique" to diastolique,
+            "auteurUid" to auteur.uid, "auteurNom" to auteur.nomComplet.take(100),
+            "majAt" to System.currentTimeMillis()
+        ))))
+    }
+
+    suspend fun retirerObjectifTension(uid: String) {
+        fb.lot(listOf(FirebaseRest.Ecriture.Supprimer("objectifs_tension/$uid")))
+    }
+
     suspend fun hba1c(uid: String): List<MesureHbA1c> = runCatching {
         fb.derniers("backups/$uid", "hba1c", "dateMesure", 10).mapNotNull { m ->
             val date = (m["dateMesure"] as? String)?.let { runCatching { LocalDate.parse(it.take(10)) }.getOrNull() }

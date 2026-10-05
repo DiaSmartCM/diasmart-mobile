@@ -101,7 +101,8 @@ Paramètres mesurés : PAS (systolique), PAD (diastolique), FC (pouls), date/heu
 - FC : une tachycardie de repos persistante (≥ 100/min au repos, plusieurs mesures) peut évoquer une neuropathie autonome cardiaque, à signaler au médecin.
 - Test couché puis debout : mesure couchée après 5 min de repos, puis debout à 1 et 3 min. Baisse de PAS ≥ 20 mmHg ou de PAD ≥ 10 mmHg = hypotension orthostatique, à signaler au médecin (se lever lentement).
 Paramètres calculés : moyenne des mesures (PAS/PAD) ; pression pulsée PP = PAS − PAD (> 60 mmHg = rigidité artérielle possible) ; pression artérielle moyenne PAM = PAD + (PAS − PAD)/3.
-Bonne mesure : assis, au repos 5 min, dos appuyé, bras posé à hauteur du cœur, pas de café/tabac/effort 30 min avant ; 2 mesures à 1 min d'intervalle, matin et soir.
+Bonne mesure : assis, au repos 5 min, dos appuyé, bras posé à hauteur du cœur, pas de café/tabac/effort 30 min avant. Automesure : règle des 3 (3 jours de suite, matin et soir, 3 mesures à 1 min d'intervalle) ; l'application peut programmer ces rappels.
+Si le contexte du patient contient un objectif personnel fixé par son médecin, c'est lui qui compte : interprète les mesures par rapport à cet objectif.
 Seuils de référence (ADA 2025 / ESC 2024) :
 - Objectif chez le diabétique : < 130/80 mmHg.
 - HTA au cabinet : ≥ 130/80 (ADA) ou ≥ 140/90 (ESC), confirmée sur 2 consultations (c'est le médecin qui pose le diagnostic).

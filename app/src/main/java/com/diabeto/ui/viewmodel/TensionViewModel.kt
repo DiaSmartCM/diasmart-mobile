@@ -33,7 +33,10 @@ data class SaisieTension(
 class TensionViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: TensionRepository,
-    private val patientRepository: com.diabeto.data.repository.PatientRepository
+    private val patientRepository: com.diabeto.data.repository.PatientRepository,
+    private val objectifRepository: com.diabeto.data.repository.ObjectifTensionRepository,
+    private val notificationApi: com.diabeto.data.api.NotificationApi,
+    @dagger.hilt.android.qualifiers.ApplicationContext private val appContext: android.content.Context
 ) : ViewModel() {
 
     private val patientId: Long = savedStateHandle["patientId"] ?: 0L
@@ -44,6 +47,14 @@ class TensionViewModel @Inject constructor(
     /** Age du patient : objectif assoupli a partir de 65 ans. */
     private val _age = MutableStateFlow<Int?>(null)
     val age: StateFlow<Int?> = _age.asStateFlow()
+
+    /** Objectif personnel fixe par le medecin (null = objectif general). */
+    private val _objectif = MutableStateFlow<com.diabeto.domain.ObjectifTension?>(null)
+    val objectif: StateFlow<com.diabeto.domain.ObjectifTension?> = _objectif.asStateFlow()
+
+    /** Fin de la serie "regle des 3" programmee, ou null. */
+    private val _regleDes3Fin = MutableStateFlow(com.diabeto.notifications.AlarmScheduler.finRegleDes3(appContext))
+    val regleDes3Fin: StateFlow<LocalDateTime?> = _regleDes3Fin.asStateFlow()
 
     private val _saisie = MutableStateFlow(SaisieTension())
     val saisie: StateFlow<SaisieTension> = _saisie.asStateFlow()
@@ -95,6 +106,13 @@ class TensionViewModel @Inject constructor(
                 }
                 _saisie.value = SaisieTension(position = suivante, bras = s.bras, traitement = s.traitement, message = message)
                 repository.envoyer(t)
+                // Mesure tres elevee : le medecin et les soignants sont prevenus
+                if (ReglesTension.alerteSoignant(sys, dia) && quand.isAfter(LocalDateTime.now().minusHours(24))) {
+                    val prevenus = notificationApi.notifyTensionAlerte(sys, dia, t.dateHeure.toString())
+                    if (prevenus > 0) _saisie.update {
+                        it.copy(message = "Mesure enregistrée. Votre médecin a été prévenu. Reposez-vous 5 minutes et reprenez la mesure.")
+                    }
+                }
             } catch (e: Exception) {
                 _saisie.update { it.copy(erreur = e.message ?: "Enregistrement impossible") }
             }
@@ -105,10 +123,24 @@ class TensionViewModel @Inject constructor(
         // Reprend position, bras et traitement de la derniere mesure
         viewModelScope.launch {
             _age.value = runCatching { patientRepository.getPatientById(patientId)?.age }.getOrNull()
+            _objectif.value = objectifRepository.lireMien()
             repository.derniere(patientId)?.let { d ->
                 _saisie.update { it.copy(bras = d.bras, traitement = d.traitement) }
             }
         }
+    }
+
+    /** Programme les 6 rappels de la regle des 3 (3 jours, matin et soir). */
+    fun programmerRegleDes3() {
+        val fin = com.diabeto.notifications.AlarmScheduler.programmerRegleDes3(appContext)
+        _regleDes3Fin.value = fin
+        _saisie.update { it.copy(message = "Rappels programmés : 3 jours, à 7 h et à 19 h.") }
+    }
+
+    fun annulerRegleDes3() {
+        com.diabeto.notifications.AlarmScheduler.annulerRegleDes3(appContext)
+        _regleDes3Fin.value = null
+        _saisie.update { it.copy(message = "Rappels de la règle des 3 annulés.") }
     }
 
     fun supprimer(t: TensionEntity) {

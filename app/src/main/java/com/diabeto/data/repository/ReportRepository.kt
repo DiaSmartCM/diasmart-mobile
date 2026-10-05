@@ -51,7 +51,9 @@ class ReportRepository @Inject constructor(
     private val journalRepository: JournalRepository,
     private val repasRepository: RepasRepository,
     private val messagerieRepository: MessagerieRepository,
-    private val dataSharingRepository: DataSharingRepository
+    private val dataSharingRepository: DataSharingRepository,
+    private val tensionRepository: TensionRepository,
+    private val objectifTensionRepository: ObjectifTensionRepository
 ) {
     companion object {
         private const val TAG = "ReportRepo"
@@ -121,6 +123,8 @@ class ReportRepository @Inject constructor(
         val journal = if (patientId == 0L) emptyList()
             else journalRepository.getEntriesBetweenDates(patientId, startDate, endDate)
         val repas = repasRepository.getRepasDepuis(daysSpan)
+        val tensions = if (patientId == 0L) emptyList()
+            else tensionRepository.liste(patientId).filter { !it.dateHeure.toLocalDate().isBefore(startDate) && !it.dateHeure.toLocalDate().isAfter(endDate) }
 
         val data = PdfReportGenerator.PatientReportData(
             patientNom = profile.nomComplet,
@@ -129,7 +133,10 @@ class ReportRepository @Inject constructor(
             glucoseLectures = glucose,
             medicaments = medicaments,
             repas = repas,
-            journal = journal
+            journal = journal,
+            tensions = tensions,
+            objectifTension = objectifTensionRepository.lireMien(),
+            agePatient = patient?.age
         )
 
         val fileName = "rapport_patient_${profile.uid.take(6)}_${LocalDateTime.now()

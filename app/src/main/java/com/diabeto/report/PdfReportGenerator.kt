@@ -66,7 +66,10 @@ class PdfReportGenerator(private val context: Context) {
         val glucoseLectures: List<LectureGlucoseEntity>,
         val medicaments: List<MedicamentEntity>,
         val repas: List<RepasDocument>,
-        val journal: List<JournalEntity>
+        val journal: List<JournalEntity>,
+        val tensions: List<com.diabeto.data.entity.TensionEntity> = emptyList(),
+        val objectifTension: com.diabeto.domain.ObjectifTension? = null,
+        val agePatient: Int? = null
     )
 
     data class DoctorReportData(
@@ -136,6 +139,65 @@ class PdfReportGenerator(private val context: Context) {
                 cursor.advance(2f)
                 cursor.drawText("(${data.glucoseLectures.size - 60} lectures supplementaires non listees)", mutedPaint)
             }
+        }
+        cursor.advance(10f)
+
+        // Tension arterielle
+        cursor.section("Tension arterielle (${data.tensions.size} mesures)")
+        if (data.tensions.isEmpty()) {
+            cursor.drawText("Aucune mesure de tension sur la periode.", mutedPaint)
+        } else {
+            val RT = com.diabeto.domain.ReglesTension
+            val ms = data.tensions.map { it.systolique }.average().toInt()
+            val md = data.tensions.map { it.diastolique }.average().toInt()
+            cursor.drawText(
+                "Moyenne : $ms/$md mmHg  |  Pression pulsee ${ms - md}  |  PAM ${RT.pam(ms, md)}  |  " +
+                    RT.categorie(ms, md, data.agePatient, data.objectifTension).libelle,
+                bodyPaint
+            )
+            cursor.drawText(
+                "Objectif : " + (data.objectifTension?.let { it.texte + (if (it.auteurNom.isNotBlank()) " (fixe par ${it.auteurNom})" else "") }
+                    ?: "< 130/80 mmHg (repere general ADA 2025 / ESC 2024)") +
+                    (if (data.tensions.first().traitement) "  |  Traitement antihypertenseur en cours" else ""),
+                mutedPaint
+            )
+            val mesures = data.tensions.map {
+                com.diabeto.domain.MesureTension(
+                    kotlinx.datetime.LocalDateTime(it.dateHeure.year, it.dateHeure.monthValue, it.dateHeure.dayOfMonth, it.dateHeure.hour, it.dateHeure.minute, it.dateHeure.second),
+                    it.systolique, it.diastolique, it.pouls, it.position, it.bras, it.traitement)
+            }
+            RT.testsOrthostatiques(mesures).firstOrNull()?.let { o ->
+                cursor.drawText("Dernier test couche/debout : baisse ${o.baissePas}/${o.baissePad} mmHg" +
+                    if (o.positif) " - hypotension orthostatique possible" else " - normal", mutedPaint)
+            }
+            if (RT.tachycardiePersistante(mesures)) cursor.drawText("Tachycardie de repos persistante (FC >= 100)", mutedPaint)
+            cursor.advance(6f)
+            val cols = listOf(
+                Col("Date/heure", 0.22f),
+                Col("PAS/PAD", 0.14f),
+                Col("FC", 0.08f),
+                Col("PP / PAM", 0.14f),
+                Col("Position, bras", 0.20f),
+                Col("Interpretation", 0.22f)
+            )
+            cursor.tableHeader(cols)
+            data.tensions.take(60).forEach { t ->
+                cursor.tableRow(
+                    cols, listOf(
+                        t.dateHeure.format(DateTimeFormatter.ofPattern("dd/MM HH:mm")),
+                        "${t.systolique}/${t.diastolique}",
+                        t.pouls?.toString() ?: "-",
+                        "${t.pressionPulsee()} / ${t.pam()}",
+                        "${t.positionTexte()}, ${t.brasTexte()}",
+                        t.categorie(data.agePatient, data.objectifTension).libelle
+                    )
+                )
+            }
+            if (data.tensions.size > 60) {
+                cursor.advance(2f)
+                cursor.drawText("(${data.tensions.size - 60} mesures supplementaires non listees)", mutedPaint)
+            }
+            cursor.drawText("Seuils : reperes generaux ; les objectifs individuels sont fixes par le medecin traitant.", mutedPaint)
         }
         cursor.advance(10f)
 

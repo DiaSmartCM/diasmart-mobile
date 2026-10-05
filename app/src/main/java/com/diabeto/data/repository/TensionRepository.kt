@@ -14,6 +14,8 @@ class TensionRepository @Inject constructor(
 ) {
     fun getTensions(patientId: Long): Flow<List<TensionEntity>> = tensionDao.getTensionsByPatient(patientId)
 
+    suspend fun liste(patientId: Long): List<TensionEntity> = tensionDao.getTensionsByPatientList(patientId)
+
     suspend fun derniere(patientId: Long): TensionEntity? =
         tensionDao.getTensionsByPatientList(patientId).firstOrNull()
 

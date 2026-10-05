@@ -42,6 +42,7 @@ object AlarmScheduler {
     /** Espaces d'identifiants disjoints, pour ne pas ecraser une alarme d'un autre type. */
     private const val BASE_MEDICAMENT = 100_000
     private const val BASE_RENDEZ_VOUS = 200_000
+    private const val BASE_TENSION = 300_000
 
     const val EXTRA_TYPE = "type"
     const val EXTRA_ID = "id"
@@ -50,6 +51,7 @@ object AlarmScheduler {
 
     const val TYPE_MEDICAMENT = "medicament"
     const val TYPE_RENDEZ_VOUS = "rendez_vous"
+    const val TYPE_TENSION = "tension"
 
     /** Combien de temps avant un rendez-vous l'alarme se declenche. */
     private const val PREAVIS_RDV_MINUTES = 60L
@@ -180,6 +182,66 @@ object AlarmScheduler {
     fun annulerRendezVous(context: Context, rdvId: Long) {
         val id = BASE_RENDEZ_VOUS + rdvId.toInt()
         manager(context).cancel(intentPour(context, TYPE_RENDEZ_VOUS, id, "", ""))
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Tension : regle des 3 (3 jours, matin et soir)
+    // ─────────────────────────────────────────────────────────────────────
+
+    private const val PREFS_TENSION = "rappels_tension"
+    private const val CLE_DEBUT_REGLE_DES_3 = "debut_regle_des_3"
+
+    /**
+     * Pose les 6 rappels de la regle des 3, a partir de demain si le creneau
+     * du matin est deja passe. Renvoie la date du dernier rappel. Le debut est
+     * memorise : BootReceiver repose les rappels restants apres un redemarrage.
+     */
+    fun programmerRegleDes3(context: Context): LocalDateTime {
+        val maintenant = LocalDateTime.now()
+        val premierJour = if (maintenant.toLocalTime().isBefore(LocalTime.of(7, 0))) LocalDate.now()
+            else LocalDate.now().plusDays(1)
+        context.getSharedPreferences(PREFS_TENSION, Context.MODE_PRIVATE).edit()
+            .putString(CLE_DEBUT_REGLE_DES_3, premierJour.toString()).apply()
+        return poserRegleDes3(context, premierJour)
+    }
+
+    private fun poserRegleDes3(context: Context, premierJour: LocalDate): LocalDateTime {
+        var dernier = premierJour.atTime(19, 0)
+        com.diabeto.domain.ReglesTension.creneauxRegleDes3().forEachIndexed { i, (jour, heure) ->
+            val quand = premierJour.plusDays(jour.toLong()).atTime(heure, 0)
+            dernier = quand
+            val moment = if (heure < 12) "du matin" else "du soir"
+            poser(
+                context, quand,
+                intentPour(
+                    context, TYPE_TENSION, BASE_TENSION + i,
+                    titre = "Mesure de tension ${moment} (jour ${jour + 1}/3)",
+                    texte = "Assis au calme 5 minutes, faites 3 mesures à 1 minute d'intervalle et notez-les dans DiaSmart.",
+                ),
+            )
+        }
+        return dernier
+    }
+
+    fun annulerRegleDes3(context: Context) {
+        repeat(6) { i -> manager(context).cancel(intentPour(context, TYPE_TENSION, BASE_TENSION + i, "", "")) }
+        context.getSharedPreferences(PREFS_TENSION, Context.MODE_PRIVATE).edit().remove(CLE_DEBUT_REGLE_DES_3).apply()
+    }
+
+    /** Date du dernier rappel de la serie en cours, ou null si aucune serie a venir. */
+    fun finRegleDes3(context: Context): LocalDateTime? {
+        val debut = context.getSharedPreferences(PREFS_TENSION, Context.MODE_PRIVATE)
+            .getString(CLE_DEBUT_REGLE_DES_3, null)?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: return null
+        val fin = debut.plusDays(2).atTime(19, 0)
+        return fin.takeIf { it.isAfter(LocalDateTime.now()) }
+    }
+
+    /** Apres un redemarrage : repose les rappels restants de la serie en cours. */
+    fun reposerRegleDes3(context: Context) {
+        if (finRegleDes3(context) == null) return
+        val debut = context.getSharedPreferences(PREFS_TENSION, Context.MODE_PRIVATE)
+            .getString(CLE_DEBUT_REGLE_DES_3, null)?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: return
+        poserRegleDes3(context, debut)   // les creneaux passes sont ignores par poser()
     }
 
     /**

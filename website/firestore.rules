@@ -456,6 +456,28 @@ service cloud.firestore {
     }
 
     // ════════════════════════════════════════════════════════════════
+    //  OBJECTIF DE TENSION PERSONNEL (fixe par le medecin ou un soignant)
+    //  Doc ID : {patientUid}. Le patient le lit ; le medecin lie ou un
+    //  soignant de son etablissement le fixe, le change ou le retire.
+    // ════════════════════════════════════════════════════════════════
+    match /objectifs_tension/{patientUid} {
+      function peutFixerObjectif() {
+        return isLinkedDoctorOf(patientUid) || isSoignantEtablissementOf(patientUid);
+      }
+      allow read: if isOwner(patientUid) || peutFixerObjectif();
+      allow create, update: if peutFixerObjectif() &&
+        request.resource.data.keys().hasOnly(['systolique', 'diastolique', 'auteurUid', 'auteurNom', 'majAt']) &&
+        request.resource.data.auteurUid == request.auth.uid &&
+        request.resource.data.systolique is int && request.resource.data.diastolique is int &&
+        request.resource.data.systolique >= 100 && request.resource.data.systolique <= 170 &&
+        request.resource.data.diastolique >= 60 && request.resource.data.diastolique <= 110 &&
+        request.resource.data.systolique > request.resource.data.diastolique &&
+        texteOk(request.resource.data.auteurNom, 0, 100) &&
+        request.resource.data.majAt is int;
+      allow delete: if peutFixerObjectif();
+    }
+
+    // ════════════════════════════════════════════════════════════════
     //  ESPACE ETABLISSEMENT (B2B2C)
     //  - etablissements/{id} : le createur en est l'administrateur (adminUid,
     //    jamais modifiable). Lecture par les membres.
