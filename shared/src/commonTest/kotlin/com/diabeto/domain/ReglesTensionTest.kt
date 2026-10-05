@@ -11,13 +11,38 @@ import kotlin.test.assertTrue
 
 class ReglesTensionTest {
     @Test
-    fun categorieLaPlusHauteDesDeuxValeurs() {
-        assertEquals(CategorieTension.NORMALE, ReglesTension.categorie(118, 76))
-        assertEquals(CategorieTension.NORMALE_HAUTE, ReglesTension.categorie(125, 86))
-        assertEquals(CategorieTension.HTA_1, ReglesTension.categorie(145, 80))
-        assertEquals(CategorieTension.HTA_2, ReglesTension.categorie(130, 102))
-        assertEquals(CategorieTension.TRES_ELEVEE, ReglesTension.categorie(182, 95))
+    fun categoriesAutomesureDiabetique() {
+        assertEquals(CategorieTension.OBJECTIF, ReglesTension.categorie(125, 76))
+        assertEquals(CategorieTension.AU_DESSUS_OBJECTIF, ReglesTension.categorie(132, 78))
+        assertEquals(CategorieTension.AU_DESSUS_OBJECTIF, ReglesTension.categorie(125, 82))
+        assertEquals(CategorieTension.HTA_DOMICILE, ReglesTension.categorie(136, 80))
+        assertEquals(CategorieTension.HTA_DOMICILE, ReglesTension.categorie(128, 86))
+        assertEquals(CategorieTension.URGENCE, ReglesTension.categorie(182, 95))
+        assertEquals(CategorieTension.URGENCE, ReglesTension.categorie(150, 112))
         assertEquals(CategorieTension.BASSE, ReglesTension.categorie(85, 55))
+        // Sujet age : PAS 130-139 dans l'objectif assoupli
+        assertEquals(CategorieTension.OBJECTIF_AGE, ReglesTension.categorie(137, 75, age = 72))
+        assertEquals(CategorieTension.HTA_DOMICILE, ReglesTension.categorie(137, 75, age = 50))
+    }
+
+    @Test
+    fun pressionPulseeEtPam() {
+        assertEquals(60, ReglesTension.pressionPulsee(140, 80))
+        assertEquals(100, ReglesTension.pam(140, 80))
+        assertTrue(ReglesTension.pressionPulseeElevee(160, 90))
+    }
+
+    @Test
+    fun hypotensionOrthostatique() {
+        val c = MesureTension(LocalDateTime(2026, 10, 4, 8, 0), 130, 80, position = ReglesTension.COUCHE)
+        val d1 = MesureTension(LocalDateTime(2026, 10, 4, 8, 2), 118, 76, position = ReglesTension.DEBOUT_1MIN)
+        val d3 = MesureTension(LocalDateTime(2026, 10, 4, 8, 4), 108, 74, position = ReglesTension.DEBOUT_3MIN)
+        val t = ReglesTension.testsOrthostatiques(listOf(d3, c, d1)).single()
+        assertEquals(22, t.baissePas)
+        assertTrue(t.positif)
+        // Pas de mesure debout dans les 15 min : pas de test
+        val tard = d1.copy(date = LocalDateTime(2026, 10, 4, 9, 0))
+        assertTrue(ReglesTension.testsOrthostatiques(listOf(c, tard)).isEmpty())
     }
 
     @Test

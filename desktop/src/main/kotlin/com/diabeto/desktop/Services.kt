@@ -262,7 +262,11 @@ class ServicePatients(private val fb: FirebaseRest) {
             val date = (m["dateHeure"] as? String)?.let { runCatching { LocalDateTime.parse(it) }.getOrNull() }
             val sys = (m["systolique"] as? Number)?.toInt()
             val dia = (m["diastolique"] as? Number)?.toInt()
-            if (date != null && sys != null && dia != null) MesureTension(date, sys, dia, (m["pouls"] as? Number)?.toInt()) else null
+            if (date != null && sys != null && dia != null) MesureTension(
+                date, sys, dia, (m["pouls"] as? Number)?.toInt(),
+                position = m["position"] as? String ?: "", bras = m["bras"] as? String ?: "",
+                traitement = m["traitementAntihypertenseur"] as? Boolean
+            ) else null
         }.distinctBy { Triple(it.date, it.systolique, it.diastolique) }
     }.getOrDefault(emptyList())
 

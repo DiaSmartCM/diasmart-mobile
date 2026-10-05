@@ -17,6 +17,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import com.diabeto.domain.ReglesTension
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -519,6 +520,9 @@ class CloudBackupRepository @Inject constructor(
         "diastolique" to t.diastolique,
         "pouls" to t.pouls,
         "dateHeure" to t.dateHeure.toString(),
+        "position" to t.position,
+        "bras" to t.bras,
+        "traitementAntihypertenseur" to t.traitement,
         "notes" to t.notes,
         "lastModified" to t.lastModified
     )
@@ -534,6 +538,9 @@ class CloudBackupRepository @Inject constructor(
             pouls = (m["pouls"] as? Number)?.toInt(),
             dateHeure = (m["dateHeure"] as? String)?.let { runCatching { LocalDateTime.parse(it) }.getOrNull() }
                 ?: LocalDateTime.now(),
+            position = (m["position"] as? String)?.takeIf { it in ReglesTension.POSITIONS || it == ReglesTension.DEBOUT } ?: ReglesTension.ASSIS,
+            bras = (m["bras"] as? String)?.takeIf { it == ReglesTension.GAUCHE || it == ReglesTension.DROIT } ?: ReglesTension.GAUCHE,
+            traitement = m["traitementAntihypertenseur"] == true,
             notes = m["notes"] as? String ?: ""
         )
     }

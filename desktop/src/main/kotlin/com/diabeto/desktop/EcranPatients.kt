@@ -257,16 +257,45 @@ private fun CarteTension(tensions: List<MesureTension>, debut: Long, fin: Long, 
             val moy = ReglesTension.moyenne(periode)
             Text(
                 "Dernière : ${derniere.systolique}/${derniere.diastolique} mmHg le ${derniere.date.jour()} (${cat.libelle})" +
-                    (moy?.let { " · moyenne ${it.first}/${it.second} sur ${periode.size} mesures" } ?: ""),
+                    (moy?.let { " · moyenne ${it.first}/${it.second} sur ${periode.size} mesures, PP ${it.first - it.second}, PAM ${ReglesTension.pam(it.first, it.second)}" } ?: "") +
+                    (if (derniere.traitement == true) " · traitement antihypertenseur en cours" else ""),
                 fontSize = 13.sp, color = Color.Gray
             )
+            ReglesTension.testsOrthostatiques(tensions).firstOrNull()?.let { o ->
+                Text(
+                    "Dernier test couché/debout (${o.couche.date.jour()}) : baisse ${o.baissePas}/${o.baissePad} mmHg" +
+                        if (o.positif) " · hypotension orthostatique possible (PAS ≥ 20 ou PAD ≥ 10)" else " · pas d'hypotension orthostatique",
+                    fontSize = 13.sp, color = if (o.positif) Orange else Vert
+                )
+            }
+            if (ReglesTension.tachycardiePersistante(periode))
+                Text("Tachycardie de repos persistante (FC ≥ 100) : neuropathie autonome possible", fontSize = 13.sp, color = Orange)
+            moy?.takeIf { it.first - it.second > 60 }?.let {
+                Text("Pression pulsée moyenne ${it.first - it.second} mmHg (> 60) : rigidité artérielle possible", fontSize = 13.sp, color = Orange)
+            }
             Spacer(Modifier.height(8.dp))
             if (periode.isEmpty()) Text("Aucune mesure sur cette période.", color = Color.Gray, fontSize = 13.sp,
                 modifier = Modifier.padding(vertical = 16.dp))
             else CourbeTension(periode.map { Triple(it.date.ms(), it.systolique, it.diastolique) }, debut, fin,
                 Modifier.fillMaxWidth().height(200.dp))
-            Text("Indigo : haut (systolique) · vert : bas (diastolique) · pointillés : 140 et 90 mmHg",
+            Text("Indigo : PAS (haut) · vert : PAD (bas) · pointillés : objectif 130/80 mmHg · " + ReglesTension.AVERTISSEMENT,
                 fontSize = 12.sp, color = Color.Gray)
+            tensions.sortedByDescending { it.date }.take(8).forEach { t ->
+                HorizontalDivider(Modifier.padding(vertical = 6.dp))
+                val c = ReglesTension.categorie(t.systolique, t.diastolique)
+                Row {
+                    Text("${t.date.jour()} ${t.date.heure()}", Modifier.width(150.dp), fontSize = 13.sp)
+                    Text("${t.systolique}/${t.diastolique}", Modifier.width(80.dp), fontWeight = FontWeight.Medium, color = c.couleur())
+                    Text(listOfNotNull(
+                        t.pouls?.let { "FC $it" },
+                        "PP ${t.pressionPulsee}",
+                        "PAM ${t.pam}",
+                        t.position.takeIf { it.isNotBlank() }?.let { ReglesTension.libellePosition(it) },
+                        t.bras.takeIf { it.isNotBlank() }?.let { "bras " + ReglesTension.libelleBras(it) },
+                        c.libelle
+                    ).joinToString(" · "), fontSize = 12.sp, color = Color.Gray)
+                }
+            }
         }
     }
 }

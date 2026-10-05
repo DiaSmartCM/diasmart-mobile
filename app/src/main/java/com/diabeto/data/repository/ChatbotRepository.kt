@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import java.security.MessageDigest
 import java.time.format.DateTimeFormatter
+import kotlinx.datetime.toJavaLocalDateTime
+import kotlinx.datetime.toKotlinLocalDateTime
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -40,6 +42,7 @@ private const val TAG = "ChatbotRepository"
 class ChatbotRepository @Inject constructor(
     private val rollyClient: RollyChatClient,
     private val aiCacheDao: AiCacheDao,
+    private val tensionDao: com.diabeto.data.dao.TensionDao,
     @ApplicationContext private val context: Context
 ) {
     /** Verifie la connectivite reseau via le ConnectivityManager systeme. */
@@ -72,6 +75,35 @@ class ChatbotRepository @Inject constructor(
         return digest.digest(normalized.toByteArray()).joinToString("") { "%02x".format(it) }
     }
 
+    /** Bloc "tension arterielle" du contexte envoye a ROLLY. */
+    private fun contexteTension(tensions: List<com.diabeto.data.entity.TensionEntity>, age: Int?): String {
+        val fmt = DateTimeFormatter.ofPattern("dd/MM HH:mm")
+        val sb = StringBuilder()
+        val mesures = tensions.map {
+            com.diabeto.domain.MesureTension(it.dateHeure.toKotlinLocalDateTime(), it.systolique, it.diastolique,
+                it.pouls, it.position, it.bras, it.traitement)
+        }
+        val recentes = mesures.filter { it.date.toJavaLocalDateTime().isAfter(java.time.LocalDateTime.now().minusDays(30)) }
+        sb.appendLine("Tension artérielle en automesure (${tensions.size} mesures ; repères ADA 2025 / ESC 2024, objectifs individuels fixés par le médecin) :")
+        tensions.firstOrNull()?.let { sb.appendLine("  Traitement antihypertenseur en cours : ${if (it.traitement) "oui" else "non"}") }
+        tensions.take(10).forEach { t ->
+            sb.appendLine("  - ${t.dateHeure.format(fmt)} : PAS ${t.systolique} / PAD ${t.diastolique} mmHg" +
+                (t.pouls?.let { ", FC $it" } ?: "") +
+                ", PP ${t.pressionPulsee()}, PAM ${t.pam()}, ${t.positionTexte()}, bras ${t.brasTexte()} — ${t.categorie(age).libelle}")
+        }
+        com.diabeto.domain.ReglesTension.moyenne(recentes)?.let { (ps, pd) ->
+            sb.appendLine("  Moyenne 30 j : $ps/$pd mmHg sur ${recentes.size} mesures, PP moyenne ${ps - pd}, PAM moyenne ${com.diabeto.domain.ReglesTension.pam(ps, pd)}")
+        }
+        com.diabeto.domain.ReglesTension.testsOrthostatiques(mesures).firstOrNull()?.let { o ->
+            sb.appendLine("  Dernier test couché-debout : baisse PAS ${o.baissePas}, PAD ${o.baissePad} mmHg" +
+                (if (o.positif) " → hypotension orthostatique" else " → pas d'hypotension orthostatique"))
+        }
+        if (com.diabeto.domain.ReglesTension.tachycardiePersistante(recentes)) {
+            sb.appendLine("  FC de repos >= 100 répétée (tachycardie de repos persistante)")
+        }
+        return sb.toString().trimEnd()
+    }
+
     private fun isCacheableQuestion(message: String): Boolean {
         val lower = message.lowercase()
         val genericPatterns = listOf(
@@ -82,7 +114,7 @@ class ChatbotRepository @Inject constructor(
             "aliments", "manger", "éviter", "régime", "regime",
             "exercice", "sport", "activité physique",
             "hypoglycémie", "hypoglycemie", "hyperglycémie", "hyperglycemie",
-            "hba1c", "insuline", "glycémie", "glycemie",
+            "hba1c", "insuline", "glycémie", "glycemie", "tension", "hypertension",
             "diabète type 1", "diabete type 1", "diabète type 2", "diabete type 2",
             "conseils", "recommandations", "prévenir", "prevenir"
         )
@@ -606,7 +638,7 @@ class ChatbotRepository @Inject constructor(
         Log.d(TAG, "reinitialiserChat() — no-op (stateless proxy)")
     }
 
-    private fun buildContexte(
+    private suspend fun buildContexte(
         patient: PatientEntity?,
         lectures: List<LectureGlucoseEntity>,
         latestHbA1c: HbA1cEntity? = null,
@@ -651,6 +683,11 @@ class ChatbotRepository @Inject constructor(
             val hypers = lectures.count { it.valeur > 180 }
             val tir = if (lectures.isNotEmpty()) (dansLaCible * 100 / lectures.size) else 0
             sb.appendLine("Moyenne : ${moyenne.toInt()} mg/dL | TIR : $tir% | Hypos : $hypos | Hypers : $hypers")
+        }
+
+        patient?.let { p ->
+            val tensions = runCatching { tensionDao.getTensionsByPatientList(p.id) }.getOrDefault(emptyList())
+            if (tensions.isNotEmpty()) sb.appendLine(contexteTension(tensions, p.age))
         }
 
         return sb.toString().trim()

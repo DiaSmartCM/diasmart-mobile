@@ -35,8 +35,16 @@ data class TensionEntity(
     val diastolique: Int,
     val pouls: Int? = null,
     val dateHeure: LocalDateTime,
+    val position: String = ReglesTension.ASSIS,   // voir ReglesTension.POSITIONS
+    val bras: String = ReglesTension.GAUCHE,      // GAUCHE ou DROIT
+    val traitement: Boolean = false,              // antihypertenseur en cours
     val notes: String = "",
     val lastModified: Long = System.currentTimeMillis()
 ) {
-    fun categorie(): CategorieTension = ReglesTension.categorie(systolique, diastolique)
+    /** [age] du patient : objectif assoupli a partir de 65 ans. */
+    fun categorie(age: Int? = null): CategorieTension = ReglesTension.categorie(systolique, diastolique, age)
+    fun pressionPulsee(): Int = ReglesTension.pressionPulsee(systolique, diastolique)
+    fun pam(): Int = ReglesTension.pam(systolique, diastolique)
+    fun positionTexte(): String = ReglesTension.libellePosition(position)
+    fun brasTexte(): String = ReglesTension.libelleBras(bras)
 }

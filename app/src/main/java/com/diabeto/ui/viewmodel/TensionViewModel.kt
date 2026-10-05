@@ -21,6 +21,10 @@ data class SaisieTension(
     val systolique: String = "",
     val diastolique: String = "",
     val pouls: String = "",
+    val position: String = ReglesTension.ASSIS,
+    val bras: String = ReglesTension.GAUCHE,
+    val traitement: Boolean = false,
+    val dateHeure: LocalDateTime? = null,   // null = maintenant
     val message: String? = null,
     val erreur: String? = null
 )
@@ -28,13 +32,18 @@ data class SaisieTension(
 @HiltViewModel
 class TensionViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    private val repository: TensionRepository
+    private val repository: TensionRepository,
+    private val patientRepository: com.diabeto.data.repository.PatientRepository
 ) : ViewModel() {
 
     private val patientId: Long = savedStateHandle["patientId"] ?: 0L
 
     val tensions: StateFlow<List<TensionEntity>> = repository.getTensions(patientId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Age du patient : objectif assoupli a partir de 65 ans. */
+    private val _age = MutableStateFlow<Int?>(null)
+    val age: StateFlow<Int?> = _age.asStateFlow()
 
     private val _saisie = MutableStateFlow(SaisieTension())
     val saisie: StateFlow<SaisieTension> = _saisie.asStateFlow()
@@ -44,6 +53,10 @@ class TensionViewModel @Inject constructor(
     fun onSystolique(v: String) = _saisie.update { it.copy(systolique = chiffres(v), erreur = null) }
     fun onDiastolique(v: String) = _saisie.update { it.copy(diastolique = chiffres(v), erreur = null) }
     fun onPouls(v: String) = _saisie.update { it.copy(pouls = chiffres(v), erreur = null) }
+    fun onPosition(v: String) = _saisie.update { it.copy(position = v) }
+    fun onBras(v: String) = _saisie.update { it.copy(bras = v) }
+    fun onTraitement(v: Boolean) = _saisie.update { it.copy(traitement = v) }
+    fun onDateHeure(v: LocalDateTime?) = _saisie.update { it.copy(dateHeure = v, erreur = null) }
     fun effacerMessage() = _saisie.update { it.copy(message = null, erreur = null) }
 
     fun ajouter() {
@@ -59,6 +72,11 @@ class TensionViewModel @Inject constructor(
             _saisie.update { it.copy(erreur = "Pouls invalide (30 à 220).") }
             return
         }
+        val quand = s.dateHeure ?: LocalDateTime.now()
+        if (quand.isAfter(LocalDateTime.now().plusMinutes(5))) {
+            _saisie.update { it.copy(erreur = "La date ne peut pas être dans le futur.") }
+            return
+        }
         if (patientId <= 0) {
             _saisie.update { it.copy(erreur = "Dossier introuvable.") }
             return
@@ -67,12 +85,28 @@ class TensionViewModel @Inject constructor(
             try {
                 val t = repository.ajouter(TensionEntity(
                     patientId = patientId, systolique = sys, diastolique = dia, pouls = pouls,
-                    dateHeure = LocalDateTime.now().withNano(0)
+                    dateHeure = quand.withNano(0), position = s.position, bras = s.bras, traitement = s.traitement
                 ))
-                _saisie.value = SaisieTension(message = "Mesure enregistrée")
+                // Test couche-debout : on propose directement l'etape suivante
+                val (suivante, message) = when (s.position) {
+                    ReglesTension.COUCHE -> ReglesTension.DEBOUT_1MIN to "Mesure enregistrée. Levez-vous et mesurez après 1 minute debout."
+                    ReglesTension.DEBOUT_1MIN -> ReglesTension.DEBOUT_3MIN to "Mesure enregistrée. Restez debout et mesurez à 3 minutes."
+                    else -> ReglesTension.ASSIS to "Mesure enregistrée"
+                }
+                _saisie.value = SaisieTension(position = suivante, bras = s.bras, traitement = s.traitement, message = message)
                 repository.envoyer(t)
             } catch (e: Exception) {
                 _saisie.update { it.copy(erreur = e.message ?: "Enregistrement impossible") }
+            }
+        }
+    }
+
+    init {
+        // Reprend position, bras et traitement de la derniere mesure
+        viewModelScope.launch {
+            _age.value = runCatching { patientRepository.getPatientById(patientId)?.age }.getOrNull()
+            repository.derniere(patientId)?.let { d ->
+                _saisie.update { it.copy(bras = d.bras, traitement = d.traitement) }
             }
         }
     }

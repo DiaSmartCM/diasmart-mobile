@@ -269,6 +269,9 @@ abstract class DiabetoDatabase : RoomDatabase() {
                         "`diastolique` INTEGER NOT NULL, " +
                         "`pouls` INTEGER, " +
                         "`dateHeure` TEXT NOT NULL, " +
+                        "`position` TEXT NOT NULL, " +
+                        "`bras` TEXT NOT NULL, " +
+                        "`traitement` INTEGER NOT NULL, " +
                         "`notes` TEXT NOT NULL, " +
                         "`lastModified` INTEGER NOT NULL, " +
                         "FOREIGN KEY(`patientId`) REFERENCES `patients`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )"

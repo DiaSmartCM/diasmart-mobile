@@ -40,8 +40,9 @@ data class ResultatSuivi(
  *  - MOYENNE : HbA1c >= 7 %, moyenne 30 j >= 180 mg/dL, 1 ou 2 glycemies
  *              < 70 mg/dL, ou aucune HbA1c depuis 6 mois
  *  - BASSE : rien de tout cela, avec des donnees recentes
- *  - Tension (si le patient en partage) : HAUTE si une mesure >= 180/110
- *    sur 30 jours ou une moyenne >= 160/100 ; MOYENNE si moyenne >= 140/90
+ *  - Tension (automesure, reperes ADA 2025 / ESC 2024) : HAUTE si une
+ *    mesure >= 180/110 sur 30 jours ; MOYENNE si moyenne 30 j >= 135/85,
+ *    PAS < 90, hypotension orthostatique ou tachycardie de repos persistante
  *  - Perdu de vue : aucune mesure depuis [JOURS_PERDU_DE_VUE] jours
  *    (ou aucune mesure du tout, inscrit depuis plus de 30 jours)
  */
@@ -88,11 +89,13 @@ object EvaluationSuivi {
         val tMoy = ReglesTension.moyenne(tensions30)
         val tMax = tensions30.filter { it.systolique >= 180 || it.diastolique >= 110 }
         if (tMax.isNotEmpty()) haute += "${tMax.size} tension(s) >= 180/110 en 30 j"
-        if (tMoy != null) {
-            val (s, d) = tMoy
-            if (s >= 160 || d >= 100) haute += "tension moyenne 30 j $s/$d"
-            else if (s >= 140 || d >= 90) moyenneR += "tension moyenne 30 j $s/$d"
-        }
+        if (tMoy != null && (tMoy.first >= 135 || tMoy.second >= 85))
+            moyenneR += "tension moyenne 30 j ${tMoy.first}/${tMoy.second}"
+        val basses = tensions30.count { it.systolique < 90 }
+        if (basses > 0) moyenneR += "$basses tension(s) PAS < 90 en 30 j"
+        if (ReglesTension.testsOrthostatiques(tensions30).any { it.positif }) moyenneR += "hypotension orthostatique"
+        if (ReglesTension.tachycardiePersistante(tensions30)) moyenneR += "FC de repos >= 100 répétée"
+
 
         val priorite = when {
             haute.isNotEmpty() -> PrioriteSuivi.HAUTE

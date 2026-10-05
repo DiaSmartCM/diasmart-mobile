@@ -102,8 +102,8 @@ fun EcranTableauDeBord(etat: EtatApp, onOuvrirPatient: (String) -> Unit, onAller
             Compteur("Patients suivis", patients.size.toString(), Modifier.weight(1f))
             Compteur("À revoir en priorité", prioritaires.size.toString(), Modifier.weight(1f), Rouge)
             Compteur("Perdus de vue", patients.count { it.resultat.perduDeVue }.toString(), Modifier.weight(1f), Orange)
-            Compteur("Tension ≥ 140/90", patients.count { p ->
-                p.resultat.tensionMoyenne30j?.let { it.first >= 140 || it.second >= 90 } == true
+            Compteur("Tension moy. ≥ 135/85", patients.count { p ->
+                p.resultat.tensionMoyenne30j?.let { it.first >= 135 || it.second >= 85 } == true
             }.toString(), Modifier.weight(1f), Orange)
             Compteur("RDV à venir", aVenir.size.toString(), Modifier.weight(1f))
             Compteur("Demandes de RDV", enAttente.size.toString(), Modifier.weight(1f), if (enAttente.isNotEmpty()) Orange else Indigo)

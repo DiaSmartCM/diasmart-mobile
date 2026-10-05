@@ -77,7 +77,7 @@ fun CourbeGlycemie(points: List<PointCourbe>, debut: Long, fin: Long, modifier: 
     }
 }
 
-/** Courbe de tension : systolique (indigo) et diastolique (vert-bleu), reperes 140 et 90 mmHg. */
+/** Courbe de tension : systolique (indigo) et diastolique (vert-bleu), reperes objectif 130 et 80 mmHg. */
 @Composable
 fun CourbeTension(points: List<Triple<Long, Int, Int>>, debut: Long, fin: Long, modifier: Modifier = Modifier) {
     val mesureur = rememberTextMeasurer()
@@ -97,7 +97,7 @@ fun CourbeTension(points: List<Triple<Long, Int, Int>>, debut: Long, fin: Long, 
         fun y(v: Int) = 8f + hauteur * (1f - (v - yMin) / (yMax - yMin))
 
         val tirets = PathEffect.dashPathEffect(floatArrayOf(6f, 6f))
-        listOf(140, 90).forEach { v ->
+        listOf(130, 80).forEach { v ->
             drawLine(Orange.copy(alpha = 0.6f), Offset(gauche, y(v)), Offset(gauche + largeur, y(v)), 1f, pathEffect = tirets)
             val r = mesureur.measure(v.toString(), style)
             drawText(r, topLeft = Offset(gauche - r.size.width - 6f, y(v) - r.size.height / 2f))

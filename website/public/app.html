@@ -668,7 +668,7 @@ body{display:flex;flex-direction:column}
     </div>
     <h3 style="font-size:15px;margin-bottom:12px">Historique</h3>
     <div class="glucose-list" id="tensionList"></div>
-    <p style="font-size:11px;color:var(--text3);margin-top:16px">Indication pour suivre votre tension, pas un diagnostic. Vos mesures sont visibles par vos soignants si vous les partagez.</p>
+    <p style="font-size:11px;color:var(--text3);margin-top:16px">Ces seuils sont des reperes generaux (ADA 2025 / ESC 2024). Vos objectifs personnels sont fixes par votre medecin traitant. Indication pour suivre votre tension, pas un diagnostic. Vos mesures sont visibles par vos soignants si vous les partagez.</p>
   </div>
   <button class="glucose-add" onclick="openTensionModal()">+</button>
 </div>
@@ -1147,17 +1147,31 @@ body{display:flex;flex-direction:column}
     <h3>Nouvelle mesure de tension</h3>
     <p style="font-size:12px;color:var(--text3);margin-bottom:12px">Assis, au repos depuis 5 minutes, le bras a hauteur du coeur.</p>
     <div class="input-group">
-      <label>Haut - systolique (mmHg)</label>
+      <label>PAS - haut, systolique (mmHg)</label>
       <input type="number" id="newTensionSys" placeholder="Ex: 130" min="50" max="300">
     </div>
     <div class="input-group">
-      <label>Bas - diastolique (mmHg)</label>
+      <label>PAD - bas, diastolique (mmHg)</label>
       <input type="number" id="newTensionDia" placeholder="Ex: 85" min="30" max="200">
     </div>
     <div class="input-group">
-      <label>Pouls (optionnel)</label>
+      <label>FC - pouls (optionnel)</label>
       <input type="number" id="newTensionPouls" placeholder="Ex: 72" min="30" max="220">
     </div>
+    <div class="input-group">
+      <label>Position</label>
+      <select id="newTensionPos" onchange="aideTestTension()"><option value="ASSIS">Assis</option><option value="COUCHE">Couche (debut du test couche/debout)</option><option value="DEBOUT_1MIN">Debout depuis 1 min</option><option value="DEBOUT_3MIN">Debout depuis 3 min</option></select>
+      <div id="tensionAideTest" style="font-size:12px;color:var(--text2);margin-top:6px"></div>
+    </div>
+    <div class="input-group">
+      <label>Bras</label>
+      <select id="newTensionBras"><option value="GAUCHE">Gauche</option><option value="DROIT">Droit</option></select>
+    </div>
+    <div class="input-group">
+      <label>Date et heure</label>
+      <input type="datetime-local" id="newTensionDate">
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin:8px 0"><input type="checkbox" id="newTensionTraitement"> Traitement contre la tension en cours</label>
     <button class="btn btn-cyan mt-16" onclick="saveTension()">Enregistrer</button>
     <button class="btn btn-outline" onclick="closeModal('tensionModal')">Annuler</button>
   </div>
@@ -1392,6 +1406,7 @@ onAuthStateChanged(auth,async user=>{
       }
     }catch(e){console.log('Profile load:',e)}
     loadGlucoseData();
+    if(window.loadTensionData)loadTensionData();
     loadPatients();
     loadMedicaments();
     loadRendezVous();
@@ -1445,13 +1460,12 @@ window.loadTensionData=async()=>{
   }catch(e){console.log('Tension load:',e);renderTension([])}
 };
 
-window.saveTensionToDb=async(sys,dia,pouls)=>{
+window.saveTensionToDb=async(m)=>{
   if(!auth.currentUser){alert('Veuillez vous reconnecter');return}
-  const n=new Date();const z=v=>String(v).padStart(2,'0');
-  // Heure locale sans fuseau, comme LocalDateTime sur Android
-  const dateHeure=n.getFullYear()+'-'+z(n.getMonth()+1)+'-'+z(n.getDate())+'T'+z(n.getHours())+':'+z(n.getMinutes())+':'+z(n.getSeconds());
   await addDoc(collection(db,'backups',auth.currentUser.uid,'tension'),{
-    systolique:sys,diastolique:dia,pouls:pouls||null,dateHeure,notes:'',source:'web',lastModified:Date.now()
+    systolique:m.sys,diastolique:m.dia,pouls:m.pouls||null,dateHeure:m.dateHeure,
+    position:m.position,bras:m.bras,traitementAntihypertenseur:!!m.traitement,
+    notes:'',source:'web',lastModified:Date.now()
   });
   loadTensionData();
 };
@@ -1571,7 +1585,9 @@ window.callGemini=async(prompt,includeHistory=true)=>{
   if(includeHistory && _chatHistoryContext){
     fullPrompt=_chatHistoryContext+'\n\nQuestion actuelle : '+prompt;
   }
-  const data=await _rollyCall({mode:'chat',message:fullPrompt});
+  // Mesures de tension du patient : ROLLY les recoit comme contexte
+  const ctx=window.contexteTensionRolly?window.contexteTensionRolly():'';
+  const data=await _rollyCall(ctx?{mode:'chat_context',message:fullPrompt,context:ctx}:{mode:'chat',message:fullPrompt});
   return data?.text||"Desole, je n'ai pas pu generer de reponse.";
 };
 
@@ -2594,38 +2610,89 @@ async function saveGlucose(){
 }
 window.saveGlucose=saveGlucose;
 
-// ── Tension ── (memes seuils que ReglesTension du module commun)
+// ── Tension ── (memes seuils que ReglesTension du module commun : ADA 2025 / ESC 2024)
 function categorieTension(s,d){
-  if(s>=180||d>=110)return{l:'Tres elevee',c:'#C62828',k:'Reposez-vous 5 minutes et reprenez la mesure. Si elle reste aussi haute, ou en cas de mal de tete, douleur dans la poitrine ou trouble de la vue : consultez en urgence.'};
-  if(s>=160||d>=100)return{l:'Hypertension (grade 2)',c:'#FF5252',k:'Parlez-en rapidement a votre soignant.'};
-  if(s>=140||d>=90)return{l:'Hypertension (grade 1)',c:'#FF9800',k:'Reprenez la mesure au repos. Si elle reste elevee, parlez-en a votre soignant.'};
-  if(s>=130||d>=85)return{l:'Normale haute',c:'#FBC02D',k:'A surveiller : moins de sel, activite physique, et reprenez la mesure.'};
-  if(s<90||d<60)return{l:'Tension basse',c:'#42A5F5',k:'Si vous avez des vertiges ou un malaise, asseyez-vous et parlez-en a votre soignant.'};
-  return{l:'Normale',c:'#4CAF50',k:'Continuez ainsi.'};
+  if(s>=180||d>=110)return{l:'Alerte : tres elevee (>= 180/110)',c:'#C62828',k:'Reposez-vous 5 minutes et reprenez la mesure. Si elle reste aussi haute, ou en cas de mal de tete, douleur dans la poitrine, trouble de la vue ou faiblesse d\'un cote : urgence.'};
+  if(s<90)return{l:'Tension basse (PAS < 90)',c:'#1E88E5',k:'En cas de malaise, vertiges ou evanouissement : allongez-vous et appelez les secours. Sinon, parlez-en a votre medecin.'};
+  if(s>=135||d>=85)return{l:'Hypertension en automesure (>= 135/85)',c:'#F57C00',k:'Si c\'est confirme sur plusieurs jours, parlez-en a votre medecin.'};
+  if(s>=130||d>=80)return{l:'Au-dessus de l\'objectif (>= 130/80)',c:'#F9A825',k:'A surveiller : moins de sel, activite physique, et reprenez la mesure au repos.'};
+  return{l:'Dans l\'objectif (< 130/80)',c:'#43A047',k:'Continuez ainsi.'};
+}
+const POS_TENSION={ASSIS:'assis',COUCHE:'couche',DEBOUT_1MIN:'debout 1 min',DEBOUT_3MIN:'debout 3 min',DEBOUT:'debout'};
+const pamTension=r=>Math.round(r.diastolique+(r.systolique-r.diastolique)/3);
+const _reposT=r=>!r.position||r.position==='ASSIS'||r.position==='COUCHE';
+// Test couche -> debout : mesure couchee suivie, dans les 15 min, d'une mesure debout. Plus recent d'abord.
+function testsOrthostatiques(rows){
+  const t=rows.slice().sort((a,b)=>a.dateHeure<b.dateHeure?-1:1),res=[];
+  t.forEach(c=>{
+    if(c.position!=='COUCHE')return;
+    const t0=new Date(c.dateHeure).getTime();
+    let best=null;
+    t.forEach(d=>{
+      if(!/^DEBOUT/.test(d.position||''))return;
+      const dt=new Date(d.dateHeure).getTime()-t0;
+      if(dt<0||dt>15*60000)return;
+      const x={couche:c,debout:d,bPas:c.systolique-d.systolique,bPad:c.diastolique-d.diastolique};
+      if(!best||Math.max(x.bPas-20,(x.bPad-10)*2)>Math.max(best.bPas-20,(best.bPad-10)*2))best=x;
+    });
+    if(best){best.positif=best.bPas>=20||best.bPad>=10;res.push(best)}
+  });
+  return res.reverse();
+}
+function alertesTension(rows){
+  const a=[],lim=new Date(Date.now()-30*864e5),r30=rows.filter(r=>new Date(r.dateHeure)>=lim);
+  const o=testsOrthostatiques(rows)[0];
+  if(o)a.push(o.positif
+    ?{c:'#F57C00',t:'Dernier test couche/debout : baisse de '+o.bPas+'/'+o.bPad+' mmHg. Possible hypotension orthostatique (baisse PAS >= 20 ou PAD >= 10). Parlez-en a votre medecin, et levez-vous lentement.'}
+    :{c:'#43A047',t:'Dernier test couche/debout : baisse de '+o.bPas+'/'+o.bPad+' mmHg, pas d\'hypotension orthostatique.'});
+  const repos=r30.filter(r=>r.pouls&&_reposT(r)),rapides=repos.filter(r=>r.pouls>=100).length;
+  if(rapides>=3&&rapides*2>repos.length)a.push({c:'#F57C00',t:'Pouls au repos souvent a 100 ou plus ('+rapides+' mesures). Une tachycardie de repos persistante peut evoquer une atteinte des nerfs du coeur (neuropathie autonome) : parlez-en a votre medecin.'});
+  if(r30.length){const pp=Math.round(r30.reduce((s,r)=>s+r.systolique-r.diastolique,0)/r30.length);
+    if(pp>60)a.push({c:'#F9A825',t:'Pression pulsee moyenne '+pp+' mmHg (> 60) : peut traduire une rigidite des arteres. A signaler a votre medecin.'});}
+  if(r30.some(r=>r.systolique<90))a.push({c:'#1E88E5',t:'Une tension basse (PAS < 90) a ete mesuree. En cas de malaise : allongez-vous et appelez les secours.'});
+  return a;
 }
 function renderTension(rows){
   const list=document.getElementById('tensionList');
   if(!list)return;
   const val=document.getElementById('tensionVal'),st=document.getElementById('tensionStatus'),cs=document.getElementById('tensionConseil'),moy=document.getElementById('tensionMoyenne');
+  const esc=s=>String(s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   if(rows.length){
     const t=rows[0],c=categorieTension(t.systolique,t.diastolique);
     val.textContent=t.systolique+'/'+t.diastolique;val.style.color=c.c;
-    document.getElementById('tensionUnit').textContent='mmHg'+(t.pouls?' - pouls '+t.pouls:'');
+    document.getElementById('tensionUnit').textContent='mmHg'+(t.pouls?' - FC '+t.pouls:'')+' - PP '+(t.systolique-t.diastolique)+' - PAM '+pamTension(t);
     st.textContent=c.l;st.className='glucose-status';st.style.background=c.c+'22';st.style.color=c.c;
     cs.textContent=c.k;
   }else{val.textContent='--';val.style.color='';st.textContent='Aucune mesure';cs.textContent='Appuyez sur + pour ajouter votre premiere mesure.'}
   const lim=new Date(Date.now()-30*864e5);
   const r30=rows.filter(r=>new Date(r.dateHeure)>=lim);
-  moy.textContent=r30.length?('Moyenne 30 jours : '+Math.round(r30.reduce((a,r)=>a+r.systolique,0)/r30.length)+'/'+Math.round(r30.reduce((a,r)=>a+r.diastolique,0)/r30.length)+' mmHg ('+r30.length+' mesures)'):'';
-  const esc=s=>String(s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const ms=r30.length?Math.round(r30.reduce((a,r)=>a+r.systolique,0)/r30.length):0,md=r30.length?Math.round(r30.reduce((a,r)=>a+r.diastolique,0)/r30.length):0;
+  moy.innerHTML=(r30.length?esc('Moyenne 30 jours : '+ms+'/'+md+' mmHg ('+r30.length+' mesures) - PP '+(ms-md)+' - PAM '+Math.round(md+(ms-md)/3)):'')+
+    alertesTension(rows).map(x=>`<div style="margin-top:8px;padding:8px 10px;border-radius:8px;border-left:4px solid ${x.c};background:${x.c}18;color:var(--text)">${esc(x.t)}</div>`).join('');
   list.innerHTML=rows.slice(0,30).map(r=>{
     const c=categorieTension(r.systolique,r.diastolique);
     const date=new Date(r.dateHeure).toLocaleString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-    return`<div class="glucose-item"><div class="gi-left"><div class="gi-dot" style="background:${c.c}"></div><div><div class="gi-val">${esc(r.systolique)}/${esc(r.diastolique)} mmHg${r.pouls?' &middot; pouls '+esc(r.pouls):''}</div><div class="gi-time">${esc(c.l)} - ${esc(date)}</div></div></div></div>`;
+    const pos=POS_TENSION[r.position]||'',bras={GAUCHE:'bras gauche',DROIT:'bras droit'}[r.bras]||'';
+    const det=['PP '+(r.systolique-r.diastolique),'PAM '+pamTension(r),pos,bras,r.traitementAntihypertenseur?'sous traitement':''].filter(Boolean).join(', ');
+    return`<div class="glucose-item"><div class="gi-left"><div class="gi-dot" style="background:${c.c}"></div><div><div class="gi-val">${esc(r.systolique)}/${esc(r.diastolique)} mmHg${r.pouls?' &middot; FC '+esc(r.pouls):''}</div><div class="gi-time">${esc(c.l)} - ${esc(det)} - ${esc(date)}</div></div></div></div>`;
   }).join('');
   drawTensionChart(r30.slice().reverse());
 }
 window.renderTension=renderTension;
+
+// Contexte envoye a ROLLY (memes informations que sur Android)
+window.contexteTensionRolly=function(){
+  const rows=window._tensionData||[];
+  if(!rows.length)return'';
+  const l=['Tension arterielle ('+rows.length+' mesures, seuils = reperes generaux ADA 2025 / ESC 2024, objectifs fixes par le medecin) :',
+    '  Traitement antihypertenseur en cours : '+(rows[0].traitementAntihypertenseur?'oui':'non')];
+  const lim=new Date(Date.now()-30*864e5),r30=rows.filter(r=>new Date(r.dateHeure)>=lim);
+  if(r30.length){const ms=Math.round(r30.reduce((a,r)=>a+r.systolique,0)/r30.length),md=Math.round(r30.reduce((a,r)=>a+r.diastolique,0)/r30.length);
+    l.push('  Moyenne 30 jours : '+ms+'/'+md+' mmHg ('+r30.length+' mesures), PP '+(ms-md)+', PAM '+Math.round(md+(ms-md)/3));}
+  alertesTension(rows).forEach(a=>l.push('  Remarque : '+a.t));
+  rows.slice(0,10).forEach(r=>l.push('  - '+r.dateHeure+' : PAS '+r.systolique+' / PAD '+r.diastolique+' mmHg'+(r.pouls?', FC '+r.pouls:'')+', PP '+(r.systolique-r.diastolique)+', PAM '+pamTension(r)+(POS_TENSION[r.position]?', '+POS_TENSION[r.position]:'')+(r.bras?', bras '+r.bras.toLowerCase():'')+' - '+categorieTension(r.systolique,r.diastolique).l));
+  return l.join('\n');
+};
 
 function drawTensionChart(data){
   const canvas=document.getElementById('tensionChart');
@@ -2642,7 +2709,7 @@ function drawTensionChart(data){
   const pad={t:12,b:12,l:10,r:10},cW=W-pad.l-pad.r,cH=H-pad.t-pad.b;
   const y=v=>pad.t+cH*(1-(v-minV)/(maxV-minV)),x=i=>pad.l+i*(cW/(data.length-1));
   ctx.strokeStyle='rgba(255,152,0,.5)';ctx.setLineDash([4,4]);
-  [140,90].forEach(v=>{ctx.beginPath();ctx.moveTo(pad.l,y(v));ctx.lineTo(W-pad.r,y(v));ctx.stroke()});
+  [130,80].forEach(v=>{ctx.beginPath();ctx.moveTo(pad.l,y(v));ctx.lineTo(W-pad.r,y(v));ctx.stroke()});
   ctx.setLineDash([]);
   [['systolique','#00D2FF'],['diastolique','#26A69A']].forEach(([k,col])=>{
     ctx.beginPath();data.forEach((d,i)=>i?ctx.lineTo(x(i),y(d[k])):ctx.moveTo(x(i),y(d[k])));
@@ -2651,18 +2718,47 @@ function drawTensionChart(data){
   });
 }
 
+function _isoLocal(n){const z=v=>String(v).padStart(2,'0');return n.getFullYear()+'-'+z(n.getMonth()+1)+'-'+z(n.getDate())+'T'+z(n.getHours())+':'+z(n.getMinutes())}
 function openTensionModal(){
   ['newTensionSys','newTensionDia','newTensionPouls'].forEach(id=>document.getElementById(id).value='');
+  const d=document.getElementById('newTensionDate');d.value=_isoLocal(new Date());d.max=_isoLocal(new Date());
+  // Reprend bras et traitement de la derniere mesure ; la position suit le test couche/debout
+  document.getElementById('newTensionPos').value=window._tensionPosSuivante||'ASSIS';window._tensionPosSuivante=null;aideTestTension();
+  const last=(window._tensionData||[])[0];
+  if(last){
+    if(last.bras)document.getElementById('newTensionBras').value=last.bras;
+    document.getElementById('newTensionTraitement').checked=!!last.traitementAntihypertenseur;
+  }
   document.getElementById('tensionModal').classList.add('active');
 }
 window.openTensionModal=openTensionModal;
+function aideTestTension(){
+  const p=document.getElementById('newTensionPos').value,e=document.getElementById('tensionAideTest');if(!e)return;
+  e.textContent={COUCHE:'Test couche/debout : restez allonge 5 minutes, mesurez, puis levez-vous et mesurez a 1 min et a 3 min. Une baisse de PAS >= 20 ou PAD >= 10 evoque une hypotension orthostatique.',DEBOUT_1MIN:'Mesure apres 1 minute debout.',DEBOUT_3MIN:'Mesure apres 3 minutes debout.'}[p]||'';
+}
+window.aideTestTension=aideTestTension;
 
 async function saveTension(){
   const s=parseInt(document.getElementById('newTensionSys').value),d=parseInt(document.getElementById('newTensionDia').value);
   const p=parseInt(document.getElementById('newTensionPouls').value)||null;
   if(!s||!d||s<50||s>300||d<30||d>200||s<=d){alert('Valeurs invalides : le premier chiffre (haut) doit etre plus grand que le second (bas), ex. 130 / 85.');return}
   if(p&&(p<30||p>220)){alert('Pouls invalide (30 a 220)');return}
-  try{await window.saveTensionToDb(s,d,p);closeModal('tensionModal')}
+  const dv=document.getElementById('newTensionDate').value;
+  const quand=dv?new Date(dv):new Date();
+  if(isNaN(quand)||quand.getTime()>Date.now()+5*60000){alert('Date invalide (pas dans le futur)');return}
+  // Heure locale sans fuseau (comme LocalDateTime sur Android), avec secondes
+  const dateHeure=_isoLocal(quand)+':'+String(quand.getSeconds()).padStart(2,'0');
+  try{
+    await window.saveTensionToDb({sys:s,dia:d,pouls:p,dateHeure,
+      position:document.getElementById('newTensionPos').value,
+      bras:document.getElementById('newTensionBras').value,
+      traitement:document.getElementById('newTensionTraitement').checked});
+    closeModal('tensionModal');
+    // Test couche -> debout 1 min -> debout 3 min
+    const pos=document.getElementById('newTensionPos').value;
+    const suite={COUCHE:['DEBOUT_1MIN','Mesure enregistree. Levez-vous et mesurez apres 1 minute debout.'],DEBOUT_1MIN:['DEBOUT_3MIN','Mesure enregistree. Restez debout et mesurez a 3 minutes.']}[pos];
+    if(suite){window._tensionPosSuivante=suite[0];alert(suite[1]);openTensionModal()}
+  }
   catch(e){console.error('saveTension:',e);alert('Erreur: '+e.message)}
 }
 window.saveTension=saveTension;

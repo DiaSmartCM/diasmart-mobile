@@ -233,11 +233,10 @@ fun PrioriteSuivi.couleur() = when (this) {
 
 fun CategorieTension.couleur() = when (this) {
     CategorieTension.BASSE -> Color(0xFF1E88E5)
-    CategorieTension.NORMALE -> Vert
-    CategorieTension.NORMALE_HAUTE -> Color(0xFFF9A825)
-    CategorieTension.HTA_1 -> Orange
-    CategorieTension.HTA_2 -> Rouge
-    CategorieTension.TRES_ELEVEE -> Color(0xFF8E0000)
+    CategorieTension.OBJECTIF, CategorieTension.OBJECTIF_AGE -> Vert
+    CategorieTension.AU_DESSUS_OBJECTIF -> Color(0xFFF9A825)
+    CategorieTension.HTA_DOMICILE -> Orange
+    CategorieTension.URGENCE -> Color(0xFFC62828)
 }
 
 fun couleurGlycemie(v: Double) = when {
