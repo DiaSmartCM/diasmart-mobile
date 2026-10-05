@@ -97,6 +97,7 @@ class BootReceiver : BroadcastReceiver() {
 
         // Les alarmes exactes ne survivent pas au redemarrage.
         reprogrammerToutesLesAlarmes(context)
+        AlarmScheduler.reposerRegleDes3(context)
     }
 }
 

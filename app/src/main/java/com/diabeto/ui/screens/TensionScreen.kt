@@ -39,7 +39,7 @@ import java.time.format.DateTimeFormatter
 
 fun CategorieTension.couleur(): Color = when (this) {
     CategorieTension.BASSE -> Color(0xFF1E88E5)
-    CategorieTension.OBJECTIF, CategorieTension.OBJECTIF_AGE -> Color(0xFF2E7D32)
+    CategorieTension.OBJECTIF, CategorieTension.OBJECTIF_AGE, CategorieTension.OBJECTIF_PERSO -> Color(0xFF2E7D32)
     CategorieTension.AU_DESSUS_OBJECTIF -> Color(0xFFF9A825)
     CategorieTension.HTA_DOMICILE -> Color(0xFFF57C00)
     CategorieTension.URGENCE -> Color(0xFFC62828)
@@ -54,6 +54,8 @@ fun TensionContent(viewModel: TensionViewModel = hiltViewModel()) {
     val tensions by viewModel.tensions.collectAsStateWithLifecycle()
     val saisie by viewModel.saisie.collectAsStateWithLifecycle()
     val age by viewModel.age.collectAsStateWithLifecycle()
+    val objectif by viewModel.objectif.collectAsStateWithLifecycle()
+    val regleDes3Fin by viewModel.regleDes3Fin.collectAsStateWithLifecycle()
     var aSupprimer by remember { mutableStateOf<TensionEntity?>(null) }
     val context = LocalContext.current
     fun choisirDate() {
@@ -68,7 +70,15 @@ fun TensionContent(viewModel: TensionViewModel = hiltViewModel()) {
     }
 
     LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
-        tensions.firstOrNull()?.let { t -> item { DerniereTensionCard(t, age) } }
+        tensions.firstOrNull()?.let { t -> item { DerniereTensionCard(t, age, objectif) } }
+        objectif?.let { o ->
+            item {
+                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFF2E7D32).copy(alpha = 0.08f))) {
+                    Text("Votre objectif, fixé par " + (o.auteurNom.ifBlank { "votre médecin" }) + " : ${o.texte}",
+                        Modifier.padding(16.dp), fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                }
+            }
+        }
         alertesTension(tensions).takeIf { it.isNotEmpty() }?.let { alertes -> item { AlertesCard(alertes) } }
 
         item {
@@ -119,7 +129,7 @@ fun TensionContent(viewModel: TensionViewModel = hiltViewModel()) {
                     }
                     saisie.systolique.toIntOrNull()?.let { s ->
                         saisie.diastolique.toIntOrNull()?.takeIf { ReglesTension.valide(s, it) }?.let { d ->
-                            val c = ReglesTension.categorie(s, d, age)
+                            val c = ReglesTension.categorie(s, d, age, objectif)
                             Text("PP ${ReglesTension.pressionPulsee(s, d)} · PAM ${ReglesTension.pam(s, d)} mmHg · ${c.libelle}",
                                 fontSize = 13.sp, color = c.couleur(), fontWeight = FontWeight.Medium)
                         }
@@ -134,11 +144,13 @@ fun TensionContent(viewModel: TensionViewModel = hiltViewModel()) {
             }
         }
 
+        item { RegleDes3Card(regleDes3Fin, viewModel::programmerRegleDes3, viewModel::annulerRegleDes3) }
+
         if (tensions.size >= 2) item { CourbeTensionCard(tensions) }
 
         if (tensions.isNotEmpty()) {
             item { Text("Historique", fontWeight = FontWeight.SemiBold, fontSize = 16.sp) }
-            items(tensions.take(60), key = { it.id }) { t -> LigneTension(t, age) { aSupprimer = t } }
+            items(tensions.take(60), key = { it.id }) { t -> LigneTension(t, age, objectif) { aSupprimer = t } }
         }
         item {
             Text(ReglesTension.AVERTISSEMENT + " Indication pour vous aider à suivre votre tension, pas un diagnostic. " +
@@ -159,8 +171,24 @@ fun TensionContent(viewModel: TensionViewModel = hiltViewModel()) {
 }
 
 @Composable
-private fun DerniereTensionCard(t: TensionEntity, age: Int?) {
-    val c = t.categorie(age)
+private fun RegleDes3Card(fin: LocalDateTime?, programmer: () -> Unit, annuler: () -> Unit) {
+    Card(Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(1.dp)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("Automesure : règle des 3", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+            Text(ReglesTension.REGLE_DES_3, fontSize = 13.sp, color = OnSurfaceVariant)
+            if (fin != null) {
+                Text("Rappels programmés jusqu'au ${fin.format(formatDate)}.", fontSize = 13.sp, color = Color(0xFF2E7D32))
+                OutlinedButton(onClick = annuler) { Text("Annuler les rappels") }
+            } else {
+                Button(onClick = programmer) { Text("Programmer les rappels (7 h et 19 h, 3 jours)") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DerniereTensionCard(t: TensionEntity, age: Int?, objectif: com.diabeto.domain.ObjectifTension?) {
+    val c = t.categorie(age, objectif)
     Card(Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp),
         colors = CardDefaults.cardColors(containerColor = c.couleur().copy(alpha = 0.08f))) {
         Column(Modifier.padding(16.dp)) {
@@ -201,7 +229,7 @@ private fun CourbeTensionCard(tensions: List<TensionEntity>) {
                 Legende(Primary, "Haut (systolique)")
                 Legende(Color(0xFF26A69A), "Bas (diastolique)")
             }
-            Text("Lignes pointillées : 140 et 90 mmHg", fontSize = 11.sp, color = OnSurfaceVariant)
+            Text("Lignes pointillées : objectif 130 et 80 mmHg", fontSize = 11.sp, color = OnSurfaceVariant)
         }
     }
 }
@@ -218,7 +246,7 @@ private fun CourbeTension(mesures: List<TensionEntity>, modifier: Modifier) {
         fun y(v: Int) = p + h * (1f - (v - yMin) / (yMax - yMin))
         fun x(i: Int) = p + w * i / (mesures.size - 1).toFloat()
         val tirets = PathEffect.dashPathEffect(floatArrayOf(10f, 10f))
-        listOf(140, 90).forEach { v ->
+        listOf(130, 80).forEach { v ->
             drawLine(Color(0xFFF57C00).copy(alpha = 0.6f), Offset(p, y(v)), Offset(p + w, y(v)), 2f, pathEffect = tirets)
         }
         fun trace(valeur: (TensionEntity) -> Int, couleur: Color) {
@@ -242,8 +270,8 @@ private fun Legende(couleur: Color, texte: String) {
 }
 
 @Composable
-private fun LigneTension(t: TensionEntity, age: Int?, onSupprimer: () -> Unit) {
-    val c = t.categorie(age)
+private fun LigneTension(t: TensionEntity, age: Int?, objectif: com.diabeto.domain.ObjectifTension?, onSupprimer: () -> Unit) {
+    val c = t.categorie(age, objectif)
     Card(Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(1.dp)) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(10.dp).background(c.couleur(), CircleShape))

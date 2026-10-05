@@ -78,4 +78,16 @@ class ReglesTensionTest {
         assertFalse(r.perduDeVue)
         assertEquals(PrioriteSuivi.MOYENNE, r.priorite)
     }
+
+    @Test
+    fun objectifPersonnelRemplaceObjectifGeneral() {
+        val obj = ObjectifTension(140, 90, "Dr Test")
+        assertEquals(CategorieTension.OBJECTIF_PERSO, ReglesTension.categorie(136, 86, objectif = obj))
+        assertEquals(CategorieTension.AU_DESSUS_OBJECTIF, ReglesTension.categorie(125, 78, objectif = ObjectifTension(120, 80)))
+        assertEquals(CategorieTension.HTA_DOMICILE, ReglesTension.categorie(145, 80, objectif = obj))
+        assertEquals(CategorieTension.URGENCE, ReglesTension.categorie(185, 90, objectif = ObjectifTension(190, 120)))
+        assertEquals(CategorieTension.BASSE, ReglesTension.categorie(85, 55, objectif = obj))
+        assertEquals(6, ReglesTension.creneauxRegleDes3().size)
+        assertTrue(ReglesTension.alerteSoignant(150, 110))
+    }
 }

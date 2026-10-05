@@ -150,6 +150,7 @@ private fun FichePatient(etat: EtatApp, p: PatientSuivi, onRetour: () -> Unit) {
     var mesures by remember(p.uid) { mutableStateOf(p.mesures) }
     var hba1c by remember(p.uid) { mutableStateOf<List<MesureHbA1c>>(emptyList()) }
     var tensions by remember(p.uid) { mutableStateOf(p.tensions) }
+    var objectif by remember(p.uid) { mutableStateOf<com.diabeto.domain.ObjectifTension?>(null) }
     var chargement by remember(p.uid) { mutableStateOf(true) }
     LaunchedEffect(p.uid) {
         // Plus de mesures que la liste (3 mois) pour la courbe 90 jours
@@ -157,6 +158,7 @@ private fun FichePatient(etat: EtatApp, p: PatientSuivi, onRetour: () -> Unit) {
         if (toutes.isNotEmpty()) mesures = toutes
         hba1c = etat.patientsService.hba1c(p.uid)
         etat.patientsService.tensions(p.uid, 300).takeIf { it.isNotEmpty() }?.let { tensions = it }
+        objectif = etat.patientsService.objectifTension(p.uid)
         chargement = false
     }
     val r = p.resultat
@@ -204,7 +206,8 @@ private fun FichePatient(etat: EtatApp, p: PatientSuivi, onRetour: () -> Unit) {
             }
         }
 
-        CarteTension(tensions, debut, fin, jours)
+        CarteObjectifTension(etat, p.uid, objectif) { objectif = it }
+        CarteTension(tensions, debut, fin, jours, objectif)
 
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Card(Modifier.weight(1f)) {
@@ -243,7 +246,47 @@ private fun FichePatient(etat: EtatApp, p: PatientSuivi, onRetour: () -> Unit) {
 }
 
 @Composable
-private fun CarteTension(tensions: List<MesureTension>, debut: Long, fin: Long, jours: Int) {
+private fun CarteObjectifTension(
+    etat: EtatApp, uid: String, objectif: com.diabeto.domain.ObjectifTension?,
+    onChange: (com.diabeto.domain.ObjectifTension?) -> Unit
+) {
+    var sys by remember(objectif) { mutableStateOf(objectif?.systolique?.toString() ?: "130") }
+    var dia by remember(objectif) { mutableStateOf(objectif?.diastolique?.toString() ?: "80") }
+    var message by remember(uid) { mutableStateOf<String?>(null) }
+    val portee = rememberCoroutineScope()
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Objectif de tension du patient", fontWeight = FontWeight.SemiBold)
+            Text(objectif?.let { "Objectif personnel : ${it.texte}" + (if (it.auteurNom.isNotBlank()) " (fixé par ${it.auteurNom})" else "") }
+                ?: "Objectif général : < 130/80 mmHg (ADA 2025 / ESC 2024)", fontSize = 13.sp, color = Color.Gray)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(sys, { sys = it.filter(Char::isDigit).take(3) }, label = { Text("PAS <") }, singleLine = true, modifier = Modifier.width(110.dp))
+                OutlinedTextField(dia, { dia = it.filter(Char::isDigit).take(3) }, label = { Text("PAD <") }, singleLine = true, modifier = Modifier.width(110.dp))
+                androidx.compose.material3.Button(onClick = {
+                    val s = sys.toIntOrNull() ?: 0; val d = dia.toIntOrNull() ?: 0
+                    portee.launch {
+                        message = runCatching {
+                            etat.patientsService.fixerObjectifTension(uid, s, d, etat.profil)
+                            onChange(com.diabeto.domain.ObjectifTension(s, d, etat.profil.nomComplet))
+                            "Objectif enregistré : le patient le voit dans son suivi."
+                        }.getOrElse { it.message ?: "Enregistrement impossible" }
+                    }
+                }) { Text("Enregistrer") }
+                if (objectif != null) OutlinedButton(onClick = {
+                    portee.launch {
+                        message = runCatching {
+                            etat.patientsService.retirerObjectifTension(uid); onChange(null); "Objectif retiré."
+                        }.getOrElse { it.message ?: "Suppression impossible" }
+                    }
+                }) { Text("Revenir au général") }
+            }
+            message?.let { Text(it, fontSize = 12.sp, color = Color.Gray) }
+        }
+    }
+}
+
+@Composable
+private fun CarteTension(tensions: List<MesureTension>, debut: Long, fin: Long, jours: Int, objectif: com.diabeto.domain.ObjectifTension? = null) {
     val periode = tensions.filter { it.date.ms() >= debut }
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
@@ -253,7 +296,7 @@ private fun CarteTension(tensions: List<MesureTension>, debut: Long, fin: Long, 
                 return@Column
             }
             val derniere = tensions.maxBy { it.date }
-            val cat = ReglesTension.categorie(derniere.systolique, derniere.diastolique)
+            val cat = ReglesTension.categorie(derniere.systolique, derniere.diastolique, objectif = objectif)
             val moy = ReglesTension.moyenne(periode)
             Text(
                 "Dernière : ${derniere.systolique}/${derniere.diastolique} mmHg le ${derniere.date.jour()} (${cat.libelle})" +
@@ -282,7 +325,7 @@ private fun CarteTension(tensions: List<MesureTension>, debut: Long, fin: Long, 
                 fontSize = 12.sp, color = Color.Gray)
             tensions.sortedByDescending { it.date }.take(8).forEach { t ->
                 HorizontalDivider(Modifier.padding(vertical = 6.dp))
-                val c = ReglesTension.categorie(t.systolique, t.diastolique)
+                val c = ReglesTension.categorie(t.systolique, t.diastolique, objectif = objectif)
                 Row {
                     Text("${t.date.jour()} ${t.date.heure()}", Modifier.width(150.dp), fontSize = 13.sp)
                     Text("${t.systolique}/${t.diastolique}", Modifier.width(80.dp), fontWeight = FontWeight.Medium, color = c.couleur())

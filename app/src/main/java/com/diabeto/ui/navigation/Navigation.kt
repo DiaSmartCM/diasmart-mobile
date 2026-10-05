@@ -154,6 +154,12 @@ fun DiabetoNavigation(
                     )
                 }
                 "rendezvous" -> navController.navigate(Routes.rendezVous())
+                "tension" -> {
+                    val pid = resoudreDossierPersonnel(contexteApp)
+                    navController.navigate(
+                        if (pid != null) Routes.glucoseTracking(pid) else Routes.DASHBOARD
+                    )
+                }
                 "predictive" -> {
                     val pid = resoudreDossierPersonnel(contexteApp)
                     navController.navigate(Routes.predictive(pid))

@@ -141,4 +141,36 @@ class NotificationApi @Inject constructor(
             false
         }
     }
+
+    /**
+     * Mesure de tension tres elevee (>= 180/110) : previent le medecin lie et
+     * les soignants de l'etablissement. Renvoie le nombre de soignants prevenus
+     * (0 si aucun ou en cas d'echec).
+     */
+    suspend fun notifyTensionAlerte(systolique: Int, diastolique: Int, dateHeure: String): Int =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val token = auth.currentUser?.getIdToken(false)?.await()?.token ?: return@runCatching 0
+                val body = JSONObject().apply {
+                    put("systolique", systolique)
+                    put("diastolique", diastolique)
+                    put("dateHeure", dateHeure)
+                }.toString()
+                val req = Request.Builder()
+                    .url("$BASE/notify-tension")
+                    .addHeader("Authorization", "Bearer $token")
+                    .post(body.toRequestBody(JSON))
+                    .build()
+                http.newCall(req).execute().use { resp ->
+                    val raw = resp.body?.string().orEmpty()
+                    if (!resp.isSuccessful) {
+                        Log.w(TAG, "notify-tension HTTP ${resp.code} : ${raw.take(120)}")
+                        0
+                    } else JSONObject(raw).optInt("prevenus", 0)
+                }
+            }.getOrElse { e ->
+                Log.w(TAG, "notify-tension failed: ${e.message}")
+                0
+            }
+        }
 }

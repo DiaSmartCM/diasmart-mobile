@@ -45,6 +45,8 @@ data class SharedPatientUiState(
     val glucoseData: List<Map<String, Any?>> = emptyList(),
     val tensionData: List<Map<String, Any?>> = emptyList(),
     val repasData: List<Map<String, Any?>> = emptyList(),
+    val objectifTension: com.diabeto.domain.ObjectifTension? = null,
+    val messageObjectif: String? = null,
     val error: String? = null
 )
 
@@ -52,7 +54,8 @@ data class SharedPatientUiState(
 class SharedPatientDataViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val dataSharingRepository: DataSharingRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val objectifRepository: com.diabeto.data.repository.ObjectifTensionRepository
 ) : ViewModel() {
 
     private val patientUid: String = savedStateHandle.get<String>("patientUid") ?: ""
@@ -72,6 +75,7 @@ class SharedPatientDataViewModel @Inject constructor(
                 val glucose = dataSharingRepository.getPatientGlucoseData(patientUid)
                 val repas = dataSharingRepository.getPatientRepasData(patientUid)
                 val tensions = dataSharingRepository.getPatientTensionData(patientUid)
+                val objectif = objectifRepository.lire(patientUid)
 
                 _uiState.update {
                     it.copy(
@@ -79,6 +83,7 @@ class SharedPatientDataViewModel @Inject constructor(
                         patientProfile = profile,
                         glucoseData = glucose,
                         tensionData = tensions,
+                        objectifTension = objectif,
                         repasData = repas
                     )
                 }
@@ -90,6 +95,21 @@ class SharedPatientDataViewModel @Inject constructor(
 
     fun refresh() {
         loadPatientData()
+    }
+
+    /** Objectif de tension personnel du patient ; null pour revenir a l'objectif general. */
+    fun fixerObjectifTension(systolique: Int?, diastolique: Int?) {
+        viewModelScope.launch {
+            val r = if (systolique == null || diastolique == null) objectifRepository.retirer(patientUid)
+                else objectifRepository.fixer(patientUid, systolique, diastolique)
+            r.onSuccess {
+                _uiState.update { it.copy(
+                    objectifTension = if (systolique != null && diastolique != null)
+                        com.diabeto.domain.ObjectifTension(systolique, diastolique) else null,
+                    messageObjectif = if (systolique != null) "Objectif enregistré : le patient le voit dans son suivi." else "Objectif retiré."
+                ) }
+            }.onFailure { e -> _uiState.update { it.copy(messageObjectif = e.message ?: "Enregistrement impossible") } }
+        }
     }
 
     fun clearError() {
@@ -240,6 +260,9 @@ fun SharedPatientDataContent(
                 item {
                     SectionHeader("Tension", Icons.Default.Favorite, uiState.tensionData.size)
                 }
+                item {
+                    ObjectifTensionCard(uiState.objectifTension, uiState.messageObjectif, viewModel::fixerObjectifTension)
+                }
                 if (uiState.tensionData.isEmpty()) {
                     item { EmptyDataCard("Aucune mesure de tension partagee") }
                 } else {
@@ -369,6 +392,36 @@ private fun SectionHeader(title: String, icon: ImageVector, count: Int) {
                 color = Primary,
                 fontWeight = FontWeight.Medium
             )
+        }
+    }
+}
+
+@Composable
+private fun ObjectifTensionCard(
+    objectif: com.diabeto.domain.ObjectifTension?,
+    message: String?,
+    enregistrer: (Int?, Int?) -> Unit
+) {
+    var sys by remember(objectif) { mutableStateOf(objectif?.systolique?.toString() ?: "130") }
+    var dia by remember(objectif) { mutableStateOf(objectif?.diastolique?.toString() ?: "80") }
+    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp), elevation = CardDefaults.cardElevation(1.dp)) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("Objectif de tension du patient", fontWeight = FontWeight.SemiBold)
+            Text(objectif?.let { "Objectif personnel : ${it.texte}" } ?: "Objectif général : < 130/80 mmHg (ADA 2025 / ESC 2024)",
+                fontSize = 12.sp, color = OnSurfaceVariant)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(sys, { sys = it.filter(Char::isDigit).take(3) }, label = { Text("PAS <") },
+                    singleLine = true, modifier = Modifier.weight(1f),
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
+                OutlinedTextField(dia, { dia = it.filter(Char::isDigit).take(3) }, label = { Text("PAD <") },
+                    singleLine = true, modifier = Modifier.weight(1f),
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = { enregistrer(sys.toIntOrNull() ?: 0, dia.toIntOrNull() ?: 0) }) { Text("Enregistrer") }
+                if (objectif != null) OutlinedButton(onClick = { enregistrer(null, null) }) { Text("Revenir au général") }
+            }
+            message?.let { Text(it, fontSize = 12.sp, color = OnSurfaceVariant) }
         }
     }
 }
