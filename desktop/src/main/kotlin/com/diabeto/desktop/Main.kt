@@ -14,10 +14,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.Card
@@ -34,6 +34,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -80,9 +81,26 @@ fun main() = application {
 private fun AppDiaSmart() {
     val fb = remember { FirebaseRest() }
     var profil by remember { mutableStateOf<Profil?>(null) }
+    // Apres une connexion par email : choisir le mot de passe de ce PC
+    var creerMdpLocal by remember { mutableStateOf(false) }
+    // Session gardee sur ce PC : on l'ouvre avec le mot de passe local
+    var enregistree by remember { mutableStateOf(SessionPc.lire()) }
+    var messageConnexion by remember { mutableStateOf<String?>(null) }
     val p = profil
-    if (p == null) EcranConnexion(fb) { profil = it }
-    else EcranPrincipal(remember(p.uid) { EtatApp(fb, p) }) { fb.deconnexion(); profil = null }
+    val e = enregistree
+    when {
+        p != null && creerMdpLocal -> EcranCreerMotDePasseLocal(fb, p) { creerMdpLocal = false; enregistree = SessionPc.lire() }
+        p != null -> EcranPrincipal(remember(p.uid) { EtatApp(fb, p) }) {
+            // Verrouiller : la session reste sur ce PC, le mot de passe local la rouvre
+            fb.deconnexion(); profil = null; enregistree = SessionPc.lire()
+        }
+        e != null -> EcranDeverrouillage(fb, e,
+            onOuvert = { profil = it },
+            onAutreCompte = { messageConnexion = it; enregistree = null })
+        else -> key(messageConnexion) {
+            EcranConnexion(fb, messageConnexion) { profil = it; creerMdpLocal = true; messageConnexion = null }
+        }
+    }
 }
 
 // ── Donnees partagees par tous les ecrans ────────────────────────────────
@@ -120,6 +138,7 @@ class EtatApp(val fb: FirebaseRest, val profil: Profil) {
             }
             rdv = runCatching { rdvService.demandes(profil.uid) }.getOrDefault(rdv)
             patients = patientsService.patientsSuivis(profil.uid, inscrits)
+            runCatching { SessionPc.retenirEtablissement(etablissement?.nom) }
             dejaCharge = true
         } catch (e: Exception) {
             erreur = e.message ?: "Chargement impossible"
@@ -152,7 +171,7 @@ private fun EcranPrincipal(etat: EtatApp, onDeconnexion: () -> Unit) {
             }
             Spacer(Modifier.weight(1f))
             NavigationRailItem(false, onDeconnexion,
-                icon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, null) }, label = { Text("Quitter", fontSize = 11.sp) })
+                icon = { Icon(Icons.Default.Lock, null) }, label = { Text("Verrouiller", fontSize = 11.sp) })
             Spacer(Modifier.height(12.dp))
         }
         Box(Modifier.fillMaxSize().padding(24.dp)) {

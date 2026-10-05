@@ -100,6 +100,22 @@ class FirebaseRest(
 
     fun deconnexion() { session = null }
 
+    /**
+     * Reprend une session gardee sur ce PC a partir du jeton de reconnexion.
+     * Erreur code 400 : jeton refuse (mot de passe du compte change, compte
+     * supprime...) ; code 0 : pas d'Internet.
+     */
+    suspend fun reprendre(uid: String, email: String, refreshToken: String): Session {
+        session = Session(uid, email, idToken = "", refreshToken = refreshToken, expireA = 0L)
+        try {
+            jetonValide(force = true)
+        } catch (e: Exception) {
+            session = null
+            throw e
+        }
+        return session!!
+    }
+
     /** Le jeton d'acces dure 1 h : on le renouvelle 5 min avant la fin (ou si [force]). */
     suspend fun jetonValide(force: Boolean = false): String {
         val s = session ?: throw ErreurFirebase("Non connecte", 401)
