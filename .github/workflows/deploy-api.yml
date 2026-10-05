@@ -25,7 +25,9 @@ jobs:
         working-directory: website
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      VERCEL_ORG_ID: team_KVLJU7gfGgO04xbIVdTWcN6T
+      # Pas de VERCEL_ORG_ID ici : la CLI exigerait aussi VERCEL_PROJECT_ID.
+      # Le lien (.vercel/project.json) suffit au deploiement.
+      EQUIPE_VERCEL: team_KVLJU7gfGgO04xbIVdTWcN6T
     steps:
       - uses: actions/checkout@v4
 
@@ -39,7 +41,7 @@ jobs:
       - name: Relier au projet diasmart-cm
         run: |
           rm -rf .vercel
-          npx --yes vercel@latest link --yes --project diasmart-cm --scope "$VERCEL_ORG_ID" --token "$VERCEL_TOKEN"
+          npx --yes vercel@latest link --yes --project diasmart-cm --scope "$EQUIPE_VERCEL" --token "$VERCEL_TOKEN"
           cat .vercel/project.json | grep -o '"projectName":"[^"]*"'
 
       - name: Deployer en production
