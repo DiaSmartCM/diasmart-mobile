@@ -52,7 +52,7 @@ private enum class Etape { FORMULAIRE, PROFIL, CODE_EMAIL }
  * de l'email par code a 6 chiffres.
  */
 @Composable
-fun EcranConnexion(fb: FirebaseRest, onConnecte: (Profil) -> Unit) {
+fun EcranConnexion(fb: FirebaseRest, messageInitial: String? = null, onConnecte: (Profil) -> Unit) {
     val compte = remember { ServiceCompte(fb) }
     val limiteConnexion = remember { LimiteurPc("connexion_pc") }
     val limiteCode = remember { LimiteurPc("code_email_pc") }
@@ -68,7 +68,7 @@ fun EcranConnexion(fb: FirebaseRest, onConnecte: (Profil) -> Unit) {
     var accepte by remember { mutableStateOf(false) }
     var code by remember { mutableStateOf("") }
     var erreur by remember { mutableStateOf<String?>(null) }
-    var info by remember { mutableStateOf<String?>(null) }
+    var info by remember { mutableStateOf(messageInitial) }
     var enCours by remember { mutableStateOf(false) }
 
     // Horloge pour le compte a rebours des blocages
