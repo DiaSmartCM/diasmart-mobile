@@ -1,6 +1,8 @@
 package com.diabeto.desktop
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,6 +56,7 @@ import com.diabeto.data.model.MembreEtablissement
 import com.diabeto.data.model.PrioriteSuivi
 import com.diabeto.data.model.RoleEtablissement
 import com.diabeto.domain.CategorieTension
+import com.diabeto.domain.ReglesTension
 import com.diabeto.domain.EvaluationSuivi
 import com.diabeto.domain.ReglesGlycemie
 import kotlinx.datetime.LocalDate
@@ -274,7 +277,7 @@ fun LocalDateTime.heure() = "%02dh%02d".format(hour, minute)
 private fun EcranOutils() {
     var hba1c by remember { mutableStateOf("") }
     var glycemie by remember { mutableStateOf("") }
-    Column(Modifier.widthIn(max = 560.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(Modifier.widthIn(max = 560.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Outils", fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Card { Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("HbA1c → glycémie moyenne estimée (ADAG)", fontWeight = FontWeight.SemiBold)
@@ -291,5 +294,80 @@ private fun EcranOutils() {
                 Text("${ReglesGlycemie.statutGlycemie(v)} · HbA1c équivalente ≈ ${EvaluationSuivi.unChiffre(ReglesGlycemie.hba1cDepuisGlycemieMoyenne(v))} %")
             }
         } }
+        OutilTension()
+        OutilOrthostatique()
     }
+}
+
+private fun entier(s: String) = s.trim().toIntOrNull()
+
+@Composable
+private fun ChampNombre(valeur: String, onChange: (String) -> Unit, libelle: String, modifier: Modifier = Modifier) =
+    OutlinedTextField(valeur, { onChange(it.filter(Char::isDigit).take(3)) }, label = { Text(libelle) }, singleLine = true, modifier = modifier)
+
+/** Tension arterielle : categorie (reperes ADA 2025 / ESC 2024), pression pulsee, PAM. */
+@Composable
+private fun OutilTension() {
+    var pas by remember { mutableStateOf("") }
+    var pad by remember { mutableStateOf("") }
+    var fc by remember { mutableStateOf("") }
+    var age by remember { mutableStateOf("") }
+    Card { Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Tension artérielle (TA)", fontWeight = FontWeight.SemiBold)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ChampNombre(pas, { pas = it }, "PAS (mmHg)", Modifier.weight(1f))
+            ChampNombre(pad, { pad = it }, "PAD (mmHg)", Modifier.weight(1f))
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ChampNombre(fc, { fc = it }, "FC (bpm, facultatif)", Modifier.weight(1f))
+            ChampNombre(age, { age = it }, "Âge (facultatif)", Modifier.weight(1f))
+        }
+        val s = entier(pas); val d = entier(pad)
+        if (s != null && d != null) {
+            if (!ReglesTension.valide(s, d)) {
+                Text("Valeurs à vérifier (la PAS doit être plus haute que la PAD).", color = Color.Gray, fontSize = 13.sp)
+            } else {
+                val c = ReglesTension.categorie(s, d, entier(age))
+                Pastille(c.libelle, c.couleur())
+                val pp = ReglesTension.pressionPulsee(s, d)
+                Text("Pression pulsée : $pp mmHg" + if (ReglesTension.pressionPulseeElevee(s, d)) " (> 60 : rigidité artérielle possible)" else "")
+                Text("Pression artérielle moyenne (PAM) : ${ReglesTension.pam(s, d)} mmHg")
+                entier(fc)?.takeIf { it >= 100 }?.let {
+                    Text("FC $it bpm au repos : tachycardie. Si elle persiste, penser à une neuropathie autonome.", color = Orange, fontSize = 13.sp)
+                }
+            }
+        }
+        Text("Repères : objectif < 130/80 si toléré ; HTA au cabinet ≥ 130/80 (ADA) ou ≥ 140/90 (ESC), à confirmer sur 2 consultations ; " +
+            "automesure ≥ 135/85 ; urgence ≥ 180/110. Objectif assoupli (PAS 130-139) à partir de 65 ans. " +
+            "IEC ou ARA2 à privilégier en cas d'albuminurie. Objectifs individuels fixés par le médecin traitant.",
+            fontSize = 12.sp, color = Color.Gray)
+    } }
+}
+
+/** Hypotension orthostatique : couche puis debout (1 et 3 min). */
+@Composable
+private fun OutilOrthostatique() {
+    var pasC by remember { mutableStateOf("") }
+    var padC by remember { mutableStateOf("") }
+    var pasD by remember { mutableStateOf("") }
+    var padD by remember { mutableStateOf("") }
+    Card { Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Test d'hypotension orthostatique", fontWeight = FontWeight.SemiBold)
+        Text("Mesure couché après 5 min de repos, puis debout à 1 et 3 min : entrez la plus basse.", fontSize = 13.sp, color = Color.Gray)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ChampNombre(pasC, { pasC = it }, "PAS couché", Modifier.weight(1f))
+            ChampNombre(padC, { padC = it }, "PAD couché", Modifier.weight(1f))
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ChampNombre(pasD, { pasD = it }, "PAS debout", Modifier.weight(1f))
+            ChampNombre(padD, { padD = it }, "PAD debout", Modifier.weight(1f))
+        }
+        val sc = entier(pasC); val dc = entier(padC); val sd = entier(pasD); val dd = entier(padD)
+        if (sc != null && dc != null && sd != null && dd != null && ReglesTension.valide(sc, dc) && ReglesTension.valide(sd, dd)) {
+            val baisseS = sc - sd; val baisseD = dc - dd
+            Text("Baisse : PAS $baisseS mmHg, PAD $baisseD mmHg")
+            if (baisseS >= 20 || baisseD >= 10) Pastille("Hypotension orthostatique (baisse PAS ≥ 20 ou PAD ≥ 10)", Rouge)
+            else Pastille("Pas d'hypotension orthostatique", Vert)
+        }
+    } }
 }
