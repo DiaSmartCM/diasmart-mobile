@@ -1,4 +1,4 @@
-const CACHE_NAME = 'diasmart-v2.1.106';
+const CACHE_NAME = 'diasmart-v2.1.107';
 const ASSETS = [
   '/app.html',
   '/manifest.json',
