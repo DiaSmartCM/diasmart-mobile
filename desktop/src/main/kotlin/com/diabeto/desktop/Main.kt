@@ -41,6 +41,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Button
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -91,6 +96,9 @@ private fun AppDiaSmart() {
     var messageConnexion by remember { mutableStateOf<String?>(null) }
     val p = profil
     val e = enregistree
+    Column(Modifier.fillMaxSize()) {
+    BandeauMiseAJour()
+    Box(Modifier.weight(1f)) {
     when {
         p != null && creerMdpLocal -> EcranCreerMotDePasseLocal(fb, p) { creerMdpLocal = false; enregistree = SessionPc.lire() }
         p != null -> EcranPrincipal(remember(p.uid) { EtatApp(fb, p) }) {
@@ -102,6 +110,39 @@ private fun AppDiaSmart() {
             onAutreCompte = { messageConnexion = it; enregistree = null })
         else -> key(messageConnexion) {
             EcranConnexion(fb, messageConnexion) { profil = it; creerMdpLocal = true; messageConnexion = null }
+        }
+    }
+    }
+    }
+}
+
+/** Bandeau en haut : une nouvelle version est disponible -> installation en un clic. */
+@Composable
+private fun BandeauMiseAJour() {
+    var dispo by remember { mutableStateOf<MiseAJour.Disponible?>(null) }
+    var progres by remember { mutableStateOf<Float?>(null) }
+    var erreur by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(Unit) { dispo = MiseAJour.verifier() }
+    val d = dispo ?: return
+    Row(Modifier.fillMaxWidth().background(Indigo).padding(horizontal = 20.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        val texte = when {
+            erreur != null -> erreur!!
+            progres != null -> "Téléchargement de la version ${d.version}… ${((progres ?: 0f) * 100).toInt()} %. DiaSmart va se fermer puis s'installer."
+            else -> "Nouvelle version ${d.version} disponible."
+        }
+        Text(texte, color = Color.White, fontSize = 14.sp, modifier = Modifier.weight(1f))
+        if (progres == null) {
+            Button(onClick = {
+                erreur = null; progres = 0f
+                scope.launch {
+                    try { MiseAJour.installer(d) { progres = it } ; progres = null }
+                    catch (ex: Exception) { progres = null; erreur = ex.message ?: "Mise à jour impossible." }
+                }
+            }, colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Indigo)) {
+                Text(if (erreur != null) "Réessayer" else "Mettre à jour")
+            }
         }
     }
 }
