@@ -11,6 +11,15 @@ plugins {
 val versionDiaSmart: String = Regex("versionName = \"([0-9.]+)\"")
     .find(file("../app/build.gradle.kts").readText())?.groupValues?.get(1) ?: "1.0.0"
 
+// Numero de version embarque (src: diasmart-version.txt) pour la mise a jour automatique
+val ecrireVersion = tasks.register("ecrireVersion") {
+    val dossier = layout.buildDirectory.dir("generated/version")
+    inputs.property("version", versionDiaSmart)
+    outputs.dir(dossier)
+    doLast { dossier.get().file("diasmart-version.txt").asFile.writeText(versionDiaSmart) }
+}
+sourceSets["main"].resources.srcDir(ecrireVersion)
+
 kotlin {
     jvmToolchain(17)
     // Le code commun (regles glycemie, suivi etablissement...) est compile
