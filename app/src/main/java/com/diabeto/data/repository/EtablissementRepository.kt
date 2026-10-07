@@ -70,6 +70,20 @@ class EtablissementRepository @Inject constructor(
         /** Code bien forme (8 caracteres de l'alphabet) : meme regle que firestore.rules. */
         fun codeBienForme(code: String): Boolean = code.length == 8 && code.all { it in ALPHABET }
 
+        /**
+         * Collage d'un message entier (« ... tapez le code : ABCD EFGH ») dans le champ
+         * du code : on ne garde que le code. On prend le premier code bien forme apres
+         * le mot « code », sinon le dernier du texte. Saisie courte : inchangee.
+         */
+        fun codeDepuisCollage(saisie: String): String {
+            if (saisie.length <= 12) return saisie
+            val texte = saisie.uppercase()
+            fun codes(t: String) = Regex("""(?=\b([A-Z0-9]{4}) ?([A-Z0-9]{4})\b)""").findAll(t)
+                .map { it.groupValues[1] + it.groupValues[2] }.filter { codeBienForme(it) }.toList()
+            val apresMotCode = texte.lastIndexOf("CODE").takeIf { it >= 0 }?.let { codes(texte.substring(it)) }.orEmpty()
+            return apresMotCode.firstOrNull() ?: codes(texte).lastOrNull() ?: saisie
+        }
+
         // Limites identiques a website/firestore.rules
         const val NOM_MIN = 2
         const val NOM_MAX = 80

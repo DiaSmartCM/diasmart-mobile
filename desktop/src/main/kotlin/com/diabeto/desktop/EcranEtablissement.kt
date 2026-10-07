@@ -55,7 +55,7 @@ fun EcranEtablissement(etat: EtatApp) {
             Card(Modifier.weight(1f)) {
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("Code patient", fontWeight = FontWeight.SemiBold)
-                    Text(e.codePatient, fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Indigo)
+                    CodeACopier(e.codePatient)
                     Text("À donner à vos patients : dans l'app, carte « Mon centre de santé » sur l'accueil.",
                         fontSize = 13.sp, color = Color.Gray)
                 }
@@ -63,7 +63,7 @@ fun EcranEtablissement(etat: EtatApp) {
             if (aff.role == RoleEtablissement.ADMIN) Card(Modifier.weight(1f)) {
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("Code soignant", fontWeight = FontWeight.SemiBold)
-                    Text(e.codeSoignant, fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Indigo)
+                    CodeACopier(e.codeSoignant)
                     Text("À donner seulement à vos collègues : ils rejoignent l'équipe avec ce code (sur PC ou mobile).",
                         fontSize = 13.sp, color = Color.Gray)
                 }

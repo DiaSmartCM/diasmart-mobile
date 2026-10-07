@@ -10,6 +10,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -571,11 +574,20 @@ private fun ChatMessageBubble(message: Message, isCurrentUser: Boolean) {
         ) {
             Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
                 if (message.contenu.isNotBlank()) {
-                    Text(
-                        text = message.contenu,
-                        color = if (isCurrentUser) Color.White else OnSurface,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    // Appui long : le mot (ex. un code) est surligne, puis « Copier »
+                    CompositionLocalProvider(
+                        LocalTextSelectionColors provides if (isCurrentUser)
+                            TextSelectionColors(Color.White, Color.White.copy(alpha = 0.4f))
+                        else LocalTextSelectionColors.current
+                    ) {
+                        SelectionContainer {
+                            Text(
+                                text = message.contenu,
+                                color = if (isCurrentUser) Color.White else OnSurface,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
                 }
                 if (message.hasAttachment) {
                     if (message.contenu.isNotBlank()) Spacer(Modifier.height(8.dp))

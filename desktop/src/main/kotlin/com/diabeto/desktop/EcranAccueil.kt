@@ -136,9 +136,13 @@ private fun LectureFiche(etat: EtatApp, p: Parcours, f: Fiche, onRetour: () -> U
         }
         message?.let { Text(it, fontSize = 13.sp, color = if (it.startsWith("Envoyé")) Vert else Rouge) }
         Panneau(f.titre, Modifier.widthIn(max = 820.dp).fillMaxWidth()) {
-            f.paragraphes.forEachIndexed { i, para ->
-                if (i > 0) HorizontalDivider(color = Bordure)
-                Text(para, fontSize = 15.sp, lineHeight = 22.sp, color = Color(0xFF22252F), modifier = Modifier.padding(vertical = 4.dp))
+            Copiable {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    f.paragraphes.forEachIndexed { i, para ->
+                        if (i > 0) HorizontalDivider(color = Bordure)
+                        Text(para, fontSize = 15.sp, lineHeight = 22.sp, color = Color(0xFF22252F), modifier = Modifier.padding(vertical = 4.dp))
+                    }
+                }
             }
         }
         Text(AVERTISSEMENT_PARCOURS, fontSize = 12.sp, color = Color.Gray)

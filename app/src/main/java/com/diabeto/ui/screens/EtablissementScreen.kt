@@ -543,7 +543,8 @@ private fun EtabBandeau(titre: String, texte: String) {
 private fun CodeField(value: String, onChange: (String) -> Unit, label: String) {
     OutlinedTextField(
         value = value,
-        onValueChange = { onChange(it.uppercase().take(12)) },
+        // On peut coller tout le message recu : seul le code est garde
+        onValueChange = { onChange(EtablissementRepository.codeDepuisCollage(it).uppercase().take(12)) },
         label = { Text(label) },
         singleLine = true,
         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),

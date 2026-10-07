@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -608,13 +609,15 @@ private fun RollyMessageBubble(
                 color = if (isDark) Primary.copy(alpha = 0.15f) else RollyCardColor,
                 modifier = Modifier.widthIn(max = 300.dp)
             ) {
-                Text(
-                    text = message.contenu,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                    color = if (isDark) PrimaryContainer else Color.White,
-                    fontSize = 14.sp,
-                    lineHeight = 21.sp
-                )
+                SelectionContainer {
+                    Text(
+                        text = message.contenu,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        color = if (isDark) PrimaryContainer else Color.White,
+                        fontSize = 14.sp,
+                        lineHeight = 21.sp
+                    )
+                }
             }
             Spacer(Modifier.width(8.dp))
             Surface(
@@ -644,10 +647,13 @@ private fun RollyMessageBubble(
                 if (message.enChargement) {
                     LoadingDots()
                 } else {
-                    RichMarkdownText(
-                        text = message.contenu,
-                        textColor = if (isDark) Color.White.copy(alpha = 0.9f) else TextPrimary
-                    )
+                    // Appui long sur la reponse : surligner puis « Copier »
+                    SelectionContainer {
+                        RichMarkdownText(
+                            text = message.contenu,
+                            textColor = if (isDark) Color.White.copy(alpha = 0.9f) else TextPrimary
+                        )
+                    }
                     // v2.1.49 : bouton TTS pour ecouter ROLLY a voix haute.
                     // Utilise Android TextToSpeech natif (gratuit, 100% local
                     // pour FR/EN/AR si voix installee).

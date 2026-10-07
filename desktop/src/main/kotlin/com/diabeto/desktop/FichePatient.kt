@@ -130,20 +130,23 @@ fun FichePatient(
         Box(Modifier.weight(1f)) {
             val defil = remember(onglet) { androidx.compose.foundation.ScrollState(0) }
             Column(Modifier.fillMaxSize().defilementClavier(defil), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                when (onglet) {
-                    OngletFiche.VUE -> VueGenerale(p, d, jours) { jours = it }
-                    OngletFiche.CARNET -> Carnet(d.mesures, d.repas, jours) { jours = it }
-                    OngletFiche.JOUR -> CourbesQuotidiennes(d, jour, joursDispo, ::changerJour)
-                    OngletFiche.PROFIL -> ProfilGlycemique(d.mesures, jours) { jours = it }
-                    OngletFiche.TENSION -> {
-                        CarteObjectifTension(etat, p.uid, d.objectif) { d.objectif = it }
-                        CarteTension(d.tensions, jours, d.objectif) { jours = it }
+                // Tous les textes de la fiche sont copiables (souris puis Ctrl+C, ou clic droit > Copier)
+                Copiable { Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    when (onglet) {
+                        OngletFiche.VUE -> VueGenerale(p, d, jours) { jours = it }
+                        OngletFiche.CARNET -> Carnet(d.mesures, d.repas, jours) { jours = it }
+                        OngletFiche.JOUR -> CourbesQuotidiennes(d, jour, joursDispo, ::changerJour)
+                        OngletFiche.PROFIL -> ProfilGlycemique(d.mesures, jours) { jours = it }
+                        OngletFiche.TENSION -> {
+                            CarteObjectifTension(etat, p.uid, d.objectif) { d.objectif = it }
+                            CarteTension(d.tensions, jours, d.objectif) { jours = it }
+                        }
+                        OngletFiche.CLINIQUE -> ContexteClinique(d)
+                        OngletFiche.JOURNAL -> JournalDeVie(d.journal, d.chargement)
+                        OngletFiche.ALERTES -> Alertes(p, d, jours) { jours = it }
                     }
-                    OngletFiche.CLINIQUE -> ContexteClinique(d)
-                    OngletFiche.JOURNAL -> JournalDeVie(d.journal, d.chargement)
-                    OngletFiche.ALERTES -> Alertes(p, d, jours) { jours = it }
-                }
-                Text("Aide au suivi, pas un diagnostic : la décision reste au soignant.", fontSize = 12.sp, color = Color.Gray)
+                    Text("Aide au suivi, pas un diagnostic : la décision reste au soignant.", fontSize = 12.sp, color = Color.Gray)
+                } }
             }
         }
     }
@@ -159,6 +162,7 @@ private fun EnteteFiche(etat: EtatApp, p: PatientSuivi, d: DonneesFiche, onRetou
     Row(Modifier.fillMaxWidth().background(Color.White).border(1.dp, Bordure).padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         IconButton(onClick = onRetour) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Retour à la liste") }
+        Avatar(p.nomAffiche, p.identite.photo, 52)
         Column(Modifier.weight(1f)) {
             Text(p.nomAffiche, fontSize = 22.sp, fontWeight = FontWeight.Bold)
             Text(listOfNotNull(
@@ -171,7 +175,7 @@ private fun EnteteFiche(etat: EtatApp, p: PatientSuivi, d: DonneesFiche, onRetou
         }
         if (d.chargement) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
         Badge("HbA1c " + (r.hba1c?.let { EvaluationSuivi.unChiffre(it.valeur) + " %" } ?: "—"), IndigoFonce)
-        Badge("Priorité : " + r.priorite.libelle.lowercase(), r.priorite.couleur())
+        Badge("Priorité : " + r.priorite.texte().lowercase(), r.priorite.couleur())
         OutlinedButton(onClick = onEcrire) { Text("Message") }
         OutlinedButton(onClick = { scope.launch { etat.basculerArchive(p.uid) } }) {
             Text(if (archive) "Désarchiver" else "Archiver")

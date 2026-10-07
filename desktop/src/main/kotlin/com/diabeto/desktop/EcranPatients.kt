@@ -7,9 +7,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -82,8 +84,28 @@ fun EcranPatients(
     else ListePatients(etat, onOuvrir, onEcrire)
 }
 
-// Nom, Prenom, Suivi, Sexe, Age, Type, Priorite, Derniere mesure, Moy. 30 j, HbA1c, TA 30 j, Dossier, Carnet, Actions
-private val colonnes = listOf(1.1f, 1.1f, 0.45f, 0.65f, 0.45f, 1.05f, 0.95f, 0.95f, 0.8f, 0.65f, 0.65f, 0.75f, 0.7f, 1.1f)
+// Colonnes du tableau : titre et part de la largeur. Les boutons ont une largeur fixe (dp) pour ne jamais passer a la ligne.
+private val colonnes = listOf(
+    "Nom" to 1.2f, "Prénom" to 1.1f, "Suivi" to 0.5f, "Sexe" to 0.6f, "Âge" to 0.45f, "Type de diabète" to 1.0f,
+    "Priorité" to 1.5f, "Dernière mesure" to 1.0f, "Moy. 30 j" to 0.85f, "HbA1c" to 0.65f, "TA 30 j" to 0.7f,
+    "Dossier" to 0f, "Carnet" to 0f, "" to 0f
+)
+private val largeursBoutons = mapOf(11 to 84, 12 to 80, 13 to 170)
+
+/** Largeur de la colonne [i], la meme pour l'en-tete et chaque ligne, pour que tout reste aligne. */
+private fun RowScope.cellule(i: Int): Modifier =
+    (largeursBoutons[i]?.let { Modifier.width(it.dp) } ?: Modifier.weight(colonnes[i].second)).padding(end = 8.dp)
+
+@Composable
+private fun EnteteTableauPatients() {
+    Row(Modifier.fillMaxWidth().background(EnteteTableau).padding(horizontal = 14.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        colonnes.forEachIndexed { i, (titre, _) ->
+            Text(titre, cellule(i), fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = Color(0xFF4A4F63),
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
 
 @Composable
 private fun ListePatients(etat: EtatApp, onOuvrir: (String?, OngletFiche) -> Unit, onEcrire: (String) -> Unit) {
@@ -128,8 +150,7 @@ private fun ListePatients(etat: EtatApp, onOuvrir: (String?, OngletFiche) -> Uni
         }
         Espace(8)
         Column(Modifier.weight(1f).fillMaxWidth().background(Color.White).border(1.dp, Bordure)) {
-            EnteteLigne(listOf("Nom", "Prénom", "Suivi", "Sexe", "Âge", "Type de diabète", "Priorité", "Dernière mesure",
-                "Moy. 30 j", "HbA1c", "TA 30 j", "Dossier", "Carnet", "").zip(colonnes))
+            EnteteTableauPatients()
             if (visibles.isEmpty()) Text(
                 when {
                     lignes.isEmpty() -> "Aucun patient suivi. Cliquez sur « Ajouter un patient » pour savoir comment en ajouter."
@@ -173,30 +194,30 @@ private fun LignePatient(
     val c = p.clinique
     val aujourdhui = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
     val recent = r.derniereMesure?.let { System.currentTimeMillis() - it.ms() < 7 * 86_400_000L } == true
-    Row(Modifier.fillMaxWidth().clickable(onClick = onDossier).padding(horizontal = 14.dp, vertical = 8.dp),
+    Row(Modifier.fillMaxWidth().heightIn(min = 46.dp).clickable(onClick = onDossier).padding(horizontal = 14.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically) {
-        Text(p.nomFamille.ifBlank { "—" }, Modifier.weight(colonnes[0]), fontWeight = FontWeight.Medium, color = Indigo,
+        Text(p.nomFamille.ifBlank { "—" }, cellule(0), fontWeight = FontWeight.Medium, color = Indigo,
             maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(p.prenom.ifBlank { "—" }, Modifier.weight(colonnes[1]), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Box(Modifier.weight(colonnes[2])) {
+        Text(p.prenom.ifBlank { "—" }, cellule(1), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Box(cellule(2)) {
             Box(Modifier.size(10.dp).then(if (recent) Modifier.background(Vert) else Modifier.border(1.dp, Color.Gray)))
         }
-        Text(c?.sexeTexte ?: "—", Modifier.weight(colonnes[3]), fontSize = 13.sp)
-        Text(ageEn(c?.dateNaissance, aujourdhui)?.toString() ?: "—", Modifier.weight(colonnes[4]), fontSize = 13.sp)
-        Box(Modifier.weight(colonnes[5])) { BadgeType(c?.typeDiabete ?: "") }
-        Box(Modifier.weight(colonnes[6])) {
+        Text(c?.sexeTexte ?: "—", cellule(3), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(ageEn(c?.dateNaissance, aujourdhui)?.toString() ?: "—", cellule(4), fontSize = 13.sp, maxLines = 1)
+        Box(cellule(5)) { BadgeType(c?.typeDiabete ?: "") }
+        Box(cellule(6)) {
             Infobulle(r.raisons.joinToString("\n").ifBlank { "Rien de particulier" }) { PointPriorite(r.priorite) }
         }
-        Text(r.derniereMesure?.jour() ?: "—", Modifier.weight(colonnes[7]), fontSize = 13.sp,
+        Text(r.derniereMesure?.jour() ?: "—", cellule(7), fontSize = 13.sp, maxLines = 1,
             color = if (r.perduDeVue) Orange else Color.Unspecified)
-        Text(r.moyenne30j?.let { "${it.toInt()} mg/dL" } ?: "—", Modifier.weight(colonnes[8]), fontSize = 13.sp,
+        Text(r.moyenne30j?.let { "${it.toInt()} mg/dL" } ?: "—", cellule(8), fontSize = 13.sp, maxLines = 1,
             color = r.moyenne30j?.let { couleurGlycemie(it) } ?: Color.Unspecified)
-        Text(r.hba1c?.let { "${EvaluationSuivi.unChiffre(it.valeur)} %" } ?: "—", Modifier.weight(colonnes[9]), fontSize = 13.sp)
-        Text(r.tensionMoyenne30j?.let { "${it.first}/${it.second}" } ?: "—", Modifier.weight(colonnes[10]), fontSize = 13.sp,
+        Text(r.hba1c?.let { "${EvaluationSuivi.unChiffre(it.valeur)} %" } ?: "—", cellule(9), fontSize = 13.sp, maxLines = 1)
+        Text(r.tensionMoyenne30j?.let { "${it.first}/${it.second}" } ?: "—", cellule(10), fontSize = 13.sp, maxLines = 1,
             color = r.tensionMoyenne30j?.let { ReglesTension.categorie(it.first, it.second).couleur() } ?: Color.Unspecified)
-        Box(Modifier.weight(colonnes[11])) { MiniBouton("Dossier", onClic = onDossier) }
-        Box(Modifier.weight(colonnes[12])) { MiniBouton("Carnet", onClic = onCarnet) }
-        Row(Modifier.weight(colonnes[13]), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Box(cellule(11)) { MiniBouton("Dossier", onClic = onDossier) }
+        Box(cellule(12)) { MiniBouton("Carnet", onClic = onCarnet) }
+        Row(cellule(13), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
             Infobulle("Écrire au patient") { MiniBouton("Message", onClic = onEcrire) }
             Infobulle(if (archive) "Remettre dans la liste" else "Ranger dans « Archivés » (les données restent)") {
                 MiniBouton(if (archive) "Restaurer" else "Archiver", Color.Gray, onArchiver)
@@ -231,8 +252,7 @@ private fun DialogueAjout(etat: EtatApp, onFermer: () -> Unit) {
                 val e = etat.etablissement
                 if (e != null) {
                     Text("1. Donnez au patient le code patient de ${e.nom} :", fontSize = 14.sp)
-                    Text(e.codePatient, Modifier.background(EnteteTableau).padding(horizontal = 16.dp, vertical = 8.dp),
-                        fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Indigo)
+                    CodeACopier(e.codePatient)
                     Text("Dans son application DiaSmart, il ouvre « Mon centre de santé », entre ce code et accepte le partage. " +
                         "Il apparaît alors ici pour toute l'équipe.", fontSize = 13.sp, color = Color.DarkGray)
                     Text("2. Ou bien le patient vous partage ses données directement depuis l'onglet « Médecin » " +
