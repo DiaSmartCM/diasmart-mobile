@@ -237,7 +237,7 @@ private fun EcranPrincipal(etat: EtatApp, onDeconnexion: () -> Unit) {
                 ElementMenu(o.libelle, o.icone(), onglet == o, pastille) { onglet = o; if (o == Onglet.PATIENTS) patientOuvert = null }
             }
             Spacer(Modifier.weight(1f))
-            ElementMenu("Verrouiller", Icons.Default.Lock, false, onDeconnexion)
+            ElementMenu("Verrouiller", Icons.Default.Lock, false, onClic = onDeconnexion)
             Spacer(Modifier.height(12.dp))
         }
         Box(Modifier.fillMaxSize().padding(24.dp)) {
