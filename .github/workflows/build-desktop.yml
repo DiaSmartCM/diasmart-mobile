@@ -65,10 +65,15 @@ jobs:
           $env:DIASMART_BANNER = (Resolve-Path desktop/installeur/windows/banner.bmp).Path
           $env:DIASMART_DIALOG = (Resolve-Path desktop/installeur/windows/dialog.bmp).Path
           $v = (Select-String -Path app/build.gradle.kts -Pattern 'versionName = "([0-9.]+)"').Matches[0].Groups[1].Value
+          # packageMsi part des .jar : on construit l'application (dossier) a part
+          gradle -p desktop createDistributable
+          if ($LASTEXITCODE -ne 0) { throw "createDistributable a echoue" }
+          $app = Get-ChildItem -Path desktop/build/compose/binaries/main/app -Directory | Select-Object -First 1
+          if (-not $app) { throw "Application introuvable" }
           $sortie = "desktop/build/msi-logo"
           if (Test-Path $sortie) { Remove-Item -Recurse -Force $sortie }
           & "$env:JAVA_HOME/bin/jpackage" --type msi `
-            --app-image desktop/build/compose/binaries/main/app/DiaSmart `
+            --app-image $app.FullName `
             --dest $sortie --name DiaSmart --app-version $v --vendor DiaSmart `
             --description "DiaSmart pour PC : espace etablissement de sante" `
             --win-menu --win-menu-group DiaSmart --win-shortcut --win-dir-chooser `
