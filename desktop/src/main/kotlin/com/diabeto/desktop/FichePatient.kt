@@ -130,20 +130,23 @@ fun FichePatient(
         Box(Modifier.weight(1f)) {
             val defil = remember(onglet) { androidx.compose.foundation.ScrollState(0) }
             Column(Modifier.fillMaxSize().defilementClavier(defil), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                when (onglet) {
-                    OngletFiche.VUE -> VueGenerale(p, d, jours) { jours = it }
-                    OngletFiche.CARNET -> Carnet(d.mesures, d.repas, jours) { jours = it }
-                    OngletFiche.JOUR -> CourbesQuotidiennes(d, jour, joursDispo, ::changerJour)
-                    OngletFiche.PROFIL -> ProfilGlycemique(d.mesures, jours) { jours = it }
-                    OngletFiche.TENSION -> {
-                        CarteObjectifTension(etat, p.uid, d.objectif) { d.objectif = it }
-                        CarteTension(d.tensions, jours, d.objectif) { jours = it }
+                // Tous les textes de la fiche sont copiables (souris puis Ctrl+C, ou clic droit > Copier)
+                Copiable { Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    when (onglet) {
+                        OngletFiche.VUE -> VueGenerale(p, d, jours) { jours = it }
+                        OngletFiche.CARNET -> Carnet(d.mesures, d.repas, jours) { jours = it }
+                        OngletFiche.JOUR -> CourbesQuotidiennes(d, jour, joursDispo, ::changerJour)
+                        OngletFiche.PROFIL -> ProfilGlycemique(d.mesures, jours) { jours = it }
+                        OngletFiche.TENSION -> {
+                            CarteObjectifTension(etat, p.uid, d.objectif) { d.objectif = it }
+                            CarteTension(d.tensions, jours, d.objectif) { jours = it }
+                        }
+                        OngletFiche.CLINIQUE -> ContexteClinique(d)
+                        OngletFiche.JOURNAL -> JournalDeVie(d.journal, d.chargement)
+                        OngletFiche.ALERTES -> Alertes(p, d, jours) { jours = it }
                     }
-                    OngletFiche.CLINIQUE -> ContexteClinique(d)
-                    OngletFiche.JOURNAL -> JournalDeVie(d.journal, d.chargement)
-                    OngletFiche.ALERTES -> Alertes(p, d, jours) { jours = it }
-                }
-                Text("Aide au suivi, pas un diagnostic : la décision reste au soignant.", fontSize = 12.sp, color = Color.Gray)
+                    Text("Aide au suivi, pas un diagnostic : la décision reste au soignant.", fontSize = 12.sp, color = Color.Gray)
+                } }
             }
         }
     }

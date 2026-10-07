@@ -48,7 +48,9 @@ compose.desktop {
             // java.net.http (appels Firebase) et java.prefs (compteur d'essais)
             // ne sont pas dans le runtime minimal
             modules("java.net.http", "java.prefs")
+            // Logo DiaSmart : raccourci du bureau, menu Demarrer, barre des taches, Dock
             windows {
+                iconFile.set(project.file("icones/diasmart.ico"))
                 menu = true
                 shortcut = true
                 dirChooser = true
@@ -56,6 +58,8 @@ compose.desktop {
                 // Fixe : permet a une nouvelle version de remplacer l'ancienne
                 upgradeUuid = "5d0f3c7e-9a41-4b8e-a6a2-3f1d2c9b7e10"
             }
+            macOS { iconFile.set(project.file("icones/diasmart.icns")) }
+            linux { iconFile.set(project.file("icones/diasmart.png")) }
         }
     }
 }

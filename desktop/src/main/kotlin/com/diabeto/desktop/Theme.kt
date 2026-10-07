@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonColors
@@ -33,6 +34,11 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,6 +46,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.platform.PlatformLocalization
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -47,6 +54,7 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -188,7 +196,7 @@ fun Modifier.defilementClavier(etat: ScrollState, focusAuDepart: Boolean = true)
             awaitPointerEventScope {
                 while (true) {
                     val e = awaitPointerEvent(PointerEventPass.Initial)
-                    if (e.type == PointerEventType.Press) runCatching { focus.requestFocus() }
+                    if (e.type == PointerEventType.Press && !e.buttons.isSecondaryPressed) runCatching { focus.requestFocus() }
                 }
             }
         }
@@ -217,7 +225,7 @@ fun Modifier.defilementClavier(etat: LazyListState, focusAuDepart: Boolean = tru
             awaitPointerEventScope {
                 while (true) {
                     val e = awaitPointerEvent(PointerEventPass.Initial)
-                    if (e.type == PointerEventType.Press) runCatching { focus.requestFocus() }
+                    if (e.type == PointerEventType.Press && !e.buttons.isSecondaryPressed) runCatching { focus.requestFocus() }
                 }
             }
         }
@@ -232,6 +240,38 @@ fun Modifier.defilementClavier(etat: LazyListState, focusAuDepart: Boolean = tru
             }
         }
         .focusable()
+}
+
+/**
+ * Textes copiables : on selectionne a la souris (glisser, ou double-clic sur un mot)
+ * puis Ctrl+C, ou clic droit > Copier. A placer a l'interieur de la colonne qui
+ * defile, pour garder le defilement au clavier.
+ */
+@Composable
+fun Copiable(contenu: @Composable () -> Unit) = SelectionContainer(content = contenu)
+
+/** Code bien visible (selectionnable) + bouton « Copier » vers le presse-papiers. */
+@Composable
+fun CodeACopier(code: String, modifier: Modifier = Modifier) {
+    val pressePapiers = LocalClipboardManager.current
+    var copie by remember(code) { mutableStateOf(false) }
+    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Copiable {
+            Text(code, Modifier.background(EnteteTableau).padding(horizontal = 14.dp, vertical = 6.dp),
+                fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Indigo)
+        }
+        OutlinedButton(onClick = { pressePapiers.setText(AnnotatedString(code)); copie = true }) {
+            Text(if (copie) "Copié ✓" else "Copier")
+        }
+    }
+}
+
+/** Menus clic droit (textes et champs de saisie) en francais. */
+object MenusFrancais : PlatformLocalization {
+    override val copy = "Copier"
+    override val cut = "Couper"
+    override val paste = "Coller"
+    override val selectAll = "Tout sélectionner"
 }
 
 val PaddingBouton = PaddingValues(horizontal = 16.dp, vertical = 8.dp)

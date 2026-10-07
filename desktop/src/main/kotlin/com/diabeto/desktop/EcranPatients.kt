@@ -231,8 +231,7 @@ private fun DialogueAjout(etat: EtatApp, onFermer: () -> Unit) {
                 val e = etat.etablissement
                 if (e != null) {
                     Text("1. Donnez au patient le code patient de ${e.nom} :", fontSize = 14.sp)
-                    Text(e.codePatient, Modifier.background(EnteteTableau).padding(horizontal = 16.dp, vertical = 8.dp),
-                        fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Indigo)
+                    CodeACopier(e.codePatient)
                     Text("Dans son application DiaSmart, il ouvre « Mon centre de santé », entre ce code et accepte le partage. " +
                         "Il apparaît alors ici pour toute l'équipe.", fontSize = 13.sp, color = Color.DarkGray)
                     Text("2. Ou bien le patient vous partage ses données directement depuis l'onglet « Médecin » " +

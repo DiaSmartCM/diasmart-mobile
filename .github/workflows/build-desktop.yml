@@ -50,6 +50,34 @@ jobs:
       - name: Construire l'installeur
         run: gradle -p desktop ${{ matrix.tache }} --stacktrace
 
+      # Windows : refait le .msi avec le logo DiaSmart dans les pages de l'installeur
+      # (modele WiX desktop/installeur/windows/main.wxs). Si cette etape echoue,
+      # on garde le .msi standard construit juste avant.
+      - name: Installeur avec le logo
+        if: ${{ matrix.format == 'msi' }}
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $candle = Get-ChildItem -Path desktop/build -Recurse -Filter candle.exe | Select-Object -First 1
+          if (-not $candle) { throw "WiX introuvable" }
+          $env:PATH = "$($candle.DirectoryName);$env:PATH"
+          $env:DIASMART_BANNER = (Resolve-Path desktop/installeur/windows/banner.bmp).Path
+          $env:DIASMART_DIALOG = (Resolve-Path desktop/installeur/windows/dialog.bmp).Path
+          $v = (Select-String -Path app/build.gradle.kts -Pattern 'versionName = "([0-9.]+)"').Matches[0].Groups[1].Value
+          $sortie = "desktop/build/msi-logo"
+          if (Test-Path $sortie) { Remove-Item -Recurse -Force $sortie }
+          & "$env:JAVA_HOME/bin/jpackage" --type msi `
+            --app-image desktop/build/compose/binaries/main/app/DiaSmart `
+            --dest $sortie --name DiaSmart --app-version $v --vendor DiaSmart `
+            --description "DiaSmart pour PC : espace etablissement de sante" `
+            --win-menu --win-menu-group DiaSmart --win-shortcut --win-dir-chooser `
+            --win-upgrade-uuid 5d0f3c7e-9a41-4b8e-a6a2-3f1d2c9b7e10 `
+            --resource-dir desktop/installeur/windows
+          if ($LASTEXITCODE -ne 0) { throw "jpackage a echoue ($LASTEXITCODE)" }
+          Copy-Item "$sortie/DiaSmart-$v.msi" "desktop/build/compose/binaries/main/msi/DiaSmart-$v.msi" -Force
+          Write-Host "Installeur avec logo : DiaSmart-$v.msi"
+
       - name: Retrouver le fichier
         id: fichier
         shell: bash

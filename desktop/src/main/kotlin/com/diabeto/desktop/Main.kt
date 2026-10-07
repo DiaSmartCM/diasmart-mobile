@@ -51,6 +51,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
+import androidx.compose.ui.platform.LocalLocalization
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.diabeto.data.model.Affiliation
@@ -78,7 +82,9 @@ fun main() = application {
         state = rememberWindowState(width = 1280.dp, height = 820.dp)
     ) {
         MaterialTheme(colorScheme = CouleursDiaSmart, shapes = FormesCarrees) {
-            Surface(Modifier.fillMaxSize(), color = Fond) { AppDiaSmart() }
+            CompositionLocalProvider(LocalLocalization provides MenusFrancais) {
+                Surface(Modifier.fillMaxSize(), color = Fond) { AppDiaSmart() }
+            }
         }
     }
 }
@@ -359,23 +365,43 @@ fun LocalDateTime.heure() = "%02dh%02d".format(hour, minute)
 private fun EcranOutils() {
     var hba1c by remember { mutableStateOf("") }
     var glycemie by remember { mutableStateOf("") }
-    Column(Modifier.widthIn(max = 600.dp).fillMaxHeight().defilementClavier(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(Modifier.widthIn(max = 1200.dp).fillMaxHeight().defilementClavier(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Outils", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        Panneau("HbA1c → glycémie moyenne estimée (ADAG)", Modifier.fillMaxWidth()) { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(hba1c, { hba1c = it.take(5) }, label = { Text("HbA1c (%)") }, singleLine = true)
-            hba1c.replace(',', '.').toDoubleOrNull()?.takeIf { it in 3.0..20.0 }?.let { v ->
-                Text("≈ ${ReglesGlycemie.glycemieMoyenneDepuisHbA1c(v).toInt()} mg/dL · " +
-                    ReglesGlycemie.interpreterHbA1c(v).getDisplayName())
+        // Glycemie : HbA1c et statut cote a cote
+        DeuxColonnes {
+            Panneau("HbA1c → glycémie moyenne estimée (ADAG)", it) {
+                OutlinedTextField(hba1c, { hba1c = it.take(5) }, label = { Text("HbA1c (%)") }, singleLine = true,
+                    modifier = Modifier.fillMaxWidth())
+                hba1c.replace(',', '.').toDoubleOrNull()?.takeIf { it in 3.0..20.0 }?.let { v ->
+                    Copiable {
+                        Text("≈ ${ReglesGlycemie.glycemieMoyenneDepuisHbA1c(v).toInt()} mg/dL · " +
+                            ReglesGlycemie.interpreterHbA1c(v).getDisplayName())
+                    }
+                }
             }
-        } }
-        Panneau("Statut d'une glycémie", Modifier.fillMaxWidth()) { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(glycemie, { glycemie = it.take(5) }, label = { Text("Glycémie (mg/dL)") }, singleLine = true)
-            glycemie.replace(',', '.').toDoubleOrNull()?.takeIf { it in 10.0..800.0 }?.let { v ->
-                Text("${ReglesGlycemie.statutGlycemie(v)} · HbA1c équivalente ≈ ${EvaluationSuivi.unChiffre(ReglesGlycemie.hba1cDepuisGlycemieMoyenne(v))} %")
+            Panneau("Statut d'une glycémie", it) {
+                OutlinedTextField(glycemie, { glycemie = it.take(5) }, label = { Text("Glycémie (mg/dL)") }, singleLine = true,
+                    modifier = Modifier.fillMaxWidth())
+                glycemie.replace(',', '.').toDoubleOrNull()?.takeIf { it in 10.0..800.0 }?.let { v ->
+                    Copiable {
+                        Text("${ReglesGlycemie.statutGlycemie(v)} · HbA1c équivalente ≈ ${EvaluationSuivi.unChiffre(ReglesGlycemie.hba1cDepuisGlycemieMoyenne(v))} %")
+                    }
+                }
             }
-        } }
-        OutilTension()
-        OutilOrthostatique()
+        }
+        // Tension : mesure et test couche-debout cote a cote
+        DeuxColonnes {
+            OutilTension(it)
+            OutilOrthostatique(it)
+        }
+    }
+}
+
+/** Deux panneaux de meme hauteur, cote a cote (le modifier donne a chacun sa moitie). */
+@Composable
+private fun DeuxColonnes(contenu: @Composable RowScope.(Modifier) -> Unit) {
+    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        contenu(Modifier.weight(1f).fillMaxHeight())
     }
 }
 
@@ -387,12 +413,12 @@ private fun ChampNombre(valeur: String, onChange: (String) -> Unit, libelle: Str
 
 /** Tension arterielle : categorie (reperes ADA 2025 / ESC 2024), pression pulsee, PAM. */
 @Composable
-private fun OutilTension() {
+private fun OutilTension(modifier: Modifier) {
     var pas by remember { mutableStateOf("") }
     var pad by remember { mutableStateOf("") }
     var fc by remember { mutableStateOf("") }
     var age by remember { mutableStateOf("") }
-    Panneau("Tension artérielle (TA)", Modifier.fillMaxWidth()) { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Panneau("Tension artérielle (TA)", modifier) { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ChampNombre(pas, { pas = it }, "PAS (mmHg)", Modifier.weight(1f))
             ChampNombre(pad, { pad = it }, "PAD (mmHg)", Modifier.weight(1f))
@@ -425,12 +451,12 @@ private fun OutilTension() {
 
 /** Hypotension orthostatique : couche puis debout (1 et 3 min). */
 @Composable
-private fun OutilOrthostatique() {
+private fun OutilOrthostatique(modifier: Modifier) {
     var pasC by remember { mutableStateOf("") }
     var padC by remember { mutableStateOf("") }
     var pasD by remember { mutableStateOf("") }
     var padD by remember { mutableStateOf("") }
-    Panneau("Test d'hypotension orthostatique", Modifier.fillMaxWidth()) { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Panneau("Test d'hypotension orthostatique", modifier) { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Mesure couché après 5 min de repos, puis debout à 1 et 3 min : entrez la plus basse.", fontSize = 13.sp, color = Color.Gray)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ChampNombre(pasC, { pasC = it }, "PAS couché", Modifier.weight(1f))

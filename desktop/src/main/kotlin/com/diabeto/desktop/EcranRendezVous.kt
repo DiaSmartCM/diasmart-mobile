@@ -92,10 +92,12 @@ fun EcranRendezVous(etat: EtatApp) {
                             Text((r.date?.heure() ?: "") + " · ${r.dureeMinutes} min", fontSize = 12.sp, color = Color.Gray)
                         }
                         Column(Modifier.weight(1f)) {
-                            Text(r.patientNom.ifBlank { "Patient" }, fontWeight = FontWeight.Medium)
-                            Text(listOf(libelleType(r.type), r.motif).filter { it.isNotBlank() }.joinToString(" · "),
-                                fontSize = 13.sp, color = Color.DarkGray)
-                            if (r.reponse.isNotBlank()) Text("Votre réponse : ${r.reponse}", fontSize = 12.sp, color = Color.Gray)
+                            Copiable { Column {
+                                Text(r.patientNom.ifBlank { "Patient" }, fontWeight = FontWeight.Medium)
+                                Text(listOf(libelleType(r.type), r.motif).filter { it.isNotBlank() }.joinToString(" · "),
+                                    fontSize = 13.sp, color = Color.DarkGray)
+                                if (r.reponse.isNotBlank()) Text("Votre réponse : ${r.reponse}", fontSize = 12.sp, color = Color.Gray)
+                            } }
                         }
                         when (r.statut) {
                             "PENDING" -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

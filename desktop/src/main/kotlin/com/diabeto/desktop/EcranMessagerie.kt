@@ -31,6 +31,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
+import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -277,7 +280,11 @@ private fun Bulle(m: MessageChat, moi: Boolean) {
                 Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
                     Text(m.envoyeurNom.ifBlank { if (moi) "Moi" else "Patient" }, fontSize = 12.sp, fontWeight = FontWeight.Bold,
                         color = if (moi) Color.White else IndigoFonce)
-                    if (m.contenu.isNotBlank()) Text(m.contenu, fontSize = 14.sp, color = if (moi) Color.White else Color(0xFF22252F))
+                    // Texte copiable (code, conseil...) : selection visible meme sur fond indigo
+                    if (m.contenu.isNotBlank()) CompositionLocalProvider(LocalTextSelectionColors provides
+                        if (moi) TextSelectionColors(Color.White, Color.White.copy(alpha = 0.4f)) else LocalTextSelectionColors.current) {
+                        Copiable { Text(m.contenu, fontSize = 14.sp, color = if (moi) Color.White else Color(0xFF22252F)) }
+                    }
                     if (m.pieceJointeNom.isNotBlank()) Text("📎 ${m.pieceJointeNom}",
                         Modifier.clickable(enabled = m.pieceJointeUrl.startsWith("https://")) {
                             runCatching { java.awt.Desktop.getDesktop().browse(java.net.URI.create(m.pieceJointeUrl)) }
