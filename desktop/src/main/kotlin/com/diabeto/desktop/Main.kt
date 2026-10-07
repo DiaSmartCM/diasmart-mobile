@@ -1,8 +1,11 @@
 package com.diabeto.desktop
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,25 +17,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationRail
-import androidx.compose.material3.NavigationRailItem
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -45,7 +44,6 @@ import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Button
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -79,8 +77,8 @@ fun main() = application {
         icon = painterResource("icone.png"),
         state = rememberWindowState(width = 1280.dp, height = 820.dp)
     ) {
-        MaterialTheme(colorScheme = lightColorScheme(primary = Indigo, secondary = Indigo)) {
-            Surface(Modifier.fillMaxSize(), color = Color(0xFFF6F7FB)) { AppDiaSmart() }
+        MaterialTheme(colorScheme = CouleursDiaSmart, shapes = FormesCarrees) {
+            Surface(Modifier.fillMaxSize(), color = Fond) { AppDiaSmart() }
         }
     }
 }
@@ -153,6 +151,7 @@ class EtatApp(val fb: FirebaseRest, val profil: Profil) {
     val etabService = ServiceEtablissement(fb)
     val patientsService = ServicePatients(fb)
     val rdvService = ServiceRdv(fb)
+    val messagerieService = ServiceMessagerie(fb)
 
     var chargement by mutableStateOf(false)
     var erreur by mutableStateOf<String?>(null)
@@ -162,6 +161,23 @@ class EtatApp(val fb: FirebaseRest, val profil: Profil) {
     var patients by mutableStateOf<List<PatientSuivi>>(emptyList())
     var rdv by mutableStateOf<List<DemandeRdv>>(emptyList())
     var dejaCharge by mutableStateOf(false)
+    /** Patients que ce soignant a ranges dans « Archivés ». */
+    var archives by mutableStateOf<Set<String>>(emptySet())
+    var erreurArchive by mutableStateOf<String?>(null)
+    var conversations by mutableStateOf<List<Conversation>>(emptyList())
+
+    /** Archive ou desarchive un patient (enregistre dans le compte du soignant). */
+    suspend fun basculerArchive(uid: String) {
+        val avant = archives
+        val apres = if (uid in avant) avant - uid else avant + uid
+        archives = apres
+        try {
+            patientsService.enregistrerArchives(profil.uid, apres)
+        } catch (e: Exception) {
+            archives = avant
+            erreurArchive = e.message ?: "Enregistrement impossible."
+        }
+    }
 
     /** Membre de l'equipe d'un etablissement (admin ou soignant), sinon null. */
     val equipe: Affiliation? get() = affiliation?.takeIf { it.role != RoleEtablissement.PATIENT }
@@ -181,6 +197,8 @@ class EtatApp(val fb: FirebaseRest, val profil: Profil) {
                 etablissement = null; membres = emptyList(); emptyList()
             }
             rdv = runCatching { rdvService.demandes(profil.uid) }.getOrDefault(rdv)
+            archives = patientsService.archives(profil.uid)
+            conversations = runCatching { messagerieService.conversations(profil.uid) }.getOrDefault(conversations)
             patients = patientsService.patientsSuivis(profil.uid, inscrits)
             runCatching { SessionPc.retenirEtablissement(etablissement?.nom) }
             dejaCharge = true
@@ -195,35 +213,41 @@ class EtatApp(val fb: FirebaseRest, val profil: Profil) {
 // ── Ecran principal ──────────────────────────────────────────────────────
 
 enum class Onglet(val libelle: String) {
-    TABLEAU("Tableau de bord"), PATIENTS("Patients"), RDV("Rendez-vous"), ETABLISSEMENT("Établissement"), OUTILS("Outils")
+    ACCUEIL("Accueil"), TABLEAU("Tableau de bord"), PATIENTS("Mes patients"), MESSAGES("Messagerie"),
+    RDV("Rendez-vous"), ETABLISSEMENT("Établissement"), OUTILS("Outils")
 }
 
 @Composable
 private fun EcranPrincipal(etat: EtatApp, onDeconnexion: () -> Unit) {
-    var onglet by remember { mutableStateOf(Onglet.TABLEAU) }
+    var onglet by remember { mutableStateOf(Onglet.ACCUEIL) }
     var patientOuvert by remember { mutableStateOf<String?>(null) }
+    var ongletFiche by remember { mutableStateOf(OngletFiche.VUE) }
+    var ecrireA by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(etat) { etat.charger() }
+    fun ouvrirPatient(uid: String?, o: OngletFiche = OngletFiche.VUE) { patientOuvert = uid; ongletFiche = o; onglet = Onglet.PATIENTS }
+    fun ecrire(uid: String) { ecrireA = uid; onglet = Onglet.MESSAGES }
 
     Row(Modifier.fillMaxSize()) {
-        NavigationRail {
-            Spacer(Modifier.height(12.dp))
-            Text("DiaSmart", fontWeight = FontWeight.Bold, color = Indigo, fontSize = 14.sp)
-            Spacer(Modifier.height(12.dp))
+        // Barre laterale indigo (couleurs DiaSmart), elements a angle droit
+        Column(Modifier.width(150.dp).fillMaxHeight().background(Indigo)) {
+            Text("DiaSmart", Modifier.padding(horizontal = 16.dp, vertical = 18.dp),
+                fontWeight = FontWeight.Bold, color = Color.White, fontSize = 18.sp)
             Onglet.entries.forEach { o ->
-                NavigationRailItem(onglet == o, { onglet = o; if (o == Onglet.PATIENTS) patientOuvert = null },
-                    icon = { Icon(o.icone(), null) }, label = { Text(o.libelle, fontSize = 11.sp) })
+                val pastille = if (o == Onglet.MESSAGES) etat.conversations.sumOf { it.nonLusMedecin } else 0
+                ElementMenu(o.libelle, o.icone(), onglet == o, pastille) { onglet = o; if (o == Onglet.PATIENTS) patientOuvert = null }
             }
             Spacer(Modifier.weight(1f))
-            NavigationRailItem(false, onDeconnexion,
-                icon = { Icon(Icons.Default.Lock, null) }, label = { Text("Verrouiller", fontSize = 11.sp) })
+            ElementMenu("Verrouiller", Icons.Default.Lock, false, onClic = onDeconnexion)
             Spacer(Modifier.height(12.dp))
         }
         Box(Modifier.fillMaxSize().padding(24.dp)) {
             when (onglet) {
+                Onglet.ACCUEIL -> EcranAccueil(etat) { onglet = it; if (it == Onglet.PATIENTS) patientOuvert = null }
                 Onglet.TABLEAU -> EcranTableauDeBord(etat,
-                    onOuvrirPatient = { patientOuvert = it; onglet = Onglet.PATIENTS },
+                    onOuvrirPatient = { ouvrirPatient(it) },
                     onAller = { onglet = it })
-                Onglet.PATIENTS -> EcranPatients(etat, patientOuvert) { patientOuvert = it }
+                Onglet.PATIENTS -> EcranPatients(etat, patientOuvert, ongletFiche, { uid, o -> ouvrirPatient(uid, o) }, ::ecrire)
+                Onglet.MESSAGES -> EcranMessagerie(etat, ecrireA, onOuvert = { ecrireA = null }, onDossier = { ouvrirPatient(it) })
                 Onglet.RDV -> EcranRendezVous(etat)
                 Onglet.ETABLISSEMENT -> EcranEtablissement(etat)
                 Onglet.OUTILS -> EcranOutils()
@@ -232,9 +256,24 @@ private fun EcranPrincipal(etat: EtatApp, onDeconnexion: () -> Unit) {
     }
 }
 
+@Composable
+private fun ElementMenu(libelle: String, icone: ImageVector, actif: Boolean, pastille: Int = 0, onClic: () -> Unit) {
+    Row(Modifier.fillMaxWidth().background(if (actif) IndigoFonce else Color.Transparent).clickable(onClick = onClic),
+        verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.width(4.dp).height(44.dp).background(if (actif) Color.White else Color.Transparent))
+        Icon(icone, null, Modifier.padding(start = 10.dp).size(20.dp), tint = Color.White)
+        Text(libelle, Modifier.weight(1f).padding(start = 8.dp, end = 4.dp), color = Color.White, fontSize = 12.sp,
+            fontWeight = if (actif) FontWeight.Bold else FontWeight.Normal)
+        if (pastille > 0) Text(pastille.toString(), Modifier.padding(end = 8.dp).background(Rouge).padding(horizontal = 5.dp, vertical = 1.dp),
+            color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
 private fun Onglet.icone() = when (this) {
-    Onglet.TABLEAU -> Icons.Default.Home
+    Onglet.ACCUEIL -> Icons.Default.Home
+    Onglet.TABLEAU -> Icons.AutoMirrored.Filled.List
     Onglet.PATIENTS -> Icons.Default.Person
+    Onglet.MESSAGES -> Icons.Default.Email
     Onglet.RDV -> Icons.Default.DateRange
     Onglet.ETABLISSEMENT -> Icons.Default.Place
     Onglet.OUTILS -> Icons.Default.Build
@@ -264,10 +303,12 @@ fun Message(texte: String, onReessayer: () -> Unit) {
 
 @Composable
 fun Compteur(titre: String, valeur: String, modifier: Modifier = Modifier, couleur: Color = Indigo) {
-    Card(modifier) {
-        Column(Modifier.padding(horizontal = 20.dp, vertical = 14.dp)) {
-            Text(valeur, fontSize = 26.sp, fontWeight = FontWeight.Bold, color = couleur)
-            Text(titre, fontSize = 13.sp, color = Color.Gray)
+    // Case blanche avec un liseré de couleur a gauche
+    Row(modifier.background(Color.White).border(1.dp, Bordure)) {
+        Box(Modifier.width(4.dp).height(72.dp).background(couleur))
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Text(valeur, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = couleur)
+            Text(titre.uppercase(), fontSize = 11.sp, color = Color.Gray, letterSpacing = 0.4.sp)
         }
     }
 }
@@ -275,13 +316,13 @@ fun Compteur(titre: String, valeur: String, modifier: Modifier = Modifier, coule
 @Composable
 fun Pastille(texte: String, couleur: Color) {
     Text(texte, fontSize = 12.sp, color = couleur, fontWeight = FontWeight.Medium,
-        modifier = Modifier.background(couleur.copy(alpha = 0.12f), RoundedCornerShape(50)).padding(horizontal = 10.dp, vertical = 3.dp))
+        modifier = Modifier.background(couleur.copy(alpha = 0.12f)).border(1.dp, couleur.copy(alpha = 0.5f)).padding(horizontal = 10.dp, vertical = 3.dp))
 }
 
 @Composable
 fun PointPriorite(p: PrioriteSuivi, modifier: Modifier = Modifier) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(10.dp).background(p.couleur(), RoundedCornerShape(50)))
+        Box(Modifier.size(10.dp).background(p.couleur()))
         Spacer(Modifier.width(6.dp))
         Text(p.libelle, fontSize = 13.sp)
     }
@@ -318,18 +359,16 @@ fun LocalDateTime.heure() = "%02dh%02d".format(hour, minute)
 private fun EcranOutils() {
     var hba1c by remember { mutableStateOf("") }
     var glycemie by remember { mutableStateOf("") }
-    Column(Modifier.widthIn(max = 560.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(Modifier.widthIn(max = 600.dp).fillMaxHeight().defilementClavier(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Outils", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        Card { Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("HbA1c → glycémie moyenne estimée (ADAG)", fontWeight = FontWeight.SemiBold)
+        Panneau("HbA1c → glycémie moyenne estimée (ADAG)", Modifier.fillMaxWidth()) { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(hba1c, { hba1c = it.take(5) }, label = { Text("HbA1c (%)") }, singleLine = true)
             hba1c.replace(',', '.').toDoubleOrNull()?.takeIf { it in 3.0..20.0 }?.let { v ->
                 Text("≈ ${ReglesGlycemie.glycemieMoyenneDepuisHbA1c(v).toInt()} mg/dL · " +
                     ReglesGlycemie.interpreterHbA1c(v).getDisplayName())
             }
         } }
-        Card { Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Statut d'une glycémie", fontWeight = FontWeight.SemiBold)
+        Panneau("Statut d'une glycémie", Modifier.fillMaxWidth()) { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(glycemie, { glycemie = it.take(5) }, label = { Text("Glycémie (mg/dL)") }, singleLine = true)
             glycemie.replace(',', '.').toDoubleOrNull()?.takeIf { it in 10.0..800.0 }?.let { v ->
                 Text("${ReglesGlycemie.statutGlycemie(v)} · HbA1c équivalente ≈ ${EvaluationSuivi.unChiffre(ReglesGlycemie.hba1cDepuisGlycemieMoyenne(v))} %")
@@ -353,8 +392,7 @@ private fun OutilTension() {
     var pad by remember { mutableStateOf("") }
     var fc by remember { mutableStateOf("") }
     var age by remember { mutableStateOf("") }
-    Card { Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Tension artérielle (TA)", fontWeight = FontWeight.SemiBold)
+    Panneau("Tension artérielle (TA)", Modifier.fillMaxWidth()) { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ChampNombre(pas, { pas = it }, "PAS (mmHg)", Modifier.weight(1f))
             ChampNombre(pad, { pad = it }, "PAD (mmHg)", Modifier.weight(1f))
@@ -392,8 +430,7 @@ private fun OutilOrthostatique() {
     var padC by remember { mutableStateOf("") }
     var pasD by remember { mutableStateOf("") }
     var padD by remember { mutableStateOf("") }
-    Card { Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Test d'hypotension orthostatique", fontWeight = FontWeight.SemiBold)
+    Panneau("Test d'hypotension orthostatique", Modifier.fillMaxWidth()) { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Mesure couché après 5 min de repos, puis debout à 1 et 3 min : entrez la plus basse.", fontSize = 13.sp, color = Color.Gray)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ChampNombre(pasC, { pasC = it }, "PAS couché", Modifier.weight(1f))

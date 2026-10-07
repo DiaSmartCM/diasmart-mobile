@@ -10,11 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -49,7 +46,7 @@ fun EcranEtablissement(etat: EtatApp) {
     val e = etat.etablissement
     if (aff == null || e == null) { SansEtablissement(etat); return }
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(Modifier.fillMaxSize().defilementClavier(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(e.nom, fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Text(listOf(e.ville, if (aff.role == RoleEtablissement.ADMIN) "Vous êtes administrateur" else "Vous êtes soignant")
             .filter { it.isNotBlank() }.joinToString(" · "), color = Color.Gray)
@@ -116,7 +113,7 @@ private fun SansEtablissement(etat: EtatApp) {
         }
     }
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(Modifier.fillMaxSize().defilementClavier(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Établissement", fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Text("Votre structure (hôpital, centre de santé, cabinet) n'a qu'un seul espace DiaSmart. " +
             "Le premier soignant le crée et devient administrateur ; les autres le rejoignent avec le code soignant.",

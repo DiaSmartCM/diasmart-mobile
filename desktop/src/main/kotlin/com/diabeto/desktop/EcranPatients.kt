@@ -1,37 +1,33 @@
 package com.diabeto.desktop
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -40,19 +36,41 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.diabeto.data.model.PrioriteSuivi
 import com.diabeto.domain.EvaluationSuivi
-import com.diabeto.domain.MesureHbA1c
-import com.diabeto.domain.MesureTension
 import com.diabeto.domain.ReglesTension
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
-private enum class Filtre(val libelle: String) { TOUS("Tous"), A_RISQUE("À revoir en priorité"), PERDUS("Perdus de vue") }
+/** Onglets de « Mes patients ». Archives : masques des autres onglets, pour ce soignant seulement. */
+private enum class Filtre(val libelle: String) {
+    TOUS("Tous"), SUIVIS("Suivis"), A_RISQUE("À revoir en priorité"), PERDUS("Perdus de vue"), ARCHIVES("Archivés")
+}
+
+private fun Filtre.garde(p: PatientSuivi, archives: Set<String>): Boolean {
+    val archive = p.uid in archives
+    return when (this) {
+        Filtre.TOUS -> !archive
+        Filtre.SUIVIS -> !archive && !p.resultat.perduDeVue && p.resultat.derniereMesure != null
+        Filtre.A_RISQUE -> !archive && p.resultat.priorite == PrioriteSuivi.HAUTE
+        Filtre.PERDUS -> !archive && p.resultat.perduDeVue
+        Filtre.ARCHIVES -> archive
+    }
+}
 
 @Composable
-fun EcranPatients(etat: EtatApp, patientOuvert: String?, onOuvrir: (String?) -> Unit) {
+fun EcranPatients(
+    etat: EtatApp,
+    patientOuvert: String?,
+    ongletFiche: OngletFiche,
+    onOuvrir: (String?, OngletFiche) -> Unit,
+    onEcrire: (String) -> Unit
+) {
     val scope = rememberCoroutineScope()
     if (!etat.dejaCharge) {
         if (etat.erreur != null) Message(etat.erreur!!) { scope.launch { etat.charger() } }
@@ -60,285 +78,172 @@ fun EcranPatients(etat: EtatApp, patientOuvert: String?, onOuvrir: (String?) -> 
         return
     }
     val ouvert = etat.patients.firstOrNull { it.uid == patientOuvert }
-    if (ouvert != null) FichePatient(etat, ouvert) { onOuvrir(null) }
-    else ListePatients(etat, onOuvrir)
+    if (ouvert != null) FichePatient(etat, ouvert, ongletFiche, onRetour = { onOuvrir(null, OngletFiche.VUE) }, onEcrire = { onEcrire(ouvert.uid) })
+    else ListePatients(etat, onOuvrir, onEcrire)
 }
 
-private val colonnes = listOf(0.18f, 0.13f, 0.11f, 0.10f, 0.08f, 0.09f, 0.09f, 0.22f)
+// Nom, Prenom, Suivi, Sexe, Age, Type, Priorite, Derniere mesure, Moy. 30 j, HbA1c, TA 30 j, Dossier, Carnet, Actions
+private val colonnes = listOf(1.1f, 1.1f, 0.45f, 0.65f, 0.45f, 1.05f, 0.95f, 0.95f, 0.8f, 0.65f, 0.65f, 0.75f, 0.7f, 1.1f)
 
 @Composable
-private fun ListePatients(etat: EtatApp, onOuvrir: (String) -> Unit) {
+private fun ListePatients(etat: EtatApp, onOuvrir: (String?, OngletFiche) -> Unit, onEcrire: (String) -> Unit) {
     val scope = rememberCoroutineScope()
     var filtre by remember { mutableStateOf(Filtre.TOUS) }
     var recherche by remember { mutableStateOf("") }
+    var ajout by remember { mutableStateOf(false) }
+    val liste = rememberLazyListState()
     val lignes = etat.patients
+    val archives = etat.archives
+    val texte = recherche.trim()
     val visibles = lignes.filter {
-        when (filtre) {
-            Filtre.TOUS -> true
-            Filtre.A_RISQUE -> it.resultat.priorite == PrioriteSuivi.HAUTE
-            Filtre.PERDUS -> it.resultat.perduDeVue
-        } && (recherche.isBlank() || it.nom.contains(recherche.trim(), ignoreCase = true))
+        filtre.garde(it, archives) && (texte.isEmpty() || listOf(it.nom, it.prenom, it.nomFamille, it.identite.email)
+            .any { champ -> champ.contains(texte, ignoreCase = true) })
     }
+    val actifs = lignes.filter { it.uid !in archives }
     Column(Modifier.fillMaxSize()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("Patients suivis", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                Text("Patients liés à vous directement et patients de votre établissement. Cliquez sur un patient pour voir sa courbe.",
-                    color = Color.Gray, fontSize = 13.sp)
-            }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Mes patients", Modifier.weight(1f), fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color(0xFF3A3F55))
             OutlinedButton(onClick = { scope.launch { etat.charger() } }, enabled = !etat.chargement) {
                 Icon(Icons.Default.Refresh, null); Spacer(Modifier.width(6.dp))
                 Text(if (etat.chargement) "Mise à jour…" else "Actualiser")
             }
         }
-        Spacer(Modifier.height(12.dp))
+        Espace(8)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Filtre.entries.forEach { f -> FilterChip(filtre == f, { filtre = f }, label = { Text(f.libelle) }) }
-            Spacer(Modifier.weight(1f))
-            OutlinedTextField(recherche, { recherche = it.take(40) }, placeholder = { Text("Rechercher un nom") },
+            Button(onClick = { ajout = true }) {
+                Icon(Icons.Default.Add, null); Spacer(Modifier.width(6.dp)); Text("Ajouter un patient")
+            }
+            Badge("Total patients : ${actifs.size}", IndigoFonce)
+            Badge("Patients prioritaires : ${actifs.count { it.resultat.priorite == PrioriteSuivi.HAUTE }}", Rouge)
+            Badge("Perdus de vue : ${actifs.count { it.resultat.perduDeVue }}", Orange)
+            Badge("Archivés : ${lignes.count { it.uid in archives }}", Color.Gray)
+        }
+        Espace(12)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(Modifier.weight(1f)) {
+                Onglets(Filtre.entries, filtre, { f -> "${f.libelle} (${lignes.count { f.garde(it, archives) }})" }) { filtre = it }
+            }
+            OutlinedTextField(recherche, { recherche = it.take(40) }, placeholder = { Text("Nom, prénom ou email") },
                 leadingIcon = { Icon(Icons.Default.Search, null) }, singleLine = true, modifier = Modifier.widthIn(max = 280.dp))
         }
-        Spacer(Modifier.height(8.dp))
-        Card(Modifier.fillMaxSize()) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
-                listOf("Patient", "Priorité", "Dernière mesure", "Moyenne 30 j", "HbA1c", "Tension 30 j", "Suivi par", "Pourquoi").forEachIndexed { i, t ->
-                    Text(t, Modifier.weight(colonnes[i]), fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = Color.Gray)
-                }
-            }
-            HorizontalDivider()
+        Espace(8)
+        Column(Modifier.weight(1f).fillMaxWidth().background(Color.White).border(1.dp, Bordure)) {
+            EnteteLigne(listOf("Nom", "Prénom", "Suivi", "Sexe", "Âge", "Type de diabète", "Priorité", "Dernière mesure",
+                "Moy. 30 j", "HbA1c", "TA 30 j", "Dossier", "Carnet", "").zip(colonnes))
             if (visibles.isEmpty()) Text(
-                if (lignes.isEmpty()) "Aucun patient suivi. Donnez le code patient de l'établissement à vos patients, " +
-                    "ou acceptez leurs demandes de partage dans l'app mobile." else "Aucun patient dans ce filtre.",
+                when {
+                    lignes.isEmpty() -> "Aucun patient suivi. Cliquez sur « Ajouter un patient » pour savoir comment en ajouter."
+                    filtre == Filtre.ARCHIVES -> "Aucun patient archivé. « Archiver » range un patient ici sans supprimer ses données."
+                    else -> "Aucun patient dans cet onglet."
+                },
                 Modifier.padding(20.dp), color = Color.Gray
             )
-            LazyColumn {
+            LazyColumn(Modifier.weight(1f).fillMaxWidth().defilementClavier(liste), state = liste) {
                 items(visibles, key = { it.uid }) { p ->
-                    LignePatient(p) { onOuvrir(p.uid) }
-                    HorizontalDivider()
+                    LignePatient(p, p.uid in archives,
+                        onDossier = { onOuvrir(p.uid, OngletFiche.VUE) },
+                        onCarnet = { onOuvrir(p.uid, OngletFiche.CARNET) },
+                        onEcrire = { onEcrire(p.uid) },
+                        onArchiver = { scope.launch { etat.basculerArchive(p.uid) } })
+                    HorizontalDivider(color = Bordure)
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun LignePatient(p: PatientSuivi, onClic: () -> Unit) {
-    val r = p.resultat
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClic).padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically) {
-        Text(p.nom.ifBlank { "Patient" }, Modifier.weight(colonnes[0]), fontWeight = FontWeight.Medium)
-        PointPriorite(r.priorite, Modifier.weight(colonnes[1]))
-        Text(r.derniereMesure?.jour() ?: "—", Modifier.weight(colonnes[2]), fontSize = 13.sp,
-            color = if (r.perduDeVue) Orange else Color.Unspecified)
-        Text(r.moyenne30j?.let { "${it.toInt()} mg/dL" } ?: "—", Modifier.weight(colonnes[3]), fontSize = 13.sp)
-        Text(r.hba1c?.let { "${EvaluationSuivi.unChiffre(it.valeur)} %" + if (it.estimee) " (est.)" else "" } ?: "—",
-            Modifier.weight(colonnes[4]), fontSize = 13.sp)
-        Text(r.tensionMoyenne30j?.let { "${it.first}/${it.second}" } ?: "—", Modifier.weight(colonnes[5]), fontSize = 13.sp,
-            color = r.tensionMoyenne30j?.let { ReglesTension.categorie(it.first, it.second).couleur() } ?: Color.Unspecified)
-        Text(p.origine.libelle, Modifier.weight(colonnes[6]), fontSize = 12.sp, color = Color.Gray)
-        Text(r.raisons.joinToString(" · ").ifBlank { "—" }, Modifier.weight(colonnes[7]), fontSize = 12.sp, color = Color.DarkGray)
-    }
-}
-
-// ── Fiche d'un patient : courbe, HbA1c, dernieres mesures ───────────────
-
-private val periodes = listOf(7, 30, 90)
-
-@Composable
-private fun FichePatient(etat: EtatApp, p: PatientSuivi, onRetour: () -> Unit) {
-    var jours by remember { mutableIntStateOf(30) }
-    var mesures by remember(p.uid) { mutableStateOf(p.mesures) }
-    var hba1c by remember(p.uid) { mutableStateOf<List<MesureHbA1c>>(emptyList()) }
-    var tensions by remember(p.uid) { mutableStateOf(p.tensions) }
-    var objectif by remember(p.uid) { mutableStateOf<com.diabeto.domain.ObjectifTension?>(null) }
-    var chargement by remember(p.uid) { mutableStateOf(true) }
-    LaunchedEffect(p.uid) {
-        // Plus de mesures que la liste (3 mois) pour la courbe 90 jours
-        val toutes = etat.patientsService.mesures(p.uid, 600)
-        if (toutes.isNotEmpty()) mesures = toutes
-        hba1c = etat.patientsService.hba1c(p.uid)
-        etat.patientsService.tensions(p.uid, 300).takeIf { it.isNotEmpty() }?.let { tensions = it }
-        objectif = etat.patientsService.objectifTension(p.uid)
-        chargement = false
-    }
-    val r = p.resultat
-    val fin = System.currentTimeMillis()
-    val debut = fin - jours * 86_400_000L
-    val periode = mesures.filter { it.date.ms() >= debut }
-
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Espace(6)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onRetour) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Retour") }
-            Column(Modifier.weight(1f)) {
-                Text(p.nom.ifBlank { "Patient" }, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                Text(p.origine.libelle, color = Color.Gray, fontSize = 13.sp)
-            }
-            Pastille(r.priorite.libelle, r.priorite.couleur())
+            Text("${visibles.size} patient(s) correspondant aux filtres", Modifier.weight(1f), fontSize = 12.sp, color = Color.DarkGray)
+            Text("Suivi : carré vert = mesure ces 7 derniers jours · Survolez la priorité pour voir pourquoi · " +
+                "Aide au suivi, pas un diagnostic.", fontSize = 12.sp, color = Color.Gray)
         }
-        if (r.raisons.isNotEmpty()) Text(r.raisons.joinToString(" · "), fontSize = 13.sp, color = Color.DarkGray)
-
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Compteur("Dernière mesure", r.derniereMesure?.jour() ?: "—", Modifier.weight(1f),
-                if (r.perduDeVue) Orange else Indigo)
-            Compteur("Moyenne 30 j", r.moyenne30j?.let { "${it.toInt()} mg/dL" } ?: "—", Modifier.weight(1f))
-            Compteur("Mesures 30 j", r.nbMesures30j.toString(), Modifier.weight(1f))
-            Compteur("Hypos 30 j (< 70)", r.nbHypos30j.toString(), Modifier.weight(1f), if (r.nbHypos30j > 0) Rouge else Indigo)
-            Compteur("HbA1c", r.hba1c?.let { EvaluationSuivi.unChiffre(it.valeur) + " %" } ?: "—", Modifier.weight(1f))
-        }
-
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Courbe de glycémie", Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
-                    if (chargement) CircularProgressIndicator(Modifier.height(18.dp).width(18.dp), strokeWidth = 2.dp)
-                    periodes.forEach { j -> FilterChip(jours == j, { jours = j }, label = { Text("$j jours") }) }
-                }
-                if (periode.isNotEmpty()) {
-                    val dansCible = periode.count { it.valeur in 70.0..180.0 }
-                    Text("${periode.size} mesures · moyenne ${periode.map { it.valeur }.average().toInt()} mg/dL · " +
-                        "${dansCible * 100 / periode.size} % dans la cible 70-180", fontSize = 13.sp, color = Color.Gray)
-                }
-                Spacer(Modifier.height(8.dp))
-                if (periode.isEmpty()) Text("Aucune mesure sur cette période.", color = Color.Gray, fontSize = 13.sp,
-                    modifier = Modifier.padding(vertical = 24.dp))
-                else CourbeGlycemie(periode.map { PointCourbe(it.date.ms(), it.valeur) }, debut, fin,
-                    Modifier.fillMaxWidth().height(260.dp))
-            }
-        }
-
-        CarteObjectifTension(etat, p.uid, objectif) { objectif = it }
-        CarteTension(tensions, debut, fin, jours, objectif)
-
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Card(Modifier.weight(1f)) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("HbA1c", fontWeight = FontWeight.SemiBold)
-                    if (hba1c.isEmpty()) Text(if (chargement) "Chargement…" else "Aucune HbA1c enregistrée.",
-                        color = Color.Gray, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
-                    hba1c.sortedByDescending { it.date }.forEach { h ->
-                        HorizontalDivider(Modifier.padding(vertical = 6.dp))
-                        Row {
-                            Text(h.date.texte(), Modifier.width(110.dp), fontSize = 13.sp)
-                            Text("${EvaluationSuivi.unChiffre(h.valeur)} %", Modifier.width(70.dp), fontWeight = FontWeight.Medium)
-                            if (h.estimee) Text("estimée", fontSize = 12.sp, color = Color.Gray)
-                        }
-                    }
-                }
-            }
-            Card(Modifier.weight(1f)) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("Dernières mesures", fontWeight = FontWeight.SemiBold)
-                    if (mesures.isEmpty()) Text("Aucune mesure.", color = Color.Gray, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
-                    mesures.sortedByDescending { it.date }.take(15).forEach { m ->
-                        HorizontalDivider(Modifier.padding(vertical = 6.dp))
-                        Row {
-                            Text("${m.date.jour()} ${m.date.heure()}", Modifier.width(150.dp), fontSize = 13.sp)
-                            Text("${m.valeur.toInt()} mg/dL", Modifier.width(90.dp), fontWeight = FontWeight.Medium,
-                                color = couleurGlycemie(m.valeur))
-                            Text(m.contexte.lowercase().replace('_', ' '), fontSize = 12.sp, color = Color.Gray)
-                        }
-                    }
-                }
-            }
-        }
-        Text("Aide au suivi, pas un diagnostic : la décision reste au soignant.", fontSize = 12.sp, color = Color.Gray)
+    }
+    if (ajout) DialogueAjout(etat) { ajout = false }
+    etat.erreurArchive?.let { e ->
+        AlertDialog(onDismissRequest = { etat.erreurArchive = null }, confirmButton = {
+            TextButton(onClick = { etat.erreurArchive = null }) { Text("OK") }
+        }, title = { Text("Archivage impossible") }, text = { Text(e) })
     }
 }
 
 @Composable
-private fun CarteObjectifTension(
-    etat: EtatApp, uid: String, objectif: com.diabeto.domain.ObjectifTension?,
-    onChange: (com.diabeto.domain.ObjectifTension?) -> Unit
+private fun LignePatient(
+    p: PatientSuivi, archive: Boolean,
+    onDossier: () -> Unit, onCarnet: () -> Unit, onEcrire: () -> Unit, onArchiver: () -> Unit
 ) {
-    var sys by remember(objectif) { mutableStateOf(objectif?.systolique?.toString() ?: "130") }
-    var dia by remember(objectif) { mutableStateOf(objectif?.diastolique?.toString() ?: "80") }
-    var message by remember(uid) { mutableStateOf<String?>(null) }
-    val portee = rememberCoroutineScope()
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Objectif de tension du patient", fontWeight = FontWeight.SemiBold)
-            Text(objectif?.let { "Objectif personnel : ${it.texte}" + (if (it.auteurNom.isNotBlank()) " (fixé par ${it.auteurNom})" else "") }
-                ?: "Objectif général : < 130/80 mmHg (ADA 2025 / ESC 2024)", fontSize = 13.sp, color = Color.Gray)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(sys, { sys = it.filter(Char::isDigit).take(3) }, label = { Text("PAS <") }, singleLine = true, modifier = Modifier.width(110.dp))
-                OutlinedTextField(dia, { dia = it.filter(Char::isDigit).take(3) }, label = { Text("PAD <") }, singleLine = true, modifier = Modifier.width(110.dp))
-                androidx.compose.material3.Button(onClick = {
-                    val s = sys.toIntOrNull() ?: 0; val d = dia.toIntOrNull() ?: 0
-                    portee.launch {
-                        message = runCatching {
-                            etat.patientsService.fixerObjectifTension(uid, s, d, etat.profil)
-                            onChange(com.diabeto.domain.ObjectifTension(s, d, etat.profil.nomComplet))
-                            "Objectif enregistré : le patient le voit dans son suivi."
-                        }.getOrElse { it.message ?: "Enregistrement impossible" }
-                    }
-                }) { Text("Enregistrer") }
-                if (objectif != null) OutlinedButton(onClick = {
-                    portee.launch {
-                        message = runCatching {
-                            etat.patientsService.retirerObjectifTension(uid); onChange(null); "Objectif retiré."
-                        }.getOrElse { it.message ?: "Suppression impossible" }
-                    }
-                }) { Text("Revenir au général") }
+    val r = p.resultat
+    val c = p.clinique
+    val aujourdhui = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+    val recent = r.derniereMesure?.let { System.currentTimeMillis() - it.ms() < 7 * 86_400_000L } == true
+    Row(Modifier.fillMaxWidth().clickable(onClick = onDossier).padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        Text(p.nomFamille.ifBlank { "—" }, Modifier.weight(colonnes[0]), fontWeight = FontWeight.Medium, color = Indigo,
+            maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(p.prenom.ifBlank { "—" }, Modifier.weight(colonnes[1]), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Box(Modifier.weight(colonnes[2])) {
+            Box(Modifier.size(10.dp).then(if (recent) Modifier.background(Vert) else Modifier.border(1.dp, Color.Gray)))
+        }
+        Text(c?.sexeTexte ?: "—", Modifier.weight(colonnes[3]), fontSize = 13.sp)
+        Text(ageEn(c?.dateNaissance, aujourdhui)?.toString() ?: "—", Modifier.weight(colonnes[4]), fontSize = 13.sp)
+        Box(Modifier.weight(colonnes[5])) { BadgeType(c?.typeDiabete ?: "") }
+        Box(Modifier.weight(colonnes[6])) {
+            Infobulle(r.raisons.joinToString("\n").ifBlank { "Rien de particulier" }) { PointPriorite(r.priorite) }
+        }
+        Text(r.derniereMesure?.jour() ?: "—", Modifier.weight(colonnes[7]), fontSize = 13.sp,
+            color = if (r.perduDeVue) Orange else Color.Unspecified)
+        Text(r.moyenne30j?.let { "${it.toInt()} mg/dL" } ?: "—", Modifier.weight(colonnes[8]), fontSize = 13.sp,
+            color = r.moyenne30j?.let { couleurGlycemie(it) } ?: Color.Unspecified)
+        Text(r.hba1c?.let { "${EvaluationSuivi.unChiffre(it.valeur)} %" } ?: "—", Modifier.weight(colonnes[9]), fontSize = 13.sp)
+        Text(r.tensionMoyenne30j?.let { "${it.first}/${it.second}" } ?: "—", Modifier.weight(colonnes[10]), fontSize = 13.sp,
+            color = r.tensionMoyenne30j?.let { ReglesTension.categorie(it.first, it.second).couleur() } ?: Color.Unspecified)
+        Box(Modifier.weight(colonnes[11])) { MiniBouton("Dossier", onClic = onDossier) }
+        Box(Modifier.weight(colonnes[12])) { MiniBouton("Carnet", onClic = onCarnet) }
+        Row(Modifier.weight(colonnes[13]), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Infobulle("Écrire au patient") { MiniBouton("Message", onClic = onEcrire) }
+            Infobulle(if (archive) "Remettre dans la liste" else "Ranger dans « Archivés » (les données restent)") {
+                MiniBouton(if (archive) "Restaurer" else "Archiver", Color.Gray, onArchiver)
             }
-            message?.let { Text(it, fontSize = 12.sp, color = Color.Gray) }
         }
     }
 }
 
 @Composable
-private fun CarteTension(tensions: List<MesureTension>, debut: Long, fin: Long, jours: Int, objectif: com.diabeto.domain.ObjectifTension? = null) {
-    val periode = tensions.filter { it.date.ms() >= debut }
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp)) {
-            Text("Tension artérielle ($jours jours)", fontWeight = FontWeight.SemiBold)
-            if (tensions.isEmpty()) {
-                Text("Aucune mesure de tension partagée.", color = Color.Gray, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
-                return@Column
-            }
-            val derniere = tensions.maxBy { it.date }
-            val cat = ReglesTension.categorie(derniere.systolique, derniere.diastolique, objectif = objectif)
-            val moy = ReglesTension.moyenne(periode)
-            Text(
-                "Dernière : ${derniere.systolique}/${derniere.diastolique} mmHg le ${derniere.date.jour()} (${cat.libelle})" +
-                    (moy?.let { " · moyenne ${it.first}/${it.second} sur ${periode.size} mesures, PP ${it.first - it.second}, PAM ${ReglesTension.pam(it.first, it.second)}" } ?: "") +
-                    (if (derniere.traitement == true) " · traitement antihypertenseur en cours" else ""),
-                fontSize = 13.sp, color = Color.Gray
-            )
-            ReglesTension.testsOrthostatiques(tensions).firstOrNull()?.let { o ->
-                Text(
-                    "Dernier test couché/debout (${o.couche.date.jour()}) : baisse ${o.baissePas}/${o.baissePad} mmHg" +
-                        if (o.positif) " · hypotension orthostatique possible (PAS ≥ 20 ou PAD ≥ 10)" else " · pas d'hypotension orthostatique",
-                    fontSize = 13.sp, color = if (o.positif) Orange else Vert
-                )
-            }
-            if (ReglesTension.tachycardiePersistante(periode))
-                Text("Tachycardie de repos persistante (FC ≥ 100) : neuropathie autonome possible", fontSize = 13.sp, color = Orange)
-            moy?.takeIf { it.first - it.second > 60 }?.let {
-                Text("Pression pulsée moyenne ${it.first - it.second} mmHg (> 60) : rigidité artérielle possible", fontSize = 13.sp, color = Orange)
-            }
-            Spacer(Modifier.height(8.dp))
-            if (periode.isEmpty()) Text("Aucune mesure sur cette période.", color = Color.Gray, fontSize = 13.sp,
-                modifier = Modifier.padding(vertical = 16.dp))
-            else CourbeTension(periode.map { Triple(it.date.ms(), it.systolique, it.diastolique) }, debut, fin,
-                Modifier.fillMaxWidth().height(200.dp))
-            Text("Indigo : PAS (haut) · vert : PAD (bas) · pointillés : objectif 130/80 mmHg · " + ReglesTension.AVERTISSEMENT,
-                fontSize = 12.sp, color = Color.Gray)
-            tensions.sortedByDescending { it.date }.take(8).forEach { t ->
-                HorizontalDivider(Modifier.padding(vertical = 6.dp))
-                val c = ReglesTension.categorie(t.systolique, t.diastolique, objectif = objectif)
-                Row {
-                    Text("${t.date.jour()} ${t.date.heure()}", Modifier.width(150.dp), fontSize = 13.sp)
-                    Text("${t.systolique}/${t.diastolique}", Modifier.width(80.dp), fontWeight = FontWeight.Medium, color = c.couleur())
-                    Text(listOfNotNull(
-                        t.pouls?.let { "FC $it" },
-                        "PP ${t.pressionPulsee}",
-                        "PAM ${t.pam}",
-                        t.position.takeIf { it.isNotBlank() }?.let { ReglesTension.libellePosition(it) },
-                        t.bras.takeIf { it.isNotBlank() }?.let { "bras " + ReglesTension.libelleBras(it) },
-                        c.libelle
-                    ).joinToString(" · "), fontSize = 12.sp, color = Color.Gray)
+private fun BadgeType(code: String) {
+    val (texte, couleur) = when (code) {
+        "TYPE_1" -> "TYPE 1" to Orange
+        "TYPE_2" -> "TYPE 2" to Indigo
+        "GESTATIONNEL" -> "GESTATIONNEL" to Color(0xFF8E24AA)
+        "PRE_DIABETE" -> "PRÉDIABÈTE" to Color(0xFF00897B)
+        else -> "" to Color.Unspecified
+    }
+    if (texte.isEmpty()) Text("—", fontSize = 13.sp)
+    else Text(texte, Modifier.background(couleur).padding(horizontal = 8.dp, vertical = 2.dp), color = Color.White,
+        fontSize = 11.sp, fontWeight = FontWeight.Bold)
+}
+
+/** Comment ajouter un patient : code patient de l'etablissement, ou partage depuis l'app. */
+@Composable
+private fun DialogueAjout(etat: EtatApp, onFermer: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onFermer,
+        confirmButton = { Button(onClick = onFermer) { Text("Compris") } },
+        title = { Text("Ajouter un patient à mon suivi") },
+        text = {
+            Column(Modifier.widthIn(max = 480.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                val e = etat.etablissement
+                if (e != null) {
+                    Text("1. Donnez au patient le code patient de ${e.nom} :", fontSize = 14.sp)
+                    Text(e.codePatient, Modifier.background(EnteteTableau).padding(horizontal = 16.dp, vertical = 8.dp),
+                        fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Indigo)
+                    Text("Dans son application DiaSmart, il ouvre « Mon centre de santé », entre ce code et accepte le partage. " +
+                        "Il apparaît alors ici pour toute l'équipe.", fontSize = 13.sp, color = Color.DarkGray)
+                    Text("2. Ou bien le patient vous partage ses données directement depuis l'onglet « Médecin » " +
+                        "de son application.", fontSize = 13.sp, color = Color.DarkGray)
+                } else {
+                    Text("Le patient vous partage ses données depuis l'onglet « Médecin » de son application DiaSmart : " +
+                        "il apparaît alors dans cette liste.", fontSize = 13.sp, color = Color.DarkGray)
+                    Text("Avec un établissement (onglet « Établissement »), vous obtenez aussi un code patient à donner " +
+                        "à tous vos patients.", fontSize = 13.sp, color = Color.DarkGray)
                 }
             }
         }
-    }
+    )
 }

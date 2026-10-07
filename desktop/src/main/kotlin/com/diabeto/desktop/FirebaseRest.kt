@@ -156,7 +156,8 @@ class FirebaseRest(
         collection: String,
         egalites: Map<String, Any?> = emptyMap(),
         triDecroissant: String? = null,
-        limite: Int = 300
+        limite: Int = 300,
+        triCroissant: String? = null
     ): List<Pair<String, Map<String, Any?>>> {
         val q = buildJsonObject {
             put("structuredQuery", buildJsonObject {
@@ -178,10 +179,11 @@ class FirebaseRest(
                         })
                     })
                 }
-                if (triDecroissant != null) put("orderBy", buildJsonArray {
+                val tri = triDecroissant ?: triCroissant
+                if (tri != null) put("orderBy", buildJsonArray {
                     add(buildJsonObject {
-                        put("field", buildJsonObject { put("fieldPath", triDecroissant) })
-                        put("direction", "DESCENDING")
+                        put("field", buildJsonObject { put("fieldPath", tri) })
+                        put("direction", if (triDecroissant != null) "DESCENDING" else "ASCENDING")
                     })
                 })
                 put("limit", limite)
@@ -281,6 +283,9 @@ class FirebaseRest(
             is Int, is Long -> buildJsonObject { put("integerValue", v.toString()) }
             is Double, is Float -> buildJsonObject { put("doubleValue", JsonPrimitive((v as Number).toDouble())) }
             is Horodatage -> buildJsonObject { put("timestampValue", v.iso) }
+            is List<*> -> buildJsonObject {
+                put("arrayValue", buildJsonObject { put("values", JsonArray(v.map { encoder(it) })) })
+            }
             else -> error("Type non gere : ${v::class.simpleName}")
         }
 
