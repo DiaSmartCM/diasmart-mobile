@@ -221,8 +221,8 @@ data class PatientSuivi(
     val nomAffiche: String get() = "$prenom $nomFamille".trim().ifBlank { nom.ifBlank { "Patient" } }
 }
 
-/** Identite du compte patient (users/{uid}). */
-data class Identite(val nom: String = "", val prenom: String = "", val email: String = "")
+/** Identite du compte patient (users/{uid}). [photo] : image en data URL (base64) ou lien https, vide si aucune. */
+data class Identite(val nom: String = "", val prenom: String = "", val email: String = "", val photo: String = "")
 
 /** Repas analyse par le patient (users/{uid}/repas) : glucides estimes. */
 data class Repas(val date: LocalDateTime, val nom: String, val glucides: Double)
@@ -310,10 +310,11 @@ class ServicePatients(private val fb: FirebaseRest) {
         }.awaitAll().sortedWith(compareBy<PatientSuivi>({ it.resultat.priorite.ordinal }, { !it.resultat.perduDeVue }, { it.nom }))
     }
 
-    /** Nom, prenom et email du compte patient (lisibles par tout compte connecte). */
+    /** Nom, prenom, email et photo du compte patient (lisibles par tout compte connecte). */
     suspend fun identite(uid: String): Identite = runCatching {
         fb.document("users/$uid")?.let {
-            Identite(it["nom"] as? String ?: "", it["prenom"] as? String ?: "", it["email"] as? String ?: "")
+            Identite(it["nom"] as? String ?: "", it["prenom"] as? String ?: "", it["email"] as? String ?: "",
+                it["photoURL"] as? String ?: "")
         }
     }.getOrNull() ?: Identite()
 

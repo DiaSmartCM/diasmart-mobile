@@ -48,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
@@ -330,8 +331,16 @@ fun PointPriorite(p: PrioriteSuivi, modifier: Modifier = Modifier) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(10.dp).background(p.couleur()))
         Spacer(Modifier.width(6.dp))
-        Text(p.libelle, fontSize = 13.sp)
+        Text(p.texte(), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
+}
+
+/** Libelle de priorite avec accents, pour l'ecran PC. */
+fun PrioriteSuivi.texte() = when (this) {
+    PrioriteSuivi.HAUTE -> "À revoir en priorité"
+    PrioriteSuivi.MOYENNE -> "À surveiller"
+    PrioriteSuivi.BASSE -> "Stable"
+    PrioriteSuivi.INCONNUE -> "Pas assez de données"
 }
 
 fun PrioriteSuivi.couleur() = when (this) {
@@ -442,10 +451,7 @@ private fun OutilTension(modifier: Modifier) {
                 }
             }
         }
-        Text("Repères : objectif < 130/80 si toléré ; HTA au cabinet ≥ 130/80 (ADA) ou ≥ 140/90 (ESC), à confirmer sur 2 consultations ; " +
-            "automesure ≥ 135/85 ; urgence ≥ 180/110. Objectif assoupli (PAS 130-139) à partir de 65 ans. " +
-            "IEC ou ARA2 à privilégier en cas d'albuminurie. Objectifs individuels fixés par le médecin traitant.",
-            fontSize = 12.sp, color = Color.Gray)
+        Text("Objectif : moins de 130/80. Urgence : 180/110 ou plus.", fontSize = 12.sp, color = Color.Gray)
     } }
 }
 

@@ -162,6 +162,7 @@ private fun EnteteFiche(etat: EtatApp, p: PatientSuivi, d: DonneesFiche, onRetou
     Row(Modifier.fillMaxWidth().background(Color.White).border(1.dp, Bordure).padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         IconButton(onClick = onRetour) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Retour à la liste") }
+        Avatar(p.nomAffiche, p.identite.photo, 52)
         Column(Modifier.weight(1f)) {
             Text(p.nomAffiche, fontSize = 22.sp, fontWeight = FontWeight.Bold)
             Text(listOfNotNull(
@@ -174,7 +175,7 @@ private fun EnteteFiche(etat: EtatApp, p: PatientSuivi, d: DonneesFiche, onRetou
         }
         if (d.chargement) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
         Badge("HbA1c " + (r.hba1c?.let { EvaluationSuivi.unChiffre(it.valeur) + " %" } ?: "—"), IndigoFonce)
-        Badge("Priorité : " + r.priorite.libelle.lowercase(), r.priorite.couleur())
+        Badge("Priorité : " + r.priorite.texte().lowercase(), r.priorite.couleur())
         OutlinedButton(onClick = onEcrire) { Text("Message") }
         OutlinedButton(onClick = { scope.launch { etat.basculerArchive(p.uid) } }) {
             Text(if (archive) "Désarchiver" else "Archiver")

@@ -83,8 +83,10 @@ val CouleursDiaSmart = lightColorScheme(primary = Indigo, secondary = Indigo, ba
 @Composable
 fun Button(
     onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true,
-    colors: ButtonColors = ButtonDefaults.buttonColors(), content: @Composable RowScope.() -> Unit
-) = androidx.compose.material3.Button(onClick, modifier, enabled, shape = RectangleShape, colors = colors, content = content)
+    colors: ButtonColors = ButtonDefaults.buttonColors(), contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
+    content: @Composable RowScope.() -> Unit
+) = androidx.compose.material3.Button(onClick, modifier, enabled, shape = RectangleShape, colors = colors,
+    contentPadding = contentPadding, content = content)
 
 @Composable
 fun OutlinedButton(
@@ -301,5 +303,5 @@ fun Infobulle(texte: String, contenu: @Composable () -> Unit) {
 @Composable
 fun MiniBouton(texte: String, couleur: Color = Indigo, onClic: () -> Unit) {
     Text(texte, Modifier.border(1.dp, couleur).clickable(onClick = onClic).padding(horizontal = 8.dp, vertical = 3.dp),
-        color = couleur, fontSize = 12.sp)
+        color = couleur, fontSize = 12.sp, maxLines = 1, softWrap = false)
 }
