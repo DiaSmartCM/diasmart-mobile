@@ -233,3 +233,83 @@ fun BarreCible(parPlage: Map<StatsGlycemie.Plage, Double>, modifier: Modifier = 
         if (yCourant == 0f) drawRect(Color(0xFFEDEEF3), Offset.Zero, size)
     }
 }
+
+/**
+ * Journee detaillee (comme un releve de capteur) : courbe coloree selon la
+ * plage, valeur ecrite sur chaque mesure, echelle de couleur sur les cotes,
+ * et une ligne « Glucides » sous la courbe avec les repas du jour.
+ * [fond] : autres jours superposes (gris clair).
+ */
+@Composable
+fun CourbeJourDetaillee(
+    points: List<Pair<Int, Double>>,
+    repas: List<Pair<Int, Double>>,
+    modifier: Modifier = Modifier,
+    fond: List<SerieJour> = emptyList()
+) {
+    val mesureur = rememberTextMeasurer()
+    val style = TextStyle(fontSize = 11.sp, color = Color.Gray)
+    val styleValeur = TextStyle(fontSize = 10.sp, color = Color.White)
+    Canvas(modifier) {
+        val gauche = 56f; val droite = 22f; val haut = 8f
+        val voieGlucides = if (repas.isEmpty()) 0f else 30f
+        val largeur = size.width - gauche - droite
+        val hauteur = size.height - 26f - haut - voieGlucides
+        if (largeur <= 0f || hauteur <= 0f) return@Canvas
+        val tous = points.map { it.second } + fond.flatMap { s -> s.points.map { it.second } }
+        val yMin = minOf(40.0, tous.minOrNull() ?: 40.0)
+        val yMax = maxOf(300.0, (tous.maxOrNull() ?: 300.0) + 30)
+        fun y(v: Double) = haut + hauteur * (1f - ((v - yMin) / (yMax - yMin)).toFloat())
+        fun x(minute: Int) = gauche + largeur * (minute / 1440f)
+        axeJournee(mesureur, style, gauche, haut, largeur, hauteur, ::y)
+
+        // Echelle de couleur a gauche et a droite (comme la legende du carnet)
+        val bornes = listOf(yMin to 54.0, 54.0 to 70.0, 70.0 to 180.0, 180.0 to 250.0, 250.0 to yMax)
+        val plages = listOf(StatsGlycemie.Plage.TRES_BAS, StatsGlycemie.Plage.BAS, StatsGlycemie.Plage.CIBLE,
+            StatsGlycemie.Plage.HAUT, StatsGlycemie.Plage.TRES_HAUT)
+        bornes.zip(plages).forEach { (b, pl) ->
+            val y1 = y(b.second); val y2 = y(b.first)
+            if (y2 > y1) {
+                drawRect(Color(pl.couleur), Offset(gauche - 50f, y1), Size(5f, y2 - y1))
+                drawRect(Color(pl.couleur), Offset(gauche + largeur + 8f, y1), Size(5f, y2 - y1))
+            }
+        }
+
+        fond.forEach { s ->
+            val pts = s.points.sortedBy { it.first }
+            if (pts.size > 1) {
+                val chemin = Path()
+                pts.forEachIndexed { i, p -> if (i == 0) chemin.moveTo(x(p.first), y(p.second)) else chemin.lineTo(x(p.first), y(p.second)) }
+                drawPath(chemin, s.couleur, style = Stroke(width = s.epaisseur))
+            }
+        }
+
+        // Segments colores : couleur de la plage atteinte au milieu du segment
+        val pts = points.sortedBy { it.first }
+        pts.zipWithNext().forEach { (a, b) ->
+            val milieu = (a.second + b.second) / 2
+            drawLine(Color(StatsGlycemie.Plage.de(milieu).couleur), Offset(x(a.first), y(a.second)), Offset(x(b.first), y(b.second)), 3f)
+        }
+        pts.forEach { p ->
+            val c = Color(StatsGlycemie.Plage.de(p.second).couleur)
+            val centre = Offset(x(p.first), y(p.second))
+            val r = mesureur.measure(p.second.toInt().toString(), styleValeur)
+            val rayon = maxOf(r.size.width, r.size.height) / 2f + 3f
+            drawCircle(c, rayon, centre)
+            drawCircle(Color.White, rayon, centre, style = Stroke(1.5f))
+            drawText(r, topLeft = Offset(centre.x - r.size.width / 2f, centre.y - r.size.height / 2f))
+        }
+
+        if (repas.isNotEmpty()) {
+            val yVoie = haut + hauteur + 26f
+            val etiquette = mesureur.measure("Glucides", style)
+            drawText(etiquette, topLeft = Offset(0f, yVoie + 2f))
+            repas.forEach { (minute, g) ->
+                val t = mesureur.measure("${g.toInt()} g", styleValeur)
+                val px = (x(minute) - t.size.width / 2f - 4f).coerceIn(gauche, gauche + largeur - t.size.width - 8f)
+                drawRect(Rouge.copy(alpha = 0.85f), Offset(px, yVoie), Size(t.size.width + 8f, t.size.height + 4f))
+                drawText(t, topLeft = Offset(px + 4f, yVoie + 2f))
+            }
+        }
+    }
+}

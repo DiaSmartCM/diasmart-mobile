@@ -58,14 +58,15 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
 
-private enum class OngletFiche(val libelle: String) {
+enum class OngletFiche(val libelle: String) {
     VUE("Vue générale"),
     CARNET("Carnet"),
     JOUR("Courbes quotidiennes"),
     PROFIL("Profil glycémique"),
-    TENSION("Tension"),
     CLINIQUE("Contexte clinique & traitement"),
-    JOURNAL("Journal de vie")
+    TENSION("Tension"),
+    JOURNAL("Journal de vie"),
+    ALERTES("Alertes & notifications")
 }
 
 private val PERIODES = listOf(7, 14, 30, 90)
@@ -79,13 +80,17 @@ private class DonneesFiche(p: PatientSuivi) {
     var profil by mutableStateOf<ProfilClinique?>(null)
     var medicaments by mutableStateOf<List<Medicament>>(emptyList())
     var journal by mutableStateOf<List<EntreeJournal>>(emptyList())
+    var repas by mutableStateOf<List<Repas>>(emptyList())
     var chargement by mutableStateOf(true)
 }
 
 @Composable
-fun FichePatient(etat: EtatApp, p: PatientSuivi, onRetour: () -> Unit) {
+fun FichePatient(
+    etat: EtatApp, p: PatientSuivi, ongletDepart: OngletFiche = OngletFiche.VUE,
+    onRetour: () -> Unit, onEcrire: () -> Unit
+) {
     val d = remember(p.uid) { DonneesFiche(p) }
-    var onglet by remember(p.uid) { mutableStateOf(OngletFiche.VUE) }
+    var onglet by remember(p.uid, ongletDepart) { mutableStateOf(ongletDepart) }
     var jours by remember { mutableIntStateOf(30) }
     var jourChoisi by remember(p.uid) { mutableStateOf<LocalDate?>(null) }
     LaunchedEffect(p.uid) {
@@ -97,6 +102,7 @@ fun FichePatient(etat: EtatApp, p: PatientSuivi, onRetour: () -> Unit) {
         d.profil = s.profilClinique(p.uid)
         d.medicaments = s.medicaments(p.uid)
         d.journal = s.journal(p.uid, 90)
+        d.repas = s.repas(p.uid, 300)
         d.chargement = false
     }
     val joursDispo = d.mesures.map { it.date.date }.distinct().sortedDescending()
@@ -117,7 +123,7 @@ fun FichePatient(etat: EtatApp, p: PatientSuivi, onRetour: () -> Unit) {
             }
         }
     ) {
-        EnteteFiche(p, d.chargement, onRetour)
+        EnteteFiche(etat, p, d, onRetour, onEcrire)
         Espace(10)
         Onglets(OngletFiche.entries, onglet, { it.libelle }) { onglet = it }
         Espace(12)
@@ -126,8 +132,8 @@ fun FichePatient(etat: EtatApp, p: PatientSuivi, onRetour: () -> Unit) {
             Column(Modifier.fillMaxSize().defilementClavier(defil), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 when (onglet) {
                     OngletFiche.VUE -> VueGenerale(p, d, jours) { jours = it }
-                    OngletFiche.CARNET -> Carnet(d.mesures, jours) { jours = it }
-                    OngletFiche.JOUR -> CourbesQuotidiennes(d.mesures, jour, joursDispo, ::changerJour)
+                    OngletFiche.CARNET -> Carnet(d.mesures, d.repas, jours) { jours = it }
+                    OngletFiche.JOUR -> CourbesQuotidiennes(d, jour, joursDispo, ::changerJour)
                     OngletFiche.PROFIL -> ProfilGlycemique(d.mesures, jours) { jours = it }
                     OngletFiche.TENSION -> {
                         CarteObjectifTension(etat, p.uid, d.objectif) { d.objectif = it }
@@ -135,6 +141,7 @@ fun FichePatient(etat: EtatApp, p: PatientSuivi, onRetour: () -> Unit) {
                     }
                     OngletFiche.CLINIQUE -> ContexteClinique(d)
                     OngletFiche.JOURNAL -> JournalDeVie(d.journal, d.chargement)
+                    OngletFiche.ALERTES -> Alertes(p, d, jours) { jours = it }
                 }
                 Text("Aide au suivi, pas un diagnostic : la décision reste au soignant.", fontSize = 12.sp, color = Color.Gray)
             }
@@ -143,19 +150,32 @@ fun FichePatient(etat: EtatApp, p: PatientSuivi, onRetour: () -> Unit) {
 }
 
 @Composable
-private fun EnteteFiche(p: PatientSuivi, chargement: Boolean, onRetour: () -> Unit) {
+private fun EnteteFiche(etat: EtatApp, p: PatientSuivi, d: DonneesFiche, onRetour: () -> Unit, onEcrire: () -> Unit) {
     val r = p.resultat
+    val scope = rememberCoroutineScope()
+    val clinique = d.profil ?: p.clinique
+    val aujourdhui = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+    val archive = p.uid in etat.archives
     Row(Modifier.fillMaxWidth().background(Color.White).border(1.dp, Bordure).padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         IconButton(onClick = onRetour) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Retour à la liste") }
         Column(Modifier.weight(1f)) {
-            Text(p.nom.ifBlank { "Patient" }, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-            Text(listOf(p.origine.libelle, r.raisons.joinToString(" · ")).filter { it.isNotBlank() }.joinToString("  ·  "),
-                fontSize = 13.sp, color = Color.Gray)
+            Text(p.nomAffiche, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            Text(listOfNotNull(
+                clinique?.typeTexte?.takeIf { it != "—" },
+                clinique?.sexeTexte?.takeIf { it != "—" },
+                ageEn(clinique?.dateNaissance, aujourdhui)?.let { "$it ans" },
+                p.origine.libelle,
+                r.raisons.joinToString(" · ").ifBlank { null }
+            ).joinToString("  ·  "), fontSize = 13.sp, color = Color.Gray)
         }
-        if (chargement) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+        if (d.chargement) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
         Badge("HbA1c " + (r.hba1c?.let { EvaluationSuivi.unChiffre(it.valeur) + " %" } ?: "—"), IndigoFonce)
         Badge("Priorité : " + r.priorite.libelle.lowercase(), r.priorite.couleur())
+        OutlinedButton(onClick = onEcrire) { Text("Message") }
+        OutlinedButton(onClick = { scope.launch { etat.basculerArchive(p.uid) } }) {
+            Text(if (archive) "Désarchiver" else "Archiver")
+        }
     }
 }
 
@@ -260,8 +280,11 @@ private fun BlocCible(stats: StatsGlycemie.Resume?) {
                     Box(Modifier.size(10.dp).background(Color(pl.couleur)))
                     EspaceL(6)
                     Text(pl.libelle, Modifier.width(62.dp), fontSize = 12.sp, color = Color.DarkGray)
-                    Text(stats?.parPlage?.get(pl)?.let { pct(it) } ?: "—", fontSize = 12.sp, fontWeight = FontWeight.Medium,
-                        color = Color(pl.couleur))
+                    Text(stats?.parPlage?.get(pl)?.let { pct(it) } ?: "—", Modifier.width(52.dp), fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium, color = Color(pl.couleur))
+                    stats?.parPlage?.get(pl)?.let { v ->
+                        Text("${Math.round(v * stats.n / 100)} mes.", fontSize = 11.sp, color = Color.Gray)
+                    }
                 }
             }
         }
@@ -273,84 +296,103 @@ private fun BlocCible(stats: StatsGlycemie.Resume?) {
 // ── Carnet ───────────────────────────────────────────────────────────────
 
 @Composable
-private fun Carnet(mesures: List<Mesure>, jours: Int, onJours: (Int) -> Unit) {
+private fun Carnet(mesures: List<Mesure>, repas: List<Repas>, jours: Int, onJours: (Int) -> Unit) {
+    var glucides by remember { mutableStateOf(true) }
     val periode = periodeDe(mesures, jours)
-    val parJour = periode.groupBy { it.date.date }.toSortedMap(compareByDescending { it })
+    val debut = System.currentTimeMillis() - jours * 86_400_000L
+    val repasPeriode = repas.filter { it.date.ms() >= debut }
+    val parJour = (periode.map { it.date.date } + repasPeriode.map { it.date.date }).distinct().sortedDescending()
     val colonnes = StatsGlycemie.Moment.entries
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Carnet de glycémie (mg/dL)", Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+        Text("Glucides :", fontSize = 13.sp, color = Color.DarkGray)
+        Segments(listOf(true, false), glucides, { if (it) "Afficher" else "Masquer" }) { glucides = it }
         ChoixPeriode(jours, onJours)
     }
-    Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-        LegendeCase("< 54", StatsGlycemie.Plage.TRES_BAS.couleur)
-        LegendeCase("54-69", StatsGlycemie.Plage.BAS.couleur)
-        LegendeCase("Dans l'objectif (à jeun / avant repas 80-130, après < 180)", StatsGlycemie.Plage.CIBLE.couleur)
-        LegendeCase("Au-dessus", StatsGlycemie.Plage.HAUT.couleur)
-        LegendeCase("> 250", StatsGlycemie.Plage.TRES_HAUT.couleur)
-    }
-    Column(Modifier.fillMaxWidth().background(Color.White).border(1.dp, Bordure)) {
-        // En-tete sur deux lignes : repas, puis avant / apres
-        Row(Modifier.fillMaxWidth().background(Indigo)) {
-            CelluleEntete("Date", 1.2f)
-            val groupes = colonnes.groupBy { it.groupe }
-            groupes.forEach { (g, cols) -> CelluleEntete(g, cols.size.toFloat()) }
-        }
-        Row(Modifier.fillMaxWidth().background(EnteteTableau)) {
-            Box(Modifier.weight(1.2f))
-            colonnes.forEach { c ->
-                Text(c.libelle, Modifier.weight(1f).padding(vertical = 5.dp), fontSize = 11.sp, color = Color(0xFF4A4F63),
-                    textAlign = TextAlign.Center)
-            }
-        }
-        if (parJour.isEmpty()) Text("Aucune mesure sur cette période.", Modifier.padding(16.dp), color = Color.Gray, fontSize = 13.sp)
-        parJour.forEach { (date, liste) ->
-            HorizontalDivider(color = Bordure)
-            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-                Text(date.texte(), Modifier.weight(1.2f).padding(10.dp), fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                colonnes.forEach { c ->
-                    Column(Modifier.weight(1f).fillMaxHeight().border(0.5.dp, Color(0xFFEDEEF3)).padding(4.dp),
-                        verticalArrangement = Arrangement.spacedBy(3.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        liste.filter { StatsGlycemie.moment(it) == c }.sortedBy { it.date }.forEach { m ->
-                            val fond = Color(StatsGlycemie.couleurCase(m.valeur, c))
-                            Text(m.valeur.toInt().toString(), Modifier.background(fond).padding(horizontal = 8.dp, vertical = 2.dp),
-                                color = if (fond == Color(StatsGlycemie.Plage.HAUT.couleur)) Color.Black else Color.White,
-                                fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            Text(m.date.heure(), fontSize = 10.sp, color = Color.Gray)
+    // Legende : reperes de couleur par moment de la journee
+    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        StatsGlycemie.Categorie.entries.forEach { c ->
+            Column(Modifier.weight(1f).fillMaxHeight().background(Color.White).border(1.dp, Bordure).padding(10.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(c.libelle + " (mg/dL)", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    c.seuils.forEach { (texte, pl) ->
+                        Column(Modifier.width(IntrinsicSize.Max)) {
+                            Text(texte, fontSize = 11.sp, color = Color.DarkGray)
+                            Box(Modifier.fillMaxWidth().height(3.dp).background(Color(pl.couleur)))
                         }
                     }
                 }
             }
         }
     }
-    Text("Le moment est celui saisi par le patient (à jeun, avant / après repas, coucher) ; le repas est déduit de l'heure.",
+    Column(Modifier.fillMaxWidth().background(Color.White).border(1.dp, Bordure)) {
+        Row(Modifier.fillMaxWidth().background(Indigo)) {
+            CelluleEntete("Date", 1.1f)
+            colonnes.forEach { c -> CelluleEntete(c.libelle, 1f) }
+        }
+        Row(Modifier.fillMaxWidth().background(EnteteTableau)) {
+            Box(Modifier.weight(1.1f))
+            colonnes.forEach { c ->
+                Text(if (glucides && c.repas) "Glycémie · glucides" else "Glycémie", Modifier.weight(1f).padding(vertical = 5.dp),
+                    fontSize = 11.sp, color = Color(0xFF4A4F63), textAlign = TextAlign.Center)
+            }
+        }
+        if (parJour.isEmpty()) Text("Aucune mesure sur cette période.", Modifier.padding(16.dp), color = Color.Gray, fontSize = 13.sp)
+        parJour.forEach { date ->
+            HorizontalDivider(color = Bordure)
+            val duJour = periode.filter { it.date.date == date }
+            val repasDuJour = repasPeriode.filter { it.date.date == date }
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+                Box(Modifier.weight(1.1f).fillMaxHeight().padding(10.dp), contentAlignment = Alignment.CenterStart) {
+                    Text(date.texte(), fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                }
+                colonnes.forEach { c ->
+                    Column(Modifier.weight(1f).fillMaxHeight().border(0.5.dp, Color(0xFFEDEEF3)).padding(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(3.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        duJour.filter { StatsGlycemie.moment(it) == c }.sortedBy { it.date }.forEach { m ->
+                            Infobulle("${m.date.jour()} ${m.date.heure()} · ${StatsGlycemie.libelleContexte(m.contexte)}") {
+                                Text(m.valeur.toInt().toString(),
+                                    Modifier.width(48.dp).background(Color(StatsGlycemie.couleurCase(m.valeur, c))).padding(vertical = 2.dp),
+                                    color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                            }
+                        }
+                        if (glucides && c.repas) repasDuJour.filter { StatsGlycemie.repasA(it.date.hour) == c }.forEach { r ->
+                            Infobulle("${r.nom.ifBlank { "Repas" }} · ${r.date.heure()}") {
+                                Text("${r.glucides.toInt()} g", Modifier.width(48.dp).border(1.dp, Indigo).padding(vertical = 1.dp),
+                                    color = Indigo, fontSize = 11.sp, textAlign = TextAlign.Center)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Text("Le moment est celui saisi par le patient (à jeun, avant / après repas, coucher) ; le repas est déduit de l'heure. " +
+        "Glucides : repas analysés dans l'application (visibles si le patient vous a lié son compte). " +
+        "Survolez une valeur pour voir l'heure. Repères généraux (ADA 2025) : les objectifs de chaque patient sont fixés par son médecin.",
         fontSize = 12.sp, color = Color.Gray)
 }
 
 @Composable
 private fun androidx.compose.foundation.layout.RowScope.CelluleEntete(texte: String, poids: Float) {
-    Text(texte, Modifier.weight(poids).border(0.5.dp, IndigoFonce).padding(vertical = 7.dp), color = Color.White,
+    Text(texte, Modifier.weight(poids).border(0.5.dp, IndigoFonce).padding(vertical = 7.dp, horizontal = 2.dp), color = Color.White,
         fontSize = 12.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-}
-
-@Composable
-private fun LegendeCase(texte: String, couleur: Long) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(12.dp).background(Color(couleur)))
-        EspaceL(5)
-        Text(texte, fontSize = 12.sp, color = Color.DarkGray)
-    }
 }
 
 // ── Courbes quotidiennes ─────────────────────────────────────────────────
 
 @Composable
-private fun CourbesQuotidiennes(mesures: List<Mesure>, jour: LocalDate?, joursDispo: List<LocalDate>, changer: (Int) -> Unit) {
+private fun CourbesQuotidiennes(d: DonneesFiche, jour: LocalDate?, joursDispo: List<LocalDate>, changer: (Int) -> Unit) {
     var superposer by remember { mutableStateOf(false) }
     if (jour == null) {
         Panneau("Courbes quotidiennes", Modifier.fillMaxWidth()) { Text("Aucune mesure.", color = Color.Gray, fontSize = 13.sp) }
         return
     }
+    val mesures = d.mesures
     val duJour = mesures.filter { it.date.date == jour }.sortedBy { it.date }
+    val repasDuJour = d.repas.filter { it.date.date == jour }.sortedBy { it.date }
+    val journalDuJour = d.journal.firstOrNull { it.date == jour }
     val i = joursDispo.indexOf(jour)
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedButton(onClick = { changer(-1) }, enabled = i < joursDispo.size - 1) {
@@ -364,36 +406,53 @@ private fun CourbesQuotidiennes(mesures: List<Mesure>, jour: LocalDate?, joursDi
         Segments(listOf(false, true), superposer, { if (it) "+ 6 jours précédents" else "Ce jour seul" }) { superposer = it }
     }
     Text("Astuce : flèches gauche / droite du clavier pour changer de jour.", fontSize = 12.sp, color = Color.Gray)
-    val series = buildList {
-        if (superposer) {
-            joursDispo.drop(i + 1).take(6).forEach { j ->
-                add(SerieJour(mesures.filter { it.date.date == j }.map { it.date.hour * 60 + it.date.minute to it.valeur },
-                    Indigo.copy(alpha = 0.28f), 1.2f))
-            }
-        }
-        add(SerieJour(duJour.map { it.date.hour * 60 + it.date.minute to it.valeur }, Indigo, 2.5f))
-    }
-    Panneau("Glycémie du ${jour.texte()}", Modifier.fillMaxWidth()) {
-        CourbeJournee(series, Modifier.fillMaxWidth().height(300.dp))
-        if (superposer) Text("En clair : les 6 jours précédents avec des mesures. En foncé : le jour choisi.", fontSize = 12.sp, color = Color.Gray)
-    }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Panneau("Mesures du jour", Modifier.weight(2f)) {
-            EnteteLigne(listOf("Heure" to 1f, "Glycémie" to 1f, "Moment" to 2f))
-            duJour.forEach { m ->
-                Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp)) {
-                    Text(m.date.heure(), Modifier.weight(1f), fontSize = 13.sp)
-                    Text("${m.valeur.toInt()} mg/dL", Modifier.weight(1f), fontSize = 13.sp, fontWeight = FontWeight.Medium, color = couleurGlycemie(m.valeur))
-                    Text(StatsGlycemie.libelleContexte(m.contexte), Modifier.weight(2f), fontSize = 13.sp, color = Color.Gray)
-                }
-            }
-        }
-        Panneau("Résumé du jour", Modifier.weight(1f)) {
-            val v = duJour.map { it.valeur }
+    val v = duJour.map { it.valeur }
+    val stats = StatsGlycemie.resume(v, 1)
+    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Panneau("Temps dans la cible", Modifier.weight(1.2f).fillMaxHeight()) { BlocCible(stats) }
+        Panneau("Glycémie du jour", Modifier.weight(1f).fillMaxHeight()) {
             Ligne("Mesures", v.size.toString())
             Ligne("Moyenne", if (v.isEmpty()) "—" else "${v.average().toInt()} mg/dL", gras = true)
             Ligne("Min / max", if (v.isEmpty()) "—" else "${v.min().toInt()} / ${v.max().toInt()}")
-            Ligne("Dans 70-180", if (v.isEmpty()) "—" else pct(v.count { it in 70.0..180.0 } * 100.0 / v.size))
+            Ligne("Écart-type", stats?.let { "${it.ecartType.toInt()} mg/dL" } ?: "—")
+        }
+        Panneau("Glucides et repas", Modifier.weight(1f).fillMaxHeight()) {
+            if (repasDuJour.isEmpty()) Text("Aucun repas analysé ce jour.", fontSize = 13.sp, color = Color.Gray)
+            else {
+                Ligne("Total glucides", "${repasDuJour.sumOf { it.glucides }.toInt()} g", gras = true)
+                repasDuJour.forEach { r -> Ligne("${r.date.heure()} ${r.nom.take(22)}", "${r.glucides.toInt()} g") }
+            }
+        }
+        Panneau("Activité et journal", Modifier.weight(1f).fillMaxHeight()) {
+            if (journalDuJour == null) Text("Journal non rempli ce jour.", fontSize = 13.sp, color = Color.Gray)
+            else {
+                Ligne("Pas", journalDuJour.pas?.takeIf { it > 0 }?.toString() ?: "—", gras = true)
+                Ligne("Activité", if (journalDuJour.activite) "${journalDuJour.minutesActivite ?: 0} min" else "—")
+                Ligne("Sommeil", EntreeJournal.libelle(journalDuJour.sommeil) + (journalDuJour.heuresSommeil?.let { " · ${f1(it)} h" } ?: ""))
+                Ligne("Humeur", EntreeJournal.libelle(journalDuJour.humeur))
+            }
+        }
+    }
+    val fond = if (!superposer) emptyList() else joursDispo.drop(i + 1).take(6).map { j ->
+        SerieJour(mesures.filter { it.date.date == j }.map { it.date.hour * 60 + it.date.minute to it.valeur }, Color(0x55999CB0), 1.2f)
+    }
+    Panneau("Glycémie du ${jour.texte()}", Modifier.fillMaxWidth()) {
+        CourbeJourDetaillee(duJour.map { it.date.hour * 60 + it.date.minute to it.valeur },
+            repasDuJour.map { it.date.hour * 60 + it.date.minute to it.glucides },
+            Modifier.fillMaxWidth().height(340.dp), fond)
+        Text("Couleur de la courbe : violet < 54 · bleu 54-69 · vert 70-180 · orange 181-250 · rouge > 250 mg/dL." +
+            (if (superposer) " En gris : les 6 jours précédents avec des mesures." else ""), fontSize = 12.sp, color = Color.Gray)
+    }
+    Panneau("Mesures du jour", Modifier.fillMaxWidth()) {
+        EnteteLigne(listOf("Heure" to 1f, "Glycémie" to 1f, "Moment" to 2f, "Colonne du carnet" to 2f))
+        duJour.forEach { m ->
+            Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp)) {
+                Text(m.date.heure(), Modifier.weight(1f), fontSize = 13.sp)
+                Text("${m.valeur.toInt()} mg/dL", Modifier.weight(1f), fontSize = 13.sp, fontWeight = FontWeight.Medium,
+                    color = Color(StatsGlycemie.Plage.de(m.valeur).couleur))
+                Text(StatsGlycemie.libelleContexte(m.contexte), Modifier.weight(2f), fontSize = 13.sp, color = Color.Gray)
+                Text(StatsGlycemie.moment(m).libelle, Modifier.weight(2f), fontSize = 13.sp, color = Color.Gray)
+            }
         }
     }
 }
@@ -422,6 +481,8 @@ private fun ProfilGlycemique(mesures: List<Mesure>, jours: Int, onJours: (Int) -
             Ligne("CV", stats?.let { pct(it.cv) } ?: "—", stats?.let { if (it.cv > 36) Orange else Vert } ?: Color.Unspecified)
             Ligne("LBGI (risque d'hypo)", stats?.let { f1(it.lbgi) } ?: "—", stats?.let { if (it.lbgi > 2.5) Orange else Color.Unspecified } ?: Color.Unspecified)
             Ligne("HBGI (risque d'hyper)", stats?.let { f1(it.hbgi) } ?: "—", stats?.let { if (it.hbgi > 9) Orange else Color.Unspecified } ?: Color.Unspecified)
+            val adrr = StatsGlycemie.adrr(periode)
+            Ligne("ADRR (risque global)", adrr?.let { f1(it) } ?: "—", adrr?.let { if (it > 40) Rouge else if (it > 20) Orange else Color.Unspecified } ?: Color.Unspecified)
             Ligne("Min / max", stats?.let { "${it.min.toInt()} / ${it.max.toInt()}" } ?: "—")
         }
     }
@@ -441,9 +502,10 @@ private fun ProfilGlycemique(mesures: List<Mesure>, jours: Int, onJours: (Int) -
             if (v.isEmpty()) return@forEach
             val ok = v.count { StatsGlycemie.couleurCase(it, m) == StatsGlycemie.Plage.CIBLE.couleur }
             Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 5.dp)) {
-                Text(listOf(m.groupe, m.libelle).filter { it.isNotBlank() }.joinToString(" · "), Modifier.weight(2f), fontSize = 13.sp)
+                Text(m.libelle, Modifier.weight(2f), fontSize = 13.sp)
                 Text(v.size.toString(), Modifier.weight(1f), fontSize = 13.sp)
-                Text("${v.average().toInt()}", Modifier.weight(1f), fontSize = 13.sp, fontWeight = FontWeight.Medium, color = couleurGlycemie(v.average()))
+                Text("${v.average().toInt()}", Modifier.weight(1f), fontSize = 13.sp, fontWeight = FontWeight.Medium,
+                    color = Color(StatsGlycemie.couleurCase(v.average(), m)))
                 Text("${v.min().toInt()}", Modifier.weight(1f), fontSize = 13.sp)
                 Text("${v.max().toInt()}", Modifier.weight(1f), fontSize = 13.sp)
                 Text(pct(ok * 100.0 / v.size), Modifier.weight(1.2f), fontSize = 13.sp)
@@ -532,6 +594,62 @@ private fun JournalDeVie(journal: List<EntreeJournal>, chargement: Boolean) {
                 Text(EntreeJournal.libelle(j.sommeil) + (j.heuresSommeil?.let { " · ${f1(it)} h" } ?: ""), Modifier.weight(1.4f), fontSize = 13.sp)
                 Text(if (j.activite) "${j.minutesActivite ?: 0} min" else "—", Modifier.weight(1f), fontSize = 13.sp)
                 Text(j.pas?.takeIf { it > 0 }?.toString() ?: "—", Modifier.weight(0.8f), fontSize = 13.sp)
+            }
+        }
+    }
+}
+
+// ── Alertes et notifications ─────────────────────────────────────────────
+
+private data class Alerte(val date: kotlinx.datetime.LocalDateTime, val type: String, val valeur: String, val detail: String, val couleur: Color)
+
+@Composable
+private fun Alertes(p: PatientSuivi, d: DonneesFiche, jours: Int, onJours: (Int) -> Unit) {
+    val debut = System.currentTimeMillis() - jours * 86_400_000L
+    val alertes = buildList {
+        d.mesures.filter { it.date.ms() >= debut }.forEach { m ->
+            when {
+                m.valeur < 54 -> add(Alerte(m.date, "Hypoglycémie importante", "${m.valeur.toInt()} mg/dL", StatsGlycemie.libelleContexte(m.contexte), Color(StatsGlycemie.Plage.TRES_BAS.couleur)))
+                m.valeur < 70 -> add(Alerte(m.date, "Hypoglycémie", "${m.valeur.toInt()} mg/dL", StatsGlycemie.libelleContexte(m.contexte), Color(StatsGlycemie.Plage.BAS.couleur)))
+                m.valeur > 250 -> add(Alerte(m.date, "Hyperglycémie importante", "${m.valeur.toInt()} mg/dL", StatsGlycemie.libelleContexte(m.contexte), Color(StatsGlycemie.Plage.TRES_HAUT.couleur)))
+            }
+        }
+        d.tensions.filter { it.date.ms() >= debut }.forEach { t ->
+            if (t.systolique >= 180 || t.diastolique >= 110)
+                add(Alerte(t.date, "Tension très élevée", "${t.systolique}/${t.diastolique} mmHg", "≥ 180/110 : avis rapide", Rouge))
+            else if (t.systolique < 90)
+                add(Alerte(t.date, "Tension basse", "${t.systolique}/${t.diastolique} mmHg", "PAS < 90", Color(0xFF1E88E5)))
+        }
+    }.sortedByDescending { it.date }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Alertes des $jours derniers jours", Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+        ChoixPeriode(jours, onJours)
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Badge("Hypoglycémies : ${alertes.count { it.type.startsWith("Hypo") }}", Color(StatsGlycemie.Plage.BAS.couleur))
+        Badge("Hyperglycémies > 250 : ${alertes.count { it.type.startsWith("Hyper") }}", Color(StatsGlycemie.Plage.TRES_HAUT.couleur))
+        Badge("Tension : ${alertes.count { it.type.startsWith("Tension") }}", IndigoFonce)
+    }
+    Panneau("Points d'attention du suivi", Modifier.fillMaxWidth()) {
+        val r = p.resultat
+        if (r.raisons.isEmpty() && !r.perduDeVue) Text("Rien de particulier.", fontSize = 13.sp, color = Vert)
+        r.raisons.forEach { Text("• $it", fontSize = 13.sp) }
+        if (r.perduDeVue) Text("• Aucune mesure depuis plus de ${EvaluationSuivi.JOURS_PERDU_DE_VUE} jours (perdu de vue)", fontSize = 13.sp, color = Orange)
+    }
+    Panneau("Événements (${alertes.size})", Modifier.fillMaxWidth()) {
+        if (alertes.isEmpty()) Text("Aucune valeur d'alerte sur la période.", fontSize = 13.sp, color = Vert)
+        else {
+            EnteteLigne(listOf("Date" to 1.2f, "Alerte" to 1.6f, "Valeur" to 1f, "Détail" to 2f))
+            alertes.take(200).forEach { a ->
+                Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("${a.date.jour()} ${a.date.heure()}", Modifier.weight(1.2f), fontSize = 13.sp)
+                    Row(Modifier.weight(1.6f), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(10.dp).background(a.couleur)); EspaceL(6)
+                        Text(a.type, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                    }
+                    Text(a.valeur, Modifier.weight(1f), fontSize = 13.sp, color = a.couleur, fontWeight = FontWeight.Bold)
+                    Text(a.detail, Modifier.weight(2f), fontSize = 12.sp, color = Color.Gray)
+                }
             }
         }
     }

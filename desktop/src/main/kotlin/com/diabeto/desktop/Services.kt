@@ -212,8 +212,28 @@ enum class Origine(val libelle: String) { LIEN("Lien direct"), ETABLISSEMENT("É
 
 data class PatientSuivi(
     val uid: String, val nom: String, val origine: Origine, val inscritAt: Long,
-    val resultat: ResultatSuivi, val mesures: List<Mesure>, val tensions: List<MesureTension> = emptyList()
-)
+    val resultat: ResultatSuivi, val mesures: List<Mesure>, val tensions: List<MesureTension> = emptyList(),
+    val identite: Identite = Identite(), val clinique: ProfilClinique? = null
+) {
+    /** Nom de famille : celui du compte, sinon le dernier mot du nom affiche. */
+    val nomFamille: String get() = identite.nom.ifBlank { nom.trim().substringAfterLast(' ', nom.trim()) }
+    val prenom: String get() = identite.prenom.ifBlank { nom.trim().substringBeforeLast(' ', "") }
+    val nomAffiche: String get() = "$prenom $nomFamille".trim().ifBlank { nom.ifBlank { "Patient" } }
+}
+
+/** Identite du compte patient (users/{uid}). */
+data class Identite(val nom: String = "", val prenom: String = "", val email: String = "")
+
+/** Repas analyse par le patient (users/{uid}/repas) : glucides estimes. */
+data class Repas(val date: LocalDateTime, val nom: String, val glucides: Double)
+
+/** Age en annees revolues a la date [jour], ou null. */
+fun ageEn(naissance: LocalDate?, jour: LocalDate): Int? {
+    val n = naissance ?: return null
+    var a = jour.year - n.year
+    if (jour.monthNumber < n.monthNumber || (jour.monthNumber == n.monthNumber && jour.dayOfMonth < n.dayOfMonth)) a--
+    return a.takeIf { it in 0..120 }
+}
 
 data class Mesure(val date: LocalDateTime, val valeur: Double, val contexte: String)
 
@@ -283,10 +303,37 @@ class ServicePatients(private val fb: FirebaseRest) {
                     val m = mesures(uid, 150)
                     val tn = tensions(uid, 60)
                     PatientSuivi(uid, t.first, t.second, t.third,
-                        EvaluationSuivi.evaluer(t.third, m.map { it.date to it.valeur }, hba1c(uid), maintenant, fuseau, tn), m, tn)
+                        EvaluationSuivi.evaluer(t.third, m.map { it.date to it.valeur }, hba1c(uid), maintenant, fuseau, tn), m, tn,
+                        identite(uid), profilClinique(uid))
                 }
             }
         }.awaitAll().sortedWith(compareBy<PatientSuivi>({ it.resultat.priorite.ordinal }, { !it.resultat.perduDeVue }, { it.nom }))
+    }
+
+    /** Nom, prenom et email du compte patient (lisibles par tout compte connecte). */
+    suspend fun identite(uid: String): Identite = runCatching {
+        fb.document("users/$uid")?.let {
+            Identite(it["nom"] as? String ?: "", it["prenom"] as? String ?: "", it["email"] as? String ?: "")
+        }
+    }.getOrNull() ?: Identite()
+
+    /** Repas analyses (users/{uid}/repas) : lisibles par le medecin lie seulement. */
+    suspend fun repas(uid: String, limite: Int): List<Repas> = runCatching {
+        fb.derniers("users/$uid", "repas", "timestamp", limite).mapNotNull { m ->
+            val date = dateHeure(m["timestamp"]) ?: return@mapNotNull null
+            Repas(date, m["nomRepas"] as? String ?: "", (m["glucidesEstimes"] as? Number)?.toDouble() ?: return@mapNotNull null)
+        }
+    }.getOrDefault(emptyList())
+
+    /** Patients archives par ce soignant (users/{uid}/pc/archives : n'appartient qu'a lui). */
+    suspend fun archives(medecinUid: String): Set<String> = runCatching {
+        (fb.document("users/$medecinUid/pc/archives")?.get("uids") as? List<*>).orEmpty().filterIsInstance<String>().toSet()
+    }.getOrDefault(emptySet())
+
+    suspend fun enregistrerArchives(medecinUid: String, uids: Set<String>) {
+        fb.lot(listOf(FirebaseRest.Ecriture.Poser("users/$medecinUid/pc/archives", mapOf(
+            "uids" to uids.toList(), "majAt" to FirebaseRest.Horodatage(Instant.now().toString())
+        ))))
     }
 
     suspend fun mesures(uid: String, limite: Int): List<Mesure> = runCatching {
@@ -447,5 +494,113 @@ class ServiceRdv(private val fb: FirebaseRest) {
             "status" to "REJECTED", "medecinReponse" to nettoyer(reponse, 300),
             "updatedAt" to FirebaseRest.Horodatage(Instant.now().toString())
         ))))
+    }
+}
+
+/** Horodatage Firestore (texte ISO) -> date et heure locales. */
+fun dateHeure(v: Any?): LocalDateTime? = (v as? String)?.let {
+    runCatching { kotlinx.datetime.Instant.parse(it).toLocalDateTime(TimeZone.currentSystemDefault()) }.getOrNull()
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  Messagerie : memes conversations que l'app mobile (conversations/{id})
+// ═══════════════════════════════════════════════════════════════════════
+
+data class Conversation(
+    val id: String, val patientId: String, val patientNom: String, val medecinNom: String,
+    val dernierMessage: String, val dernierMessageAt: LocalDateTime?, val nonLusMedecin: Int, val nonLusPatient: Int
+)
+
+data class MessageChat(
+    val id: String, val envoyeurId: String, val envoyeurNom: String, val contenu: String, val date: LocalDateTime?,
+    val pieceJointeNom: String, val pieceJointeUrl: String
+)
+
+class ServiceMessagerie(private val fb: FirebaseRest) {
+    private val http = HttpClient.newHttpClient()
+    private val api = "https://website-omega-umber-20.vercel.app/api"
+
+    private fun conversation(id: String, m: Map<String, Any?>) = Conversation(
+        id = id,
+        patientId = m["patientId"] as? String ?: "",
+        patientNom = m["patientNom"] as? String ?: "",
+        medecinNom = m["medecinNom"] as? String ?: "",
+        dernierMessage = m["dernierMessage"] as? String ?: "",
+        dernierMessageAt = dateHeure(m["dernierMessageAt"]),
+        nonLusMedecin = (m["nonLusMedecin"] as? Number)?.toInt() ?: 0,
+        nonLusPatient = (m["nonLusPatient"] as? Number)?.toInt() ?: 0
+    )
+
+    /** Conversations de ce soignant, la plus recente d'abord. */
+    suspend fun conversations(medecinUid: String): List<Conversation> =
+        fb.requete(null, "conversations", mapOf("medecinId" to medecinUid))
+            .map { (id, m) -> conversation(id, m) }
+            .sortedByDescending { it.dernierMessageAt }
+
+    /** Les derniers messages, du plus ancien au plus recent. */
+    suspend fun messages(conversationId: String, limite: Int = 300): List<MessageChat> =
+        fb.requete("conversations/$conversationId", "messages", triDecroissant = "timestamp", limite = limite)
+            .map { (id, m) ->
+                MessageChat(
+                    id = id,
+                    envoyeurId = m["envoyeurId"] as? String ?: "",
+                    envoyeurNom = m["envoyeurNom"] as? String ?: "",
+                    contenu = m["contenu"] as? String ?: "",
+                    date = dateHeure(m["timestamp"]),
+                    pieceJointeNom = m["attachmentName"] as? String ?: "",
+                    pieceJointeUrl = m["attachmentUrl"] as? String ?: ""
+                )
+            }.reversed()
+
+    /** Conversation existante avec ce patient, ou nouvelle (memes champs que l'app mobile). */
+    suspend fun ouvrirAvec(patientUid: String, patientNom: String, moi: Profil): Conversation {
+        fb.requete(null, "conversations", mapOf("patientId" to patientUid, "medecinId" to moi.uid), limite = 1)
+            .firstOrNull()?.let { (id, m) -> return conversation(id, m) }
+        val id = ServiceEtablissement.nouvelId()
+        val zero = FirebaseRest.Horodatage("1970-01-01T00:00:00Z")
+        val maintenant = Instant.now().toString()
+        fb.lot(listOf(FirebaseRest.Ecriture.Poser("conversations/$id", mapOf(
+            "patientId" to patientUid, "medecinId" to moi.uid,
+            "patientNom" to patientNom.take(100), "medecinNom" to moi.nomComplet.take(100),
+            "dernierMessage" to "", "dernierMessageAt" to FirebaseRest.Horodatage(maintenant),
+            "nonLusPatient" to 0, "nonLusMedecin" to 0,
+            "typingPatient" to false, "typingPatientAt" to zero, "typingMedecin" to false, "typingMedecinAt" to zero
+        ))))
+        return Conversation(id, patientUid, patientNom, moi.nomComplet, "", null, 0, 0)
+    }
+
+    /** Envoie un message, puis previent le patient sur son telephone (si possible). */
+    suspend fun envoyer(c: Conversation, moi: Profil, texte: String) {
+        val contenu = texte.trim().take(4000)
+        if (contenu.isEmpty()) return
+        val maintenant = FirebaseRest.Horodatage(Instant.now().toString())
+        fb.lot(listOf(
+            FirebaseRest.Ecriture.Poser("conversations/${c.id}/messages/${ServiceEtablissement.nouvelId()}", mapOf(
+                "envoyeurId" to moi.uid, "envoyeurNom" to moi.nomComplet, "contenu" to contenu, "timestamp" to maintenant,
+                "lu" to false, "estIA" to false, "attachmentUrl" to "", "attachmentName" to "", "attachmentType" to ""
+            )),
+            FirebaseRest.Ecriture.Changer("conversations/${c.id}", mapOf(
+                "dernierMessage" to contenu.take(500), "dernierMessageAt" to maintenant, "nonLusPatient" to c.nonLusPatient + 1
+            ))
+        ))
+        runCatching { notifier(c.id, contenu) }
+    }
+
+    /** Remet a zero le compteur de messages non lus du soignant. */
+    suspend fun marquerLu(c: Conversation) {
+        if (c.nonLusMedecin == 0) return
+        runCatching { fb.lot(listOf(FirebaseRest.Ecriture.Changer("conversations/${c.id}", mapOf("nonLusMedecin" to 0)))) }
+    }
+
+    private suspend fun notifier(conversationId: String, apercu: String) = withContext(Dispatchers.IO) {
+        val corps = kotlinx.serialization.json.buildJsonObject {
+            put("conversationId", kotlinx.serialization.json.JsonPrimitive(conversationId))
+            put("preview", kotlinx.serialization.json.JsonPrimitive(apercu.take(200)))
+        }.toString()
+        val req = HttpRequest.newBuilder(URI.create("$api/notify-message"))
+            .header("Authorization", "Bearer ${fb.jetonValide()}")
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(corps)).build()
+        http.send(req, HttpResponse.BodyHandlers.ofString())
     }
 }

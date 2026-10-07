@@ -14,11 +14,11 @@ object StatsGlycemie {
 
     /** Plages du consensus international (temps dans la cible). */
     enum class Plage(val libelle: String, val couleur: Long) {
-        TRES_HAUT("> 250", 0xFFFB8C00),
-        HAUT("181-250", 0xFFF9A825),
-        CIBLE("70-180", 0xFF43A047),
-        BAS("54-69", 0xFFE53935),
-        TRES_BAS("< 54", 0xFF8E0000);
+        TRES_HAUT("> 250", 0xFFD32F2F),
+        HAUT("181-250", 0xFFF57C00),
+        CIBLE("70-180", 0xFF2E7D32),
+        BAS("54-69", 0xFF1E88E5),
+        TRES_BAS("< 54", 0xFF6A1B9A);
 
         companion object {
             fun de(v: Double) = when {
@@ -92,50 +92,88 @@ object StatsGlycemie {
             else Tranche(h, percentile(v, 10.0), percentile(v, 25.0), percentile(v, 50.0), percentile(v, 75.0), percentile(v, 90.0), v.size)
         }
 
-    // ── Carnet : colonnes par moment de la journee ─────────────────────
-
-    enum class Moment(val groupe: String, val libelle: String, val avantRepas: Boolean?) {
-        NUIT("Nuit", "", null),
-        REVEIL("Réveil", "À jeun", true),
-        PD_AVANT("Petit-déjeuner", "Avant", true),
-        PD_APRES("Petit-déjeuner", "Après", false),
-        DEJ_AVANT("Déjeuner", "Avant", true),
-        DEJ_APRES("Déjeuner", "Après", false),
-        DIN_AVANT("Dîner", "Avant", true),
-        DIN_APRES("Dîner", "Après", false),
-        COUCHER("Coucher", "", null),
-        AUTRE("Autre", "Activité / autre", null)
+    /** Indice ADRR (Kovatchev) : moyenne par jour du risque bas maximal + risque haut maximal. */
+    fun adrr(mesures: List<Mesure>): Double? {
+        val parJour = mesures.groupBy { it.date.date }.values
+        if (parJour.isEmpty()) return null
+        return parJour.map { jour ->
+            val r = jour.map { risque(it.valeur) }
+            r.maxOf { it.first } + r.maxOf { it.second }
+        }.average()
     }
 
-    /** Range une mesure dans une colonne du carnet (contexte saisi + heure). */
+    /** (risque bas, risque haut) d'une glycemie, echelle de Kovatchev. */
+    private fun risque(g: Double): Pair<Double, Double> {
+        val f = 1.509 * (ln(g.coerceAtLeast(20.0)).pow(1.084) - 5.381)
+        val r = 10 * f * f
+        return if (f < 0) r to 0.0 else 0.0 to r
+    }
+
+    // ── Carnet : colonnes par moment de la journee ─────────────────────
+
+    /**
+     * Reperes de couleur par moment (ADA 2025, reperes generaux) :
+     * < 54 et 54-69 = hypoglycemie ; cible jusqu'a [cibleMax] ; [hautMax] = au-dessus.
+     */
+    enum class Categorie(val libelle: String, val cibleMax: Int, val hautMax: Int) {
+        NUIT_REVEIL("Nuit / au réveil", 130, 180),
+        AVANT_REPAS("Avant repas", 130, 180),
+        APRES_REPAS("Après repas", 180, 250),
+        COUCHER("Au coucher", 150, 200),
+        AUTRE("Autres moments", 180, 250);
+
+        /** Libelles des 5 niveaux, du plus bas au plus haut. */
+        val seuils: List<Pair<String, Plage>> get() = listOf(
+            "< 54" to Plage.TRES_BAS, "54-69" to Plage.BAS, "70-$cibleMax" to Plage.CIBLE,
+            "${cibleMax + 1}-$hautMax" to Plage.HAUT, "> $hautMax" to Plage.TRES_HAUT
+        )
+
+        fun niveau(v: Double): Plage = when {
+            v < 54 -> Plage.TRES_BAS
+            v < 70 -> Plage.BAS
+            v <= cibleMax -> Plage.CIBLE
+            v <= hautMax -> Plage.HAUT
+            else -> Plage.TRES_HAUT
+        }
+    }
+
+    enum class Moment(val libelle: String, val categorie: Categorie, val repas: Boolean = false) {
+        NUIT("Nuit", Categorie.NUIT_REVEIL),
+        PETIT_DEJ("Petit-déjeuner", Categorie.AVANT_REPAS, repas = true),
+        MATINEE("Matinée · après repas", Categorie.APRES_REPAS),
+        DEJEUNER("Déjeuner", Categorie.AVANT_REPAS, repas = true),
+        APRES_MIDI("Après-midi · après repas", Categorie.APRES_REPAS),
+        DINER("Dîner", Categorie.AVANT_REPAS, repas = true),
+        SOIREE("Soirée · après repas", Categorie.APRES_REPAS),
+        COUCHER("Coucher", Categorie.COUCHER),
+        AUTRE("Autre", Categorie.AUTRE)
+    }
+
+    /** Range une mesure dans une colonne du carnet (contexte saisi par le patient + heure). */
     fun moment(m: Mesure): Moment {
         val h = m.date.hour
-        fun repas(avant: Boolean) = when {
-            h < 11 -> if (avant) Moment.PD_AVANT else Moment.PD_APRES
-            h < 16 -> if (avant) Moment.DEJ_AVANT else Moment.DEJ_APRES
-            else -> if (avant) Moment.DIN_AVANT else Moment.DIN_APRES
-        }
         return when (m.contexte) {
-            "REVEIL", "A_JEUN" -> Moment.REVEIL
-            "AVANT_REPAS" -> repas(true)
-            "APRES_REPAS_1H", "APRES_REPAS_2H" -> repas(false)
+            "REVEIL", "A_JEUN" -> Moment.PETIT_DEJ
+            "AVANT_REPAS" -> repasA(h)
+            "APRES_REPAS_1H", "APRES_REPAS_2H" -> when {
+                h < 12 -> Moment.MATINEE
+                h < 18 -> Moment.APRES_MIDI
+                else -> Moment.SOIREE
+            }
             "AU_LIT" -> Moment.COUCHER
             else -> if (h < 5) Moment.NUIT else Moment.AUTRE
         }
     }
 
-    /**
-     * Couleur d'une case du carnet : rouge fonce < 54, rouge < 70,
-     * vert dans l'objectif (a jeun / avant repas 80-130, apres repas < 180,
-     * autres 70-180), jaune au-dessus, orange > 250.
-     */
-    fun couleurCase(v: Double, moment: Moment): Long = when {
-        v < 54 -> Plage.TRES_BAS.couleur
-        v < 70 -> Plage.BAS.couleur
-        v > 250 -> Plage.TRES_HAUT.couleur
-        moment.avantRepas == true -> if (v <= 130) Plage.CIBLE.couleur else Plage.HAUT.couleur
-        else -> if (v <= 180) Plage.CIBLE.couleur else Plage.HAUT.couleur
+    /** Repas le plus proche d'une heure : petit-dejeuner, dejeuner ou diner. */
+    fun repasA(heure: Int): Moment = when {
+        heure < 11 -> Moment.PETIT_DEJ
+        heure < 17 -> Moment.DEJEUNER
+        else -> Moment.DINER
     }
+
+    /** Couleur d'une case du carnet selon les reperes du moment. */
+    fun couleurCase(v: Double, moment: Moment): Long = moment.categorie.niveau(v).couleur
 
     fun libelleContexte(code: String) = when (code) {
         "A_JEUN" -> "À jeun"

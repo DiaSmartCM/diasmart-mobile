@@ -1,6 +1,8 @@
 package com.diabeto.desktop
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.TooltipArea
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -239,4 +241,25 @@ val PaddingBouton = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
 fun LienBandeau(texte: String, onClic: () -> Unit) {
     Text(texte, Modifier.border(1.dp, Color.White.copy(alpha = 0.7f)).clickable(onClick = onClic)
         .padding(horizontal = 10.dp, vertical = 3.dp), color = Color.White, fontSize = 12.sp)
+}
+
+/** Petite bulle d'aide qui apparait au survol de la souris. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun Infobulle(texte: String, contenu: @Composable () -> Unit) {
+    TooltipArea(
+        tooltip = {
+            Text(texte, Modifier.background(Color(0xFF2B2F42)).padding(horizontal = 8.dp, vertical = 4.dp),
+                color = Color.White, fontSize = 12.sp)
+        },
+        delayMillis = 300,
+        content = contenu
+    )
+}
+
+/** Petit bouton texte encadre, pour les tableaux (« Dossier », « Carnet »). */
+@Composable
+fun MiniBouton(texte: String, couleur: Color = Indigo, onClic: () -> Unit) {
+    Text(texte, Modifier.border(1.dp, couleur).clickable(onClick = onClic).padding(horizontal = 8.dp, vertical = 3.dp),
+        color = couleur, fontSize = 12.sp)
 }

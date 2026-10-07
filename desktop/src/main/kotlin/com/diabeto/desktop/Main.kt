@@ -21,6 +21,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
@@ -149,6 +151,7 @@ class EtatApp(val fb: FirebaseRest, val profil: Profil) {
     val etabService = ServiceEtablissement(fb)
     val patientsService = ServicePatients(fb)
     val rdvService = ServiceRdv(fb)
+    val messagerieService = ServiceMessagerie(fb)
 
     var chargement by mutableStateOf(false)
     var erreur by mutableStateOf<String?>(null)
@@ -158,6 +161,23 @@ class EtatApp(val fb: FirebaseRest, val profil: Profil) {
     var patients by mutableStateOf<List<PatientSuivi>>(emptyList())
     var rdv by mutableStateOf<List<DemandeRdv>>(emptyList())
     var dejaCharge by mutableStateOf(false)
+    /** Patients que ce soignant a ranges dans « Archivés ». */
+    var archives by mutableStateOf<Set<String>>(emptySet())
+    var erreurArchive by mutableStateOf<String?>(null)
+    var conversations by mutableStateOf<List<Conversation>>(emptyList())
+
+    /** Archive ou desarchive un patient (enregistre dans le compte du soignant). */
+    suspend fun basculerArchive(uid: String) {
+        val avant = archives
+        val apres = if (uid in avant) avant - uid else avant + uid
+        archives = apres
+        try {
+            patientsService.enregistrerArchives(profil.uid, apres)
+        } catch (e: Exception) {
+            archives = avant
+            erreurArchive = e.message ?: "Enregistrement impossible."
+        }
+    }
 
     /** Membre de l'equipe d'un etablissement (admin ou soignant), sinon null. */
     val equipe: Affiliation? get() = affiliation?.takeIf { it.role != RoleEtablissement.PATIENT }
@@ -177,6 +197,8 @@ class EtatApp(val fb: FirebaseRest, val profil: Profil) {
                 etablissement = null; membres = emptyList(); emptyList()
             }
             rdv = runCatching { rdvService.demandes(profil.uid) }.getOrDefault(rdv)
+            archives = patientsService.archives(profil.uid)
+            conversations = runCatching { messagerieService.conversations(profil.uid) }.getOrDefault(conversations)
             patients = patientsService.patientsSuivis(profil.uid, inscrits)
             runCatching { SessionPc.retenirEtablissement(etablissement?.nom) }
             dejaCharge = true
@@ -191,22 +213,28 @@ class EtatApp(val fb: FirebaseRest, val profil: Profil) {
 // ── Ecran principal ──────────────────────────────────────────────────────
 
 enum class Onglet(val libelle: String) {
-    TABLEAU("Tableau de bord"), PATIENTS("Patients"), RDV("Rendez-vous"), ETABLISSEMENT("Établissement"), OUTILS("Outils")
+    ACCUEIL("Accueil"), TABLEAU("Tableau de bord"), PATIENTS("Mes patients"), MESSAGES("Messagerie"),
+    RDV("Rendez-vous"), ETABLISSEMENT("Établissement"), OUTILS("Outils")
 }
 
 @Composable
 private fun EcranPrincipal(etat: EtatApp, onDeconnexion: () -> Unit) {
-    var onglet by remember { mutableStateOf(Onglet.TABLEAU) }
+    var onglet by remember { mutableStateOf(Onglet.ACCUEIL) }
     var patientOuvert by remember { mutableStateOf<String?>(null) }
+    var ongletFiche by remember { mutableStateOf(OngletFiche.VUE) }
+    var ecrireA by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(etat) { etat.charger() }
+    fun ouvrirPatient(uid: String?, o: OngletFiche = OngletFiche.VUE) { patientOuvert = uid; ongletFiche = o; onglet = Onglet.PATIENTS }
+    fun ecrire(uid: String) { ecrireA = uid; onglet = Onglet.MESSAGES }
 
     Row(Modifier.fillMaxSize()) {
         // Barre laterale indigo (couleurs DiaSmart), elements a angle droit
-        Column(Modifier.width(132.dp).fillMaxHeight().background(Indigo)) {
+        Column(Modifier.width(150.dp).fillMaxHeight().background(Indigo)) {
             Text("DiaSmart", Modifier.padding(horizontal = 16.dp, vertical = 18.dp),
                 fontWeight = FontWeight.Bold, color = Color.White, fontSize = 18.sp)
             Onglet.entries.forEach { o ->
-                ElementMenu(o.libelle, o.icone(), onglet == o) { onglet = o; if (o == Onglet.PATIENTS) patientOuvert = null }
+                val pastille = if (o == Onglet.MESSAGES) etat.conversations.sumOf { it.nonLusMedecin } else 0
+                ElementMenu(o.libelle, o.icone(), onglet == o, pastille) { onglet = o; if (o == Onglet.PATIENTS) patientOuvert = null }
             }
             Spacer(Modifier.weight(1f))
             ElementMenu("Verrouiller", Icons.Default.Lock, false, onDeconnexion)
@@ -214,10 +242,12 @@ private fun EcranPrincipal(etat: EtatApp, onDeconnexion: () -> Unit) {
         }
         Box(Modifier.fillMaxSize().padding(24.dp)) {
             when (onglet) {
+                Onglet.ACCUEIL -> EcranAccueil(etat) { onglet = it; if (it == Onglet.PATIENTS) patientOuvert = null }
                 Onglet.TABLEAU -> EcranTableauDeBord(etat,
-                    onOuvrirPatient = { patientOuvert = it; onglet = Onglet.PATIENTS },
+                    onOuvrirPatient = { ouvrirPatient(it) },
                     onAller = { onglet = it })
-                Onglet.PATIENTS -> EcranPatients(etat, patientOuvert) { patientOuvert = it }
+                Onglet.PATIENTS -> EcranPatients(etat, patientOuvert, ongletFiche, { uid, o -> ouvrirPatient(uid, o) }, ::ecrire)
+                Onglet.MESSAGES -> EcranMessagerie(etat, ecrireA, onOuvert = { ecrireA = null }, onDossier = { ouvrirPatient(it) })
                 Onglet.RDV -> EcranRendezVous(etat)
                 Onglet.ETABLISSEMENT -> EcranEtablissement(etat)
                 Onglet.OUTILS -> EcranOutils()
@@ -227,19 +257,23 @@ private fun EcranPrincipal(etat: EtatApp, onDeconnexion: () -> Unit) {
 }
 
 @Composable
-private fun ElementMenu(libelle: String, icone: ImageVector, actif: Boolean, onClic: () -> Unit) {
+private fun ElementMenu(libelle: String, icone: ImageVector, actif: Boolean, pastille: Int = 0, onClic: () -> Unit) {
     Row(Modifier.fillMaxWidth().background(if (actif) IndigoFonce else Color.Transparent).clickable(onClick = onClic),
         verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.width(4.dp).height(44.dp).background(if (actif) Color.White else Color.Transparent))
         Icon(icone, null, Modifier.padding(start = 10.dp).size(20.dp), tint = Color.White)
-        Text(libelle, Modifier.padding(start = 8.dp, end = 6.dp), color = Color.White, fontSize = 12.sp,
+        Text(libelle, Modifier.weight(1f).padding(start = 8.dp, end = 4.dp), color = Color.White, fontSize = 12.sp,
             fontWeight = if (actif) FontWeight.Bold else FontWeight.Normal)
+        if (pastille > 0) Text(pastille.toString(), Modifier.padding(end = 8.dp).background(Rouge).padding(horizontal = 5.dp, vertical = 1.dp),
+            color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
     }
 }
 
 private fun Onglet.icone() = when (this) {
-    Onglet.TABLEAU -> Icons.Default.Home
+    Onglet.ACCUEIL -> Icons.Default.Home
+    Onglet.TABLEAU -> Icons.AutoMirrored.Filled.List
     Onglet.PATIENTS -> Icons.Default.Person
+    Onglet.MESSAGES -> Icons.Default.Email
     Onglet.RDV -> Icons.Default.DateRange
     Onglet.ETABLISSEMENT -> Icons.Default.Place
     Onglet.OUTILS -> Icons.Default.Build
