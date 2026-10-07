@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -22,7 +20,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -190,7 +187,7 @@ fun EcranConnexion(fb: FirebaseRest, messageInitial: String? = null, onConnecte:
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Card(Modifier.widthIn(max = 460.dp)) {
             Column(
-                Modifier.padding(32.dp).verticalScroll(rememberScrollState()),
+                Modifier.padding(32.dp).defilementClavier(rememberScrollState(), focusAuDepart = false),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text("DiaSmart", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Indigo)

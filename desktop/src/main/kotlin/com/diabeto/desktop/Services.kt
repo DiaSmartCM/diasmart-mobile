@@ -217,6 +217,47 @@ data class PatientSuivi(
 
 data class Mesure(val date: LocalDateTime, val valeur: Double, val contexte: String)
 
+data class ProfilClinique(
+    val typeDiabete: String, val sexe: String, val dateNaissance: LocalDate?, val dateDiagnostic: LocalDate?,
+    val poids: Double?, val taille: Double?, val tourDeTaille: Double?
+) {
+    val typeTexte get() = when (typeDiabete) {
+        "TYPE_1" -> "Type 1"; "TYPE_2" -> "Type 2"; "GESTATIONNEL" -> "Gestationnel"; "PRE_DIABETE" -> "Prédiabète"; else -> "—"
+    }
+    val sexeTexte get() = when (sexe) { "HOMME" -> "Homme"; "FEMME" -> "Femme"; "AUTRE" -> "Autre"; else -> "—" }
+    /** IMC si poids (kg) et taille (cm) sont plausibles. */
+    val imc: Double? get() {
+        val p = poids ?: return null; val t = taille ?: return null
+        if (p !in 2.0..400.0 || t !in 40.0..250.0) return null
+        return p / ((t / 100) * (t / 100))
+    }
+}
+
+data class Medicament(
+    val nom: String, val dosage: String, val frequence: String, val heure: String,
+    val debut: String, val fin: String?, val actif: Boolean
+) {
+    val frequenceTexte get() = when (frequence) {
+        "QUOTIDIEN" -> "1 fois par jour"; "BID" -> "2 fois par jour"; "TID" -> "3 fois par jour"; "QID" -> "4 fois par jour"
+        "HEBDOMADAIRE" -> "1 fois par semaine"; "MENSUEL" -> "1 fois par mois"; "AU_BESOIN" -> "Au besoin"; else -> frequence
+    }
+}
+
+data class EntreeJournal(
+    val date: LocalDate, val humeur: String, val stress: String, val sommeil: String, val heuresSommeil: Double?,
+    val activite: Boolean, val minutesActivite: Int?, val pas: Int?
+) {
+    companion object {
+        fun libelle(code: String) = when (code) {
+            "TRES_BIEN" -> "Très bien"; "BIEN" -> "Bien"; "NEUTRE" -> "Neutre"; "MAL" -> "Mal"; "TRES_MAL" -> "Très mal"
+            "AUCUN" -> "Aucun"; "LEGER" -> "Léger"; "MODERE" -> "Modéré"; "ELEVE" -> "Élevé"; "EXTREME" -> "Extrême"
+            "EXCELLENTE" -> "Excellente"; "BONNE" -> "Bonne"; "MOYENNE" -> "Moyenne"; "MAUVAISE" -> "Mauvaise"; "INSOMNIE" -> "Insomnie"
+            "" -> "—"
+            else -> code.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }
+        }
+    }
+}
+
 class ServicePatients(private val fb: FirebaseRest) {
     private val fuseau = TimeZone.currentSystemDefault()
 
@@ -268,6 +309,53 @@ class ServicePatients(private val fb: FirebaseRest) {
                 traitement = m["traitementAntihypertenseur"] as? Boolean
             ) else null
         }.distinctBy { Triple(it.date, it.systolique, it.diastolique) }
+    }.getOrDefault(emptyList())
+
+    /** Fiche du patient saisie dans son application (backups/{uid}/patients). */
+    suspend fun profilClinique(uid: String): ProfilClinique? = runCatching {
+        fb.collection("backups/$uid/patients").firstOrNull()?.let { m ->
+            ProfilClinique(
+                typeDiabete = m["typeDiabete"] as? String ?: "",
+                sexe = m["sexe"] as? String ?: "",
+                dateNaissance = (m["dateNaissance"] as? String)?.let { runCatching { LocalDate.parse(it.take(10)) }.getOrNull() },
+                dateDiagnostic = (m["dateDiagnostic"] as? String)?.let { runCatching { LocalDate.parse(it.take(10)) }.getOrNull() },
+                poids = (m["poids"] as? Number)?.toDouble(),
+                taille = (m["taille"] as? Number)?.toDouble(),
+                tourDeTaille = (m["tourDeTaille"] as? Number)?.toDouble()
+            )
+        }
+    }.getOrNull()
+
+    /** Traitements saisis par le patient (backups/{uid}/medicaments), actifs d'abord. */
+    suspend fun medicaments(uid: String): List<Medicament> = runCatching {
+        fb.collection("backups/$uid/medicaments").map { m ->
+            Medicament(
+                nom = m["nom"] as? String ?: "",
+                dosage = m["dosage"] as? String ?: "",
+                frequence = m["frequence"] as? String ?: "",
+                heure = (m["heurePrise"] as? String)?.take(5) ?: "",
+                debut = (m["dateDebut"] as? String)?.take(10) ?: "",
+                fin = (m["dateFin"] as? String)?.take(10),
+                actif = m["estActif"] as? Boolean ?: true
+            )
+        }.filter { it.nom.isNotBlank() }.sortedWith(compareBy({ !it.actif }, { it.nom.lowercase() }))
+    }.getOrDefault(emptyList())
+
+    /** Journal (humeur, sommeil, activite) : les plus recents d'abord. */
+    suspend fun journal(uid: String, limite: Int): List<EntreeJournal> = runCatching {
+        fb.derniers("backups/$uid", "journal", "date", limite).mapNotNull { m ->
+            val date = (m["date"] as? String)?.let { runCatching { LocalDate.parse(it.take(10)) }.getOrNull() } ?: return@mapNotNull null
+            EntreeJournal(
+                date = date,
+                humeur = m["humeur"] as? String ?: "",
+                stress = m["niveauStress"] as? String ?: "",
+                sommeil = m["qualiteSommeil"] as? String ?: "",
+                heuresSommeil = (m["heuresSommeil"] as? Number)?.toDouble(),
+                activite = m["activitePhysique"] as? Boolean ?: false,
+                minutesActivite = (m["minutesActivite"] as? Number)?.toInt(),
+                pas = (m["pas"] as? Number)?.toInt()
+            )
+        }
     }.getOrDefault(emptyList())
 
     /** Objectif de tension personnel (objectifs_tension/{uid}), ou null. */

@@ -11,15 +11,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -68,7 +65,7 @@ fun EcranTableauDeBord(etat: EtatApp, onOuvrirPatient: (String) -> Unit, onAller
     val mesures30 = patients.flatMap { it.mesures }.filter { it.date.ms() >= debutMs }
     val dansCible = mesures30.count { it.valeur in 70.0..180.0 }
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(Modifier.fillMaxSize().defilementClavier(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("Bonjour ${etat.profil.nomComplet}", fontSize = 24.sp, fontWeight = FontWeight.Bold)
@@ -109,15 +106,11 @@ fun EcranTableauDeBord(etat: EtatApp, onOuvrirPatient: (String) -> Unit, onAller
             Compteur("Demandes de RDV", enAttente.size.toString(), Modifier.weight(1f), if (enAttente.isNotEmpty()) Orange else Indigo)
         }
 
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Courbe de suivi : glycémie moyenne de vos patients par jour (30 jours)",
-                        Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
-                    if (mesures30.isNotEmpty()) Text(
-                        "${mesures30.size} mesures · ${dansCible * 100 / mesures30.size} % dans la cible 70-180",
-                        fontSize = 13.sp, color = Color.Gray)
-                }
+        Panneau("Courbe de suivi : glycémie moyenne de vos patients par jour (30 jours)", Modifier.fillMaxWidth(),
+            actions = { if (mesures30.isNotEmpty()) Text(
+                "${mesures30.size} mesures · ${dansCible * 100 / mesures30.size} % dans la cible 70-180",
+                fontSize = 12.sp, color = Color.White) }) {
+            Column {
                 Spacer(Modifier.height(8.dp))
                 if (moyennesJour.isEmpty()) Text("Aucune mesure ces 30 derniers jours.", color = Color.Gray, fontSize = 13.sp,
                     modifier = Modifier.padding(vertical = 24.dp))
@@ -126,12 +119,9 @@ fun EcranTableauDeBord(etat: EtatApp, onOuvrirPatient: (String) -> Unit, onAller
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Card(Modifier.weight(1f)) {
-                Column(Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Patients à revoir en priorité", Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
-                        OutlinedButton(onClick = { onAller(Onglet.PATIENTS) }) { Text("Tous les patients") }
-                    }
+            Panneau("Patients à revoir en priorité", Modifier.weight(1f),
+                actions = { LienBandeau("Tous les patients") { onAller(Onglet.PATIENTS) } }) {
+                Column {
                     if (prioritaires.isEmpty()) Text("Aucun pour l'instant.", color = Color.Gray, fontSize = 13.sp,
                         modifier = Modifier.padding(top = 8.dp))
                     prioritaires.take(6).forEach { p ->
@@ -143,12 +133,9 @@ fun EcranTableauDeBord(etat: EtatApp, onOuvrirPatient: (String) -> Unit, onAller
                     }
                 }
             }
-            Card(Modifier.weight(1f)) {
-                Column(Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Prochains rendez-vous", Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
-                        OutlinedButton(onClick = { onAller(Onglet.RDV) }) { Text("Tous les RDV") }
-                    }
+            Panneau("Prochains rendez-vous", Modifier.weight(1f),
+                actions = { LienBandeau("Tous les RDV") { onAller(Onglet.RDV) } }) {
+                Column {
                     if (enAttente.isNotEmpty()) Text("${enAttente.size} demande(s) en attente de réponse.",
                         color = Orange, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
                     if (aVenir.isEmpty()) Text("Aucun rendez-vous confirmé à venir.", color = Color.Gray, fontSize = 13.sp,

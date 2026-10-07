@@ -122,3 +122,114 @@ fun CourbeTension(points: List<Triple<Long, Int, Int>>, debut: Long, fin: Long, 
         serie({ it.third }, couleurDia)
     }
 }
+
+/** Une serie sur 24 h : (minute du jour 0-1439, glycemie). */
+data class SerieJour(val points: List<Pair<Int, Double>>, val couleur: Color, val epaisseur: Float = 2f)
+
+/** Axe 00:00 - 24:00 commun aux courbes de la journee et au profil horaire. */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.axeJournee(
+    mesureur: androidx.compose.ui.text.TextMeasurer, style: TextStyle,
+    gauche: Float, haut: Float, largeur: Float, hauteur: Float, y: (Double) -> Float
+) {
+    drawRect(Color(0x1A2E7D32), Offset(gauche, y(180.0)), Size(largeur, y(70.0) - y(180.0)))
+    val tirets = PathEffect.dashPathEffect(floatArrayOf(6f, 6f))
+    listOf(70.0, 180.0).forEach { v ->
+        drawLine(Vert.copy(alpha = 0.6f), Offset(gauche, y(v)), Offset(gauche + largeur, y(v)), 1f, pathEffect = tirets)
+    }
+    listOf(54.0, 70.0, 180.0, 250.0, 350.0).forEach { v ->
+        val py = y(v)
+        if (py < haut - 1 || py > haut + hauteur + 1) return@forEach
+        val r = mesureur.measure(v.toInt().toString(), style)
+        drawText(r, topLeft = Offset(gauche - r.size.width - 6f, py - r.size.height / 2f))
+    }
+    for (h in 0..24 step 3) {
+        val px = gauche + largeur * h / 24f
+        drawLine(Color(0xFFEDEEF3), Offset(px, haut), Offset(px, haut + hauteur))
+        val r = mesureur.measure("%02d:00".format(h), style)
+        drawText(r, topLeft = Offset((px - r.size.width / 2f).coerceIn(gauche - 4f, gauche + largeur - r.size.width), haut + hauteur + 4f))
+    }
+    drawLine(Color.LightGray, Offset(gauche, haut), Offset(gauche, haut + hauteur))
+    drawLine(Color.LightGray, Offset(gauche, haut + hauteur), Offset(gauche + largeur, haut + hauteur))
+}
+
+/** Courbes de journees superposees sur 24 h (la derniere serie est dessinee au-dessus). */
+@Composable
+fun CourbeJournee(series: List<SerieJour>, modifier: Modifier = Modifier) {
+    val mesureur = rememberTextMeasurer()
+    val style = TextStyle(fontSize = 11.sp, color = Color.Gray)
+    Canvas(modifier) {
+        val gauche = 44f; val haut = 8f
+        val largeur = size.width - gauche - 12f
+        val hauteur = size.height - 26f - haut
+        if (largeur <= 0f || hauteur <= 0f) return@Canvas
+        val tous = series.flatMap { s -> s.points.map { it.second } }
+        val yMin = minOf(40.0, tous.minOrNull() ?: 40.0)
+        val yMax = maxOf(300.0, (tous.maxOrNull() ?: 300.0) + 20)
+        fun y(v: Double) = haut + hauteur * (1f - ((v - yMin) / (yMax - yMin)).toFloat())
+        fun x(minute: Int) = gauche + largeur * (minute / 1440f)
+        axeJournee(mesureur, style, gauche, haut, largeur, hauteur, ::y)
+        series.forEach { s ->
+            val pts = s.points.sortedBy { it.first }
+            if (pts.size > 1) {
+                val chemin = Path()
+                pts.forEachIndexed { i, p -> if (i == 0) chemin.moveTo(x(p.first), y(p.second)) else chemin.lineTo(x(p.first), y(p.second)) }
+                drawPath(chemin, s.couleur, style = Stroke(width = s.epaisseur))
+            }
+            pts.forEach { p ->
+                drawCircle(if (s.epaisseur >= 2f) couleurGlycemie(p.second) else s.couleur, radius = if (s.epaisseur >= 2f) 4.5f else 2.5f,
+                    center = Offset(x(p.first), y(p.second)))
+            }
+        }
+    }
+}
+
+/** Profil glycemique par tranche de 2 h : bandes 10-90 % et 25-75 %, mediane. */
+@Composable
+fun CourbeProfil(tranches: List<StatsGlycemie.Tranche>, modifier: Modifier = Modifier) {
+    val mesureur = rememberTextMeasurer()
+    val style = TextStyle(fontSize = 11.sp, color = Color.Gray)
+    Canvas(modifier) {
+        val gauche = 44f; val haut = 8f
+        val largeur = size.width - gauche - 12f
+        val hauteur = size.height - 26f - haut
+        if (largeur <= 0f || hauteur <= 0f) return@Canvas
+        val yMin = minOf(40.0, tranches.minOfOrNull { it.p10 } ?: 40.0)
+        val yMax = maxOf(300.0, (tranches.maxOfOrNull { it.p90 } ?: 300.0) + 20)
+        fun y(v: Double) = haut + hauteur * (1f - ((v - yMin) / (yMax - yMin)).toFloat())
+        fun x(heure: Double) = gauche + largeur * (heure / 24.0).toFloat()
+        axeJournee(mesureur, style, gauche, haut, largeur, hauteur, ::y)
+        if (tranches.isEmpty()) return@Canvas
+        fun bande(bas: (StatsGlycemie.Tranche) -> Double, hautV: (StatsGlycemie.Tranche) -> Double, couleur: Color) {
+            if (tranches.size == 1) {
+                val t = tranches[0]
+                drawRect(couleur, Offset(x(t.heure.toDouble()), y(hautV(t))), Size(largeur / 12f, y(bas(t)) - y(hautV(t))))
+                return
+            }
+            val chemin = Path()
+            tranches.forEachIndexed { i, t -> val px = x(t.heure + 1.0); if (i == 0) chemin.moveTo(px, y(hautV(t))) else chemin.lineTo(px, y(hautV(t))) }
+            tranches.reversed().forEach { t -> chemin.lineTo(x(t.heure + 1.0), y(bas(t))) }
+            chemin.close()
+            drawPath(chemin, couleur)
+        }
+        bande({ it.p10 }, { it.p90 }, Indigo.copy(alpha = 0.15f))
+        bande({ it.p25 }, { it.p75 }, Indigo.copy(alpha = 0.30f))
+        val mediane = Path()
+        tranches.forEachIndexed { i, t -> val px = x(t.heure + 1.0); if (i == 0) mediane.moveTo(px, y(t.mediane)) else mediane.lineTo(px, y(t.mediane)) }
+        drawPath(mediane, IndigoFonce, style = Stroke(width = 2.5f))
+        tranches.forEach { t -> drawCircle(IndigoFonce, radius = 3.5f, center = Offset(x(t.heure + 1.0), y(t.mediane))) }
+    }
+}
+
+/** Barre verticale empilee du « temps dans la cible » (% de mesures par plage). */
+@Composable
+fun BarreCible(parPlage: Map<StatsGlycemie.Plage, Double>, modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        var yCourant = 0f
+        StatsGlycemie.Plage.entries.forEach { p ->
+            val h = size.height * ((parPlage[p] ?: 0.0) / 100.0).toFloat()
+            if (h > 0f) drawRect(Color(p.couleur), Offset(0f, yCourant), Size(size.width, h))
+            yCourant += h
+        }
+        if (yCourant == 0f) drawRect(Color(0xFFEDEEF3), Offset.Zero, size)
+    }
+}

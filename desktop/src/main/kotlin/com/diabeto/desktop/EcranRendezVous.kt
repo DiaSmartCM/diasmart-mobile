@@ -10,20 +10,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -78,20 +76,15 @@ fun EcranRendezVous(etat: EtatApp) {
             }
         }
         Spacer(Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FiltreRdv.entries.forEach { f ->
-                val n = when (f) {
-                    FiltreRdv.EN_ATTENTE -> etat.rdv.count { it.statut == "PENDING" }
-                    else -> null
-                }
-                FilterChip(filtre == f, { filtre = f }, label = { Text(f.libelle + (n?.let { " ($it)" } ?: "")) })
-            }
-        }
+        Onglets(FiltreRdv.entries, filtre, { f ->
+            f.libelle + if (f == FiltreRdv.EN_ATTENTE) " (${etat.rdv.count { it.statut == "PENDING" }})" else ""
+        }) { filtre = it }
         erreur?.let { Text(it, color = Rouge, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp)) }
         Spacer(Modifier.height(8.dp))
-        Card(Modifier.fillMaxSize()) {
+        val defil = rememberLazyListState()
+        Column(Modifier.fillMaxSize().background(Color.White).border(1.dp, Bordure)) {
             if (liste.isEmpty()) Text("Aucun rendez-vous ici.", Modifier.padding(20.dp), color = Color.Gray)
-            LazyColumn {
+            LazyColumn(Modifier.fillMaxSize().defilementClavier(defil), state = defil) {
                 items(liste, key = { it.id }) { r ->
                     Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.width(150.dp)) {
@@ -114,7 +107,7 @@ fun EcranRendezVous(etat: EtatApp) {
                             else -> Pastille(r.statut, Color.Gray)
                         }
                     }
-                    HorizontalDivider()
+                    HorizontalDivider(color = Bordure)
                 }
             }
         }
